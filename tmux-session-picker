@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+
+# Layout configuration
+TMUX_LAYOUT="${TMUX_LAYOUT:-ide}"
+TMUX_LAYOUTS_DIR="${TMUX_LAYOUTS_DIR:-$HOME/.config/tmux/layouts}"
+
+# Check if running inside tmux
+if [[ -z "$TMUX" ]]; then
+    echo "Error: tmux-session-picker must be run from within tmux"
+    exit 1
+fi
+
+# Apply layout to a session
+apply_layout() {
+    local session_name="$1"
+    local working_dir="$2"
+    local layout_script="${TMUX_LAYOUTS_DIR}/${TMUX_LAYOUT}.sh"
+
+    if [[ -n "$TMUX_LAYOUT" && -x "$layout_script" ]]; then
+        "$layout_script" "$session_name" "$working_dir"
+    fi
+}
+
+# Check dependencies
+if ! command -v fzf &>/dev/null; then
+    echo "Error: fzf is not installed"
+    exit 1
+fi
+
+# Function to pick a pane from a window
+pick_pane() {
+    local session="$1"
+    local window_index="$2"
+
+    # Get panes for the window
+    local panes
+    panes=$(tmux list-panes -t "${session}:${window_index}" -F '#P: #{pane_current_command}' 2>/dev/null)
+
+    if [[ -z "$panes" ]]; then
+        echo "No panes found in window: ${session}:${window_index}"
+        return 1
+    fi
+
+    # Launch fzf for pane selection
+    local result
+    result=$(echo "$panes" | fzf \
+        --border-label="┃ ${session}:${window_index} panes ┃" \
+        --prompt="Select pane: " \
+        --header="Enter: switch | Esc: back")
+
+    local pane_selection=$(echo "$result")
+
+    # Exit if no selection
+    if [[ -z "$pane_selection" ]]; then
+        return 0
+    fi
+
+    # Extract pane index (first field before colon)
+    local pane_index=$(echo "$pane_selection" | cut -d':' -f1 | xargs)
+
+    # Switch to the pane
+    tmux switch-client -t "${session}:${window_index}"
+    tmux select-pane -t "${session}:${window_index}.${pane_index}"
+}
+
+# Function to pick a window from a session
+pick_window() {
+    local session="$1"
+
+    # Get windows for the session
+    local windows
+    windows=$(tmux list-windows -t "$session" -F '#I: #W' 2>/dev/null)
+
+    if [[ -z "$windows" ]]; then
+        echo "No windows found in session: $session"
+        return 1
+    fi
+
+    # Launch fzf for window selection
+    local result
+    result=$(echo "$windows" | fzf \
+        --border-label="┃ $session windows ┃" \
+        --prompt="Select window: " \
+        --header="Enter: switch | Ctrl-O: panes | Ctrl-X: kill | Esc: back" \
+        --expect=ctrl-x,ctrl-o)
+
+    local key=$(echo "$result" | sed -n '1p')
+    local window_selection=$(echo "$result" | sed -n '2p')
+
+    # Exit if no selection
+    if [[ -z "$window_selection" ]]; then
+        return 0
+    fi
+
+    # Extract window index (first field before colon)
+    local window_index=$(echo "$window_selection" | cut -d':' -f1 | xargs)
+
+    # Handle pane picker action (Ctrl-O)
+    if [[ "$key" == "ctrl-o" ]]; then
+        pick_pane "$session" "$window_index"
+        return 0
+    fi
+
+    # Handle kill action
+    if [[ "$key" == "ctrl-x" ]]; then
+        tmux kill-window -t "${session}:${window_index}"
+        echo "Killed window: $window_selection"
+        return 0
+    fi
+
+    # Handle switch action
+    tmux switch-client -t "${session}:${window_index}"
+}
+
+# Get current session name
+current_session=$(tmux display-message -p '#S')
+
+# Get all other sessions (excluding current)
+sessions=$(tmux list-sessions -F '#S' 2>/dev/null | grep -v "^${current_session}$")
+
+# Exit gracefully if no other sessions
+if [[ -z "$sessions" ]]; then
+    echo "No other sessions available"
+    exit 0
+fi
+
+# Get last session from tmux option and put it first if it exists
+last_session=$(tmux show-option -gqv @last_session)
+if [[ -n "$last_session" ]] && echo "$sessions" | grep -q "^${last_session}$"; then
+    # Remove last session from list and prepend it
+    sessions=$(echo "$sessions" | grep -v "^${last_session}$")
+    sessions="${last_session}"$'\n'"${sessions}"
+fi
+
+# Launch fzf with session picker
+result=$(echo "$sessions" | fzf \
+    --border-label="┃ tmux sessions ┃" \
+    --prompt="Switch to: " \
+    --header="Enter: switch/create | Ctrl-O: windows | Ctrl-X: kill | Esc: cancel" \
+    --print-query \
+    --expect=ctrl-x,ctrl-o)
+
+# Parse fzf output
+# Line 1: The query string (what user typed)
+# Line 2: The key pressed (empty for enter, "ctrl-x" for ctrl-x, "ctrl-o" for ctrl-o)
+# Line 3: The selected item (if any)
+query=$(echo "$result" | sed -n '1p')
+key=$(echo "$result" | sed -n '2p')
+selection=$(echo "$result" | sed -n '3p')
+
+# Exit if no action taken (user pressed Esc without typing anything)
+if [[ -z "$key" && -z "$selection" && -z "$query" ]]; then
+    exit 0
+fi
+
+# Handle window picker action (Ctrl-O)
+if [[ "$key" == "ctrl-o" ]]; then
+    if [[ -n "$selection" ]]; then
+        pick_window "$selection"
+    fi
+    exit 0
+fi
+
+# Handle kill action (Ctrl-X) - re-run picker after kill
+if [[ "$key" == "ctrl-x" ]]; then
+    if [[ -n "$selection" ]]; then
+        tmux kill-session -t "$selection"
+    fi
+    exec "$0"
+fi
+
+# Handle switch/create action (Enter)
+if [[ -n "$selection" ]]; then
+    # Session was selected from list - switch to it
+    tmux switch-client -t "$selection"
+elif [[ -n "$query" ]]; then
+    # User typed a new name - create and switch to new session
+    tmux new-session -d -s "$query" -c "$HOME"
+    apply_layout "$query" "$HOME"
+    tmux switch-client -t "$query"
+fi
