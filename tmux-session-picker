@@ -115,21 +115,16 @@ pick_window() {
 # Get current session name
 current_session=$(tmux display-message -p '#S')
 
-# Get all other sessions (excluding current)
-sessions=$(tmux list-sessions -F '#S' 2>/dev/null | grep -v "^${current_session}$")
+# Get all other sessions (excluding current), sorted by recency
+sessions=$(tmux list-sessions -F '#{session_activity} #S' 2>/dev/null | \
+    grep -v " ${current_session}$" | \
+    sort -rn | \
+    cut -d' ' -f2-)
 
 # Exit gracefully if no other sessions
 if [[ -z "$sessions" ]]; then
     echo "No other sessions available"
     exit 0
-fi
-
-# Get last session from tmux option and put it first if it exists
-last_session=$(tmux show-option -gqv @last_session)
-if [[ -n "$last_session" ]] && echo "$sessions" | grep -q "^${last_session}$"; then
-    # Remove last session from list and prepend it
-    sessions=$(echo "$sessions" | grep -v "^${last_session}$")
-    sessions="${last_session}"$'\n'"${sessions}"
 fi
 
 # Launch fzf with session picker
