@@ -4,7 +4,17 @@ Pop up fzf in tmux to quickly switch between sessions, create new ones, or manag
 
 ## Installation
 
-### Option 1: Direct Installation
+### Option 1: Clone and Install (recommended)
+
+```sh
+git clone https://github.com/nikbrunner/tmux-session-picker.git
+cd tmux-session-picker
+./install.sh
+```
+
+This creates symlinks in `~/.local/bin/`, so updates are as simple as `git pull`.
+
+### Option 2: Manual Installation
 
 1.  Download the script:
     ```sh
@@ -17,24 +27,6 @@ Pop up fzf in tmux to quickly switch between sessions, create new ones, or manag
 3.  Move it to a directory in your `PATH`:
     ```sh
     mv tmux-session-picker ~/.local/bin/
-    ```
-
-### Option 2: Development Installation (via symlink)
-
-If you're forking or modifying the script, use a symlink so changes are immediately available:
-
-1.  Clone the repository:
-    ```sh
-    git clone https://github.com/nikbrunner/tmux-session-picker.git
-    cd tmux-session-picker
-    ```
-2.  Make it executable:
-    ```sh
-    chmod +x tmux-session-picker
-    ```
-3.  Create a symlink in your `PATH`:
-    ```sh
-    ln -s "$(pwd)/tmux-session-picker" ~/.local/bin/tmux-session-picker
     ```
 
 ## Dependencies
@@ -78,6 +70,78 @@ When you press `Ctrl-O` on a session, you get a window picker with:
 ### Creating New Sessions
 
 Simply type a name that doesn't match any existing session and press `Enter` to create and switch to a new session.
+
+## Claude Code Status Integration
+
+Optionally display Claude Code status for each session, showing whether Claude is working or idle and for how long.
+
+### Setup
+
+The hook is already installed if you used `./install.sh`. Just configure Claude Code:
+
+1. Add hooks to your `~/.claude/settings.json`:
+
+   ```json
+   {
+     "hooks": {
+       "PreToolUse": [
+         {
+           "hooks": [
+             {
+               "type": "command",
+               "command": "~/.local/bin/tmux-session-picker-hook PreToolUse"
+             }
+           ]
+         }
+       ],
+       "Stop": [
+         {
+           "hooks": [
+             {
+               "type": "command",
+               "command": "~/.local/bin/tmux-session-picker-hook Stop"
+             }
+           ]
+         }
+       ],
+       "Notification": [
+         {
+           "hooks": [
+             {
+               "type": "command",
+               "command": "~/.local/bin/tmux-session-picker-hook Notification"
+             }
+           ]
+         }
+       ]
+     }
+   }
+   ```
+
+2. Enable the feature in your `~/.tmux.conf`:
+
+   ```tmux
+   set-environment -g TMUX_SESSION_PICKER_CLAUDE_STATUS 1
+   ```
+
+   Then reload: `tmux source-file ~/.tmux.conf`
+
+### Display
+
+When enabled, sessions show Claude status:
+
+```
+my-project (2m ago) [CC: working 30s]   # Claude actively working
+other-work (15m ago) [CC: done 5m]      # Claude idle/finished
+new-session (1m ago) [CC: unknown]      # Claude present, status unknown
+plain-session (1h ago)                   # No Claude in this session
+```
+
+- `[CC: working 30s]` - Claude actively processing (working in yellow)
+- `[CC: done 5m]` - Claude finished, waiting for input (done in green)
+- `[CC: unknown]` - Claude detected but hooks not yet fired (restart Claude to enable)
+
+A notification sound plays when Claude finishes (macOS).
 
 ## Layout Support
 

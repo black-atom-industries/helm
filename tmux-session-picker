@@ -4,6 +4,10 @@
 TMUX_LAYOUT="${TMUX_LAYOUT:-ide}"
 TMUX_LAYOUTS_DIR="${TMUX_LAYOUTS_DIR:-$HOME/.config/tmux/layouts}"
 
+# Claude status configuration (opt-in)
+TMUX_SESSION_PICKER_CLAUDE_STATUS="${TMUX_SESSION_PICKER_CLAUDE_STATUS:-0}"
+CLAUDE_STATUS_DIR="$HOME/.cache/tmux-session-picker"
+
 # Check if running inside tmux
 if [[ -z "$TMUX" ]]; then
     echo "Error: tmux-session-picker must be run from within tmux"
@@ -39,6 +43,83 @@ format_relative_time() {
     else
         echo "$(( seconds / 86400 ))d ago"
     fi
+}
+
+# Check if Claude is running in a session (process detection)
+has_claude_process() {
+    local session="$1"
+    local pane_pids
+    pane_pids=$(tmux list-panes -t "$session" -F '#{pane_pid}' 2>/dev/null)
+
+    for pane_pid in $pane_pids; do
+        if pgrep -P "$pane_pid" -f "claude" >/dev/null 2>&1; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Get Claude status for a session
+get_claude_status() {
+    [[ "$TMUX_SESSION_PICKER_CLAUDE_STATUS" != "1" ]] && return
+
+    local session="$1"
+    local status_file="$CLAUDE_STATUS_DIR/${session}.status"
+
+    # If status file exists, use hook-based status with timing
+    if [[ -f "$status_file" ]]; then
+        local content
+        content=$(cat "$status_file" 2>/dev/null)
+        local claude_state="${content%%:*}"
+        local timestamp="${content##*:}"
+        local now
+        now=$(date +%s)
+        local age=$((now - timestamp))
+        local age_str
+
+        if (( age < 60 )); then
+            age_str="${age}s"
+        elif (( age < 3600 )); then
+            age_str="$((age / 60))m"
+        else
+            age_str="$((age / 3600))h"
+        fi
+
+        local claude_orange=$'\033[38;2;217;119;87m'
+        local yellow=$'\033[33m'
+        local green=$'\033[32m'
+        local reset=$'\033[0m'
+        case "$claude_state" in
+            "working") echo "[${claude_orange}CC:${reset} ${yellow}working${reset} ${age_str}]" ;;
+            "done")    echo "[${claude_orange}CC:${reset} ${green}done${reset} ${age_str}]" ;;
+        esac
+        return
+    fi
+
+    # Fallback: detect Claude process (status unknown)
+    if has_claude_process "$session"; then
+        local claude_orange=$'\033[38;2;217;119;87m'
+        local reset=$'\033[0m'
+        echo "[${claude_orange}CC:${reset} unknown]"
+    fi
+}
+
+# Cleanup stale status files for dead sessions
+cleanup_stale_status() {
+    [[ "$TMUX_SESSION_PICKER_CLAUDE_STATUS" != "1" ]] && return
+    [[ ! -d "$CLAUDE_STATUS_DIR" ]] && return
+
+    local active_sessions
+    active_sessions=$(tmux list-sessions -F '#S' 2>/dev/null)
+
+    for status_file in "$CLAUDE_STATUS_DIR"/*.status; do
+        [[ ! -f "$status_file" ]] && continue
+        local session_name
+        session_name=$(basename "$status_file" .status)
+        if ! echo "$active_sessions" | grep -q "^${session_name}$"; then
+            rm -f "$status_file"
+        fi
+    done
 }
 
 # Function to pick a pane from a window
@@ -126,6 +207,9 @@ pick_window() {
     tmux switch-client -t "${session}:${window_index}"
 }
 
+# Cleanup stale Claude status files
+cleanup_stale_status
+
 # Get current session name
 current_session=$(tmux display-message -p '#S')
 
@@ -137,7 +221,12 @@ sessions=$(tmux list-sessions -F '#{session_activity} #S' 2>/dev/null | \
     sort -rn | \
     while read -r activity name; do
         age=$(( now - activity ))
-        printf "%s (%s)\n" "$name" "$(format_relative_time $age)"
+        claude_status=$(get_claude_status "$name")
+        if [[ -n "$claude_status" ]]; then
+            printf "%s (%s) %s\n" "$name" "$(format_relative_time $age)" "$claude_status"
+        else
+            printf "%s (%s)\n" "$name" "$(format_relative_time $age)"
+        fi
     done)
 
 # Exit gracefully if no other sessions
@@ -148,6 +237,7 @@ fi
 
 # Launch fzf with session picker
 result=$(echo "$sessions" | fzf \
+    --ansi \
     --border-label="┃ tmux sessions ┃" \
     --prompt="Switch to: " \
     --header="Enter: switch/create | Ctrl-O: windows | Ctrl-X: kill | Esc: cancel" \
@@ -160,7 +250,8 @@ result=$(echo "$sessions" | fzf \
 # Line 3: The selected item (if any)
 query=$(echo "$result" | sed -n '1p')
 key=$(echo "$result" | sed -n '2p')
-selection=$(echo "$result" | sed -n '3p' | sed 's/ ([^)]*ago)$//')
+# Strip relative time and optional Claude status suffix
+selection=$(echo "$result" | sed -n '3p' | sed 's/ ([^)]*ago).*$//')
 
 # Exit if no action taken (user pressed Esc without typing anything)
 if [[ -z "$key" && -z "$selection" && -z "$query" ]]; then
