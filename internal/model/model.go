@@ -796,7 +796,7 @@ func (m Model) View() string {
 		if m.repoFilter != "" {
 			b.WriteString(ui.HeaderStyle.Render("Select directory"))
 			b.WriteString("  ")
-			b.WriteString(ui.FilterStyle.Render("/" + m.repoFilter))
+			b.WriteString(ui.FilterStyle.Render(m.repoFilter))
 		} else {
 			b.WriteString(ui.HeaderStyle.Render("Select directory"))
 		}
@@ -880,7 +880,7 @@ func (m Model) View() string {
 	if m.filter != "" {
 		b.WriteString(ui.HeaderStyle.Render("tsm"))
 		b.WriteString("  ")
-		b.WriteString(ui.FilterStyle.Render("/" + m.filter))
+		b.WriteString(ui.FilterStyle.Render(m.filter))
 	} else {
 		b.WriteString(ui.HeaderStyle.Render("tsm"))
 	}
