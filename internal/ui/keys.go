@@ -92,8 +92,8 @@ func helpSep() string {
 // HelpNormal returns the help text for normal mode
 func HelpNormal() string {
 	return helpItem("type", "filter") + helpSep() +
-		helpItem("C-jk/↑↓", "nav") + helpSep() +
-		helpItem("C-hl/←→", "expand") + helpSep() +
+		helpItem("C-j/k | ↑↓", "nav") + helpSep() +
+		helpItem("C-h/l | ←→", "expand") + helpSep() +
 		helpItem("C-x", "kill") + helpSep() +
 		helpItem("C-o", "new")
 }
