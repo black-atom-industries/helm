@@ -59,7 +59,7 @@ func CleanupStale(cacheDir string, activeSessions []string) {
 
 		sessionName := strings.TrimSuffix(entry.Name(), ".status")
 		if !activeSet[sessionName] {
-			os.Remove(filepath.Join(cacheDir, entry.Name()))
+			_ = os.Remove(filepath.Join(cacheDir, entry.Name()))
 		}
 	}
 }

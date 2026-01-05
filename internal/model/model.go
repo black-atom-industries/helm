@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/nikbrunner/tsm/internal/claude"
 	"github.com/nikbrunner/tsm/internal/config"
 	"github.com/nikbrunner/tsm/internal/tmux"
@@ -25,7 +26,6 @@ const (
 	ModeCreate
 	ModePickDirectory
 )
-
 
 // Item represents either a session or a window in the flattened list
 type Item struct {
@@ -45,18 +45,16 @@ type Model struct {
 	message        string
 	messageIsError bool
 	input          textinput.Model
-	lastKeyTime    time.Time
-	lastKey        string
 	killTarget     string // Name of session/window being killed
 	config         config.Config
 	maxNameWidth   int    // For column alignment
 	filter         string // Current filter text for fuzzy matching
 
 	// Directory picker state
-	repoDirs       []string // All scanned directories (relative paths like "owner/repo")
-	repoFiltered   []string // Filtered list based on repoFilter
-	repoFilter     string   // Current filter text for directory picker
-	repoCursor     int      // Selected item in directory list
+	repoDirs     []string // All scanned directories (relative paths like "owner/repo")
+	repoFiltered []string // Filtered list based on repoFilter
+	repoFilter   string   // Current filter text for directory picker
+	repoCursor   int      // Selected item in directory list
 
 	// Scroll state
 	scrollOffset     int // Scroll offset for session list

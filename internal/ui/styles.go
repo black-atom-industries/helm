@@ -10,13 +10,13 @@ import (
 // 0-7: black, red, green, yellow, blue, magenta, cyan, white
 // 8-15: bright variants
 var (
-	ColorPrimary   = lipgloss.Color("4")  // Blue
-	ColorSecondary = lipgloss.Color("7")  // White/light gray
-	ColorSuccess   = lipgloss.Color("2")  // Green
-	ColorWarning   = lipgloss.Color("3")  // Yellow
-	ColorError     = lipgloss.Color("1")  // Red
-	ColorDim    = lipgloss.Color("8") // Bright black (dark gray)
-	ColorClaude = lipgloss.Color("5") // Magenta (distinctive for Claude)
+	ColorPrimary   = lipgloss.Color("4") // Blue
+	ColorSecondary = lipgloss.Color("7") // White/light gray
+	ColorSuccess   = lipgloss.Color("2") // Green
+	ColorWarning   = lipgloss.Color("3") // Yellow
+	ColorError     = lipgloss.Color("1") // Red
+	ColorDim       = lipgloss.Color("8") // Bright black (dark gray)
+	ColorClaude    = lipgloss.Color("5") // Magenta (distinctive for Claude)
 )
 
 // Border and padding overhead for the app container
