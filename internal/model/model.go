@@ -1045,11 +1045,11 @@ func (m Model) viewSessionList() string {
 		}
 	}
 
-	// Message line (always rendered for consistent layout)
-	b.WriteString(messageContent)
+	b.WriteString(ui.RenderBorder(m.borderWidth()))
 	b.WriteString("\n")
 
-	b.WriteString(ui.RenderBorder(m.borderWidth()))
+	// Message line (always rendered for consistent layout)
+	b.WriteString(messageContent)
 	b.WriteString("\n")
 
 	// Help line
