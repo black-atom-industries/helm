@@ -140,3 +140,48 @@ func FormatClaudeStatus(state string) string {
 		return ""
 	}
 }
+
+// ScrollbarChars returns scrollbar characters for each visible line
+// totalItems: total number of items in the list
+// visibleItems: number of items currently visible
+// scrollOffset: current scroll position (first visible item index)
+// height: number of lines to render scrollbar for
+func ScrollbarChars(totalItems, visibleItems, scrollOffset, height int) []string {
+	result := make([]string, height)
+
+	// No scrollbar needed if all items fit
+	if totalItems <= visibleItems || height <= 0 {
+		for i := range result {
+			result[i] = " "
+		}
+		return result
+	}
+
+	// Calculate thumb size (minimum 1 line)
+	thumbSize := (visibleItems * height) / totalItems
+	if thumbSize < 1 {
+		thumbSize = 1
+	}
+
+	// Calculate thumb position
+	scrollRange := totalItems - visibleItems
+	trackRange := height - thumbSize
+	thumbPos := 0
+	if scrollRange > 0 && trackRange > 0 {
+		thumbPos = (scrollOffset * trackRange) / scrollRange
+	}
+
+	// Build scrollbar
+	trackChar := BorderStyle.Render("│")
+	thumbChar := lipgloss.NewStyle().Foreground(ColorSecondary).Render("┃")
+
+	for i := 0; i < height; i++ {
+		if i >= thumbPos && i < thumbPos+thumbSize {
+			result[i] = thumbChar
+		} else {
+			result[i] = trackChar
+		}
+	}
+
+	return result
+}

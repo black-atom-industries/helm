@@ -770,8 +770,7 @@ func (m *Model) repoMaxVisibleItems() int {
 	maxItems := m.config.MaxVisibleItems
 	if m.height > 0 {
 		// Reserve: header(1) + border(1) + footer border(1) + footer(1) = 4 lines
-		// Plus potential scroll indicators (up to 2 lines)
-		availableForContent := m.height - 6
+		availableForContent := m.height - 4
 		if availableForContent < maxItems && availableForContent > 0 {
 			maxItems = availableForContent
 		}
@@ -831,22 +830,28 @@ func (m Model) View() string {
 		// Use shared helper for consistent visible item calculation
 		maxItems := m.repoMaxVisibleItems()
 
-		// Scroll indicator (top)
-		if m.repoScrollOffset > 0 {
-			b.WriteString(ui.TimeStyle.Render(fmt.Sprintf("  ↑ %d more", m.repoScrollOffset)))
-			b.WriteString("\n")
-			usedLines++
-		}
-
 		// Directory list (only visible items)
 		endIdx := m.repoScrollOffset + maxItems
 		if endIdx > len(m.repoFiltered) {
 			endIdx = len(m.repoFiltered)
 		}
+		visibleCount := endIdx - m.repoScrollOffset
+
+		// Get scrollbar characters for each line
+		scrollbar := ui.ScrollbarChars(len(m.repoFiltered), maxItems, m.repoScrollOffset, visibleCount)
+
 		contentLines := 0
 		for i := m.repoScrollOffset; i < endIdx; i++ {
 			dir := m.repoFiltered[i]
 			selected := i == m.repoCursor
+			lineIdx := i - m.repoScrollOffset
+
+			// Scrollbar on the left
+			if lineIdx < len(scrollbar) {
+				b.WriteString(scrollbar[lineIdx])
+				b.WriteString(" ")
+			}
+
 			if selected {
 				b.WriteString(ui.FilterStyle.Render(dir))
 			} else {
@@ -866,14 +871,6 @@ func (m Model) View() string {
 			contentLines++
 		}
 		usedLines += contentLines
-
-		// Scroll indicator (bottom)
-		remaining := len(m.repoFiltered) - endIdx
-		if remaining > 0 {
-			b.WriteString(ui.TimeStyle.Render(fmt.Sprintf("  ↓ %d more", remaining)))
-			b.WriteString("\n")
-			usedLines++
-		}
 
 		// Add padding to push footer to bottom
 		// Footer = border (1) + help line (1) = 2 lines
