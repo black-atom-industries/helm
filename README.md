@@ -163,3 +163,8 @@ Layout scripts receive the session name and working directory as arguments.
 ## License
 
 MIT
+
+## TODO
+
+- [ ] tui: use all available width
+- [ ] tui: show last session (o to switch)

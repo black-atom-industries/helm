@@ -35,6 +35,7 @@ type Model struct {
 	sessions       []tmux.Session
 	claudeStatuses map[string]claude.Status
 	currentSession string
+	lastSession    string // Previous session for quick switch with 'o'
 	cursor         int
 	items          []Item // Flattened list of visible items
 	mode           Mode
@@ -92,6 +93,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case sessionsMsg:
 		m.sessions = msg.sessions
+		m.lastSession = tmux.LastSession()
 		m.loadClaudeStatuses()
 		m.calculateColumnWidths()
 		m.rebuildItems()
@@ -179,6 +181,9 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.input.SetValue("")
 		m.input.Focus()
 		return m, textinput.Blink
+
+	case key.Matches(msg, keys.JumpLast):
+		return m.jumpToLastSession()
 
 	// Number jumps
 	case key.Matches(msg, keys.Jump1):
@@ -308,6 +313,21 @@ func (m *Model) handleJump(num int) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m *Model) jumpToLastSession() (tea.Model, tea.Cmd) {
+	if m.lastSession == "" {
+		m.message = "No last session"
+		return m, nil
+	}
+
+	if err := tmux.SwitchClient(m.lastSession); err != nil {
+		m.message = fmt.Sprintf("Error: %v", err)
+		m.messageIsError = true
+		return m, nil
+	}
+
+	return m, tea.Quit
 }
 
 func (m *Model) expandCurrent() {
@@ -549,7 +569,14 @@ func (m Model) View() string {
 
 	// Header
 	b.WriteString(ui.HeaderStyle.Render("tmux sessions"))
-	b.WriteString("\n\n")
+	b.WriteString("\n")
+
+	// Last session indicator
+	if m.lastSession != "" {
+		b.WriteString(ui.FooterStyle.Render("← " + m.lastSession + "  (o)"))
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
 
 	// Session list
 	sessionNum := 0

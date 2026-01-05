@@ -14,6 +14,7 @@ type KeyMap struct {
 	Quit     key.Binding
 	Cancel   key.Binding
 	Confirm  key.Binding
+	JumpLast key.Binding
 	Jump1    key.Binding
 	Jump2    key.Binding
 	Jump3    key.Binding
@@ -67,6 +68,10 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("x"),
 		key.WithHelp("x", "confirm"),
 	),
+	JumpLast: key.NewBinding(
+		key.WithKeys("o"),
+		key.WithHelp("o", "last"),
+	),
 	Jump1: key.NewBinding(key.WithKeys("1")),
 	Jump2: key.NewBinding(key.WithKeys("2")),
 	Jump3: key.NewBinding(key.WithKeys("3")),
@@ -83,6 +88,7 @@ func HelpNormal() string {
 	return HelpKeyStyle.Render("1-9") + HelpDescStyle.Render(" jump  ") +
 		HelpKeyStyle.Render("j/k") + HelpDescStyle.Render(" nav  ") +
 		HelpKeyStyle.Render("h/l") + HelpDescStyle.Render(" expand  ") +
+		HelpKeyStyle.Render("o") + HelpDescStyle.Render(" last  ") +
 		HelpKeyStyle.Render("x") + HelpDescStyle.Render(" kill  ") +
 		HelpKeyStyle.Render("c") + HelpDescStyle.Render(" new")
 }
