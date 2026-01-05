@@ -646,8 +646,8 @@ func (m *Model) killCurrent() (tea.Model, tea.Cmd) {
 func (m *Model) createSession(name string) (tea.Model, tea.Cmd) {
 	// Sanitize session name (spaces, dots, colons break tmux target syntax)
 	name = sanitizeSessionName(name)
-	homeDir := os.Getenv("HOME")
-	if err := tmux.CreateSession(name, homeDir); err != nil {
+	workingDir := m.config.DefaultSessionDir
+	if err := tmux.CreateSession(name, workingDir); err != nil {
 		m.setError("Error: %v", err)
 		m.mode = ModeNormal
 		m.input.Blur()
@@ -655,7 +655,7 @@ func (m *Model) createSession(name string) (tea.Model, tea.Cmd) {
 	}
 
 	// Apply layout if configured
-	m.applyLayout(name, homeDir)
+	m.applyLayout(name, workingDir)
 
 	// Switch to the new session
 	if err := tmux.SwitchClient(name); err != nil {

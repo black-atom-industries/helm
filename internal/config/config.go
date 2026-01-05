@@ -33,6 +33,9 @@ type Config struct {
 
 	// Maximum visible items in scrollable lists
 	MaxVisibleItems int `toml:"max_visible_items"`
+
+	// Default directory for new sessions created with C-n
+	DefaultSessionDir string `toml:"default_session_dir"`
 }
 
 // DefaultConfig returns configuration with sensible defaults
@@ -47,6 +50,7 @@ func DefaultConfig() Config {
 		ReposDir:            "", // Legacy field, merged into ReposDirs
 		ReposDepth:          2,
 		MaxVisibleItems:     10,
+		DefaultSessionDir:   home,
 	}
 }
 
@@ -72,6 +76,7 @@ func Load() (Config, error) {
 	// Expand ~ in paths
 	cfg.LayoutDir = expandPath(cfg.LayoutDir)
 	cfg.CacheDir = expandPath(cfg.CacheDir)
+	cfg.DefaultSessionDir = expandPath(cfg.DefaultSessionDir)
 
 	// Handle repos directories - merge legacy ReposDir into ReposDirs
 	cfg.ReposDirs = mergeReposDirs(cfg.ReposDirs, cfg.ReposDir)
@@ -176,6 +181,9 @@ func Init() error {
 
 # Maximum visible items in scrollable lists
 # max_visible_items = 10
+
+# Default directory for new sessions created with C-n
+# default_session_dir = "~"
 `
 
 	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
