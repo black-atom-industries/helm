@@ -764,9 +764,9 @@ func (m *Model) sessionMaxVisibleItems() int {
 	maxItems := m.config.MaxVisibleItems
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		// Reserve: header(1) + header border(1) + footer border(1) + message(1) + statusline(1) + help(1) = 6 lines
-		// Scrollbar is integrated into item lines, not separate
-		availableForContent := contentH - 6
+		// Reserve: header(1) + header border(1) + footer border(1) + statusline(1) + help(1) = 5 lines
+		// Message line adds 1 when present, but we use 5 for normal case
+		availableForContent := contentH - 5
 		if availableForContent < maxItems && availableForContent > 0 {
 			maxItems = availableForContent
 		}
@@ -784,6 +784,7 @@ func (m *Model) repoMaxVisibleItems() int {
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		// Reserve: header(1) + header border(1) + footer border(1) + statusline(1) + help(1) = 5 lines
+		// Directory picker has no message line
 		availableForContent := contentH - 5
 		if availableForContent < maxItems && availableForContent > 0 {
 			maxItems = availableForContent
@@ -1032,7 +1033,7 @@ func (m Model) viewSessionList() string {
 	}
 	usedLines += contentLines
 
-	// Message line content (always rendered, may be empty)
+	// Message line content (only rendered when there's content)
 	var messageContent string
 	if m.message != "" {
 		if m.messageIsError {
@@ -1045,8 +1046,11 @@ func (m Model) viewSessionList() string {
 	}
 
 	// Add padding to push footer to bottom
-	// Footer is always: border (1) + message (1) + statusline (1) + help (1) = 4 lines
-	footerLines := 4
+	// Footer: border (1) + message (0-1) + statusline (1) + help (1)
+	footerLines := 3
+	if messageContent != "" {
+		footerLines = 4
+	}
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		padding := contentH - usedLines - footerLines
@@ -1058,9 +1062,11 @@ func (m Model) viewSessionList() string {
 	b.WriteString(ui.RenderBorder(m.borderWidth()))
 	b.WriteString("\n")
 
-	// Message line (always rendered for consistent layout)
-	b.WriteString(messageContent)
-	b.WriteString("\n")
+	// Message line (only when there's content)
+	if messageContent != "" {
+		b.WriteString(messageContent)
+		b.WriteString("\n")
+	}
 
 	// Statusline (session counts)
 	var statusline string

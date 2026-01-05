@@ -21,9 +21,9 @@ var (
 
 // Border and padding overhead for the app container
 const (
-	// AppBorderOverhead is the total cells used by border (2) + padding (2) per axis
+	// AppBorderOverhead is the total cells used by border + padding per axis
 	AppBorderOverheadX = 4 // left border + left padding + right padding + right border
-	AppBorderOverheadY = 4 // top border + top padding + bottom padding + bottom border
+	AppBorderOverheadY = 2 // top border + bottom border (no vertical padding)
 )
 
 // Styles
@@ -32,7 +32,7 @@ var (
 	AppStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(ColorDim).
-			Padding(1)
+			Padding(0, 1)
 
 	HeaderStyle = lipgloss.NewStyle().
 			Bold(true).
