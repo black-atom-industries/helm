@@ -387,6 +387,15 @@ func (m *Model) createSessionFromDir(relPath string) (tea.Model, tea.Cmd) {
 	// Also sanitize dots and colons which have special meaning in tmux target syntax
 	name := sanitizeSessionName(relPath)
 
+	// Check if session already exists - if so, just switch to it
+	if tmux.SessionExists(name) {
+		if err := tmux.SwitchClient(name); err != nil {
+			m.setError("Failed to switch: %v", err)
+			return m, m.loadSessions
+		}
+		return m, tea.Quit
+	}
+
 	if err := tmux.CreateSession(name, fullPath); err != nil {
 		m.setError("Error: %v", err)
 		m.mode = ModeNormal
@@ -810,11 +819,13 @@ func (m *Model) setError(format string, args ...any) {
 
 // sanitizeSessionName converts a path to a valid tmux session name
 // Dots and colons have special meaning in tmux target syntax (window.pane, session:window)
+// Spaces cause issues with shell commands
 func sanitizeSessionName(name string) string {
 	replacer := strings.NewReplacer(
 		"/", "-",
 		".", "-",
 		":", "-",
+		" ", "-",
 	)
 	return replacer.Replace(name)
 }

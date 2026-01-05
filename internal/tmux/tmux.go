@@ -123,6 +123,11 @@ func KillWindow(sessionName string, windowIndex int) error {
 	return exec.Command("tmux", "kill-window", "-t", target).Run()
 }
 
+// SessionExists checks if a tmux session with the given name exists
+func SessionExists(name string) bool {
+	return exec.Command("tmux", "has-session", "-t", name).Run() == nil
+}
+
 // CreateSession creates a new tmux session
 func CreateSession(name, dir string) error {
 	return exec.Command("tmux", "new-session", "-d", "-s", name, "-c", dir).Run()

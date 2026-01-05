@@ -216,6 +216,11 @@ func TestSanitizeSessionName(t *testing.T) {
 			want:  "owner-repo-name-tag",
 		},
 		{
+			name:  "spaces to dashes",
+			input: "my session name",
+			want:  "my-session-name",
+		},
+		{
 			name:  "real world example",
 			input: "nikbrunner/nbr.haus",
 			want:  "nikbrunner-nbr-haus",
