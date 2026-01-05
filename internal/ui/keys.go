@@ -95,7 +95,7 @@ func HelpNormal() string {
 		helpItem("C-j/k | ↑↓", "nav") + helpSep() +
 		helpItem("C-h/l | ←→", "expand") + helpSep() +
 		helpItem("C-x", "kill") + helpSep() +
-		helpItem("C-o", "new")
+		helpItem("C-n", "new")
 }
 
 // HelpFiltering returns the help text when filter is active

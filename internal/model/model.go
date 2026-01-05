@@ -256,6 +256,15 @@ func (m *Model) handleCreateMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.createSession(name)
 	}
 
+	// Ignore ctrl key combinations - only pass regular typing to input
+	if msg.Type == tea.KeyCtrlN || msg.Type == tea.KeyCtrlO ||
+		msg.Type == tea.KeyCtrlJ || msg.Type == tea.KeyCtrlK ||
+		msg.Type == tea.KeyCtrlH || msg.Type == tea.KeyCtrlL ||
+		msg.Type == tea.KeyCtrlX || msg.Type == tea.KeyCtrlY ||
+		msg.Type == tea.KeyCtrlP {
+		return m, nil
+	}
+
 	var cmd tea.Cmd
 	m.input, cmd = m.input.Update(msg)
 	return m, cmd
