@@ -1,4 +1,4 @@
-.PHONY: build install clean test
+.PHONY: build install clean test coverage
 
 BINARY_NAME=tsm
 INSTALL_DIR=$(HOME)/.local/bin
@@ -17,6 +17,9 @@ clean:
 
 test:
 	go test ./...
+
+coverage:
+	go test ./... -cover
 
 # Development helpers
 run: build
