@@ -363,7 +363,7 @@ func TestSessionMaxVisibleItems(t *testing.T) {
 	}
 }
 
-func TestRepoMaxVisibleItems(t *testing.T) {
+func TestProjectMaxVisibleItems(t *testing.T) {
 	tests := []struct {
 		name            string
 		height          int
@@ -404,9 +404,9 @@ func TestRepoMaxVisibleItems(t *testing.T) {
 				height: tt.height,
 				config: cfg,
 			}
-			got := m.repoMaxVisibleItems()
+			got := m.projectMaxVisibleItems()
 			if got != tt.want {
-				t.Errorf("repoMaxVisibleItems() with height=%d, maxVisible=%d = %d, want %d",
+				t.Errorf("projectMaxVisibleItems() with height=%d, maxVisible=%d = %d, want %d",
 					tt.height, tt.maxVisibleItems, got, tt.want)
 			}
 		})

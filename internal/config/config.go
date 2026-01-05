@@ -22,14 +22,11 @@ type Config struct {
 	// Directory for status cache files
 	CacheDir string `toml:"cache_dir"`
 
-	// Base directories for directory picker (C-o) - supports multiple paths
-	ReposDirs []string `toml:"repos_dirs"`
+	// Base directories for project picker (C-p) - supports multiple paths
+	ProjectDirs []string `toml:"project_dirs"`
 
-	// Legacy: single base directory (merged into ReposDirs for backwards compat)
-	ReposDir string `toml:"repos_dir"`
-
-	// Scan depth for repos directories (default: 2 for owner/repo structure)
-	ReposDepth int `toml:"repos_depth"`
+	// Scan depth for project directories (default: 2 for owner/repo structure)
+	ProjectDepth int `toml:"project_depth"`
 
 	// Maximum visible items in scrollable lists
 	MaxVisibleItems int `toml:"max_visible_items"`
@@ -46,9 +43,8 @@ func DefaultConfig() Config {
 		LayoutDir:           filepath.Join(home, ".config", "tmux", "layouts"),
 		ClaudeStatusEnabled: false,
 		CacheDir:            filepath.Join(home, ".cache", "tsm"),
-		ReposDirs:           []string{filepath.Join(home, "repos")},
-		ReposDir:            "", // Legacy field, merged into ReposDirs
-		ReposDepth:          2,
+		ProjectDirs:         []string{filepath.Join(home, "repos")},
+		ProjectDepth:        2,
 		MaxVisibleItems:     10,
 		DefaultSessionDir:   home,
 	}
@@ -78,12 +74,14 @@ func Load() (Config, error) {
 	cfg.CacheDir = expandPath(cfg.CacheDir)
 	cfg.DefaultSessionDir = expandPath(cfg.DefaultSessionDir)
 
-	// Handle repos directories - merge legacy ReposDir into ReposDirs
-	cfg.ReposDirs = mergeReposDirs(cfg.ReposDirs, cfg.ReposDir)
+	// Expand ~ in project directories
+	for i, d := range cfg.ProjectDirs {
+		cfg.ProjectDirs[i] = expandPath(d)
+	}
 
-	// Ensure ReposDepth is at least 1
-	if cfg.ReposDepth < 1 {
-		cfg.ReposDepth = 2
+	// Ensure ProjectDepth is at least 1
+	if cfg.ProjectDepth < 1 {
+		cfg.ProjectDepth = 2
 	}
 
 	// Ensure MaxVisibleItems is at least 1
@@ -103,37 +101,6 @@ func Load() (Config, error) {
 	}
 
 	return cfg, nil
-}
-
-// mergeReposDirs combines ReposDirs array with legacy ReposDir, expands paths, and removes duplicates
-func mergeReposDirs(dirs []string, legacyDir string) []string {
-	seen := make(map[string]bool)
-	var result []string
-
-	// Add dirs from array first
-	for _, d := range dirs {
-		expanded := expandPath(d)
-		if expanded != "" && !seen[expanded] {
-			seen[expanded] = true
-			result = append(result, expanded)
-		}
-	}
-
-	// Add legacy dir if set and not already included
-	if legacyDir != "" {
-		expanded := expandPath(legacyDir)
-		if expanded != "" && !seen[expanded] {
-			result = append(result, expanded)
-		}
-	}
-
-	// If nothing configured, use default
-	if len(result) == 0 {
-		home := os.Getenv("HOME")
-		result = []string{filepath.Join(home, "repos")}
-	}
-
-	return result
 }
 
 // Init creates a new config file with commented defaults
@@ -167,17 +134,14 @@ func Init() error {
 # Directory for status cache files
 # cache_dir = "~/.cache/tsm"
 
-# Base directories for directory picker (C-o)
+# Base directories for project picker (C-p)
 # Supports multiple paths - all will be scanned
-# repos_dirs = ["~/repos"]
+# project_dirs = ["~/repos"]
 # Example with multiple paths:
-# repos_dirs = ["~/repos", "~/work", "~/personal"]
+# project_dirs = ["~/repos", "~/work", "~/personal"]
 
-# Legacy single path (still supported, merged with repos_dirs)
-# repos_dir = "~/repos"
-
-# Scan depth for repos directories (2 = owner/repo structure)
-# repos_depth = 2
+# Scan depth for project directories (2 = owner/repo structure)
+# project_depth = 2
 
 # Maximum visible items in scrollable lists
 # max_visible_items = 10

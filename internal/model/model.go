@@ -52,14 +52,14 @@ type Model struct {
 	filter         string // Current filter text for fuzzy matching
 
 	// Directory picker state
-	repoDirs     []string // All scanned directories (relative paths like "owner/repo")
-	repoFiltered []string // Filtered list based on repoFilter
-	repoFilter   string   // Current filter text for directory picker
-	repoCursor   int      // Selected item in directory list
+	projectDirs     []string // All scanned directories
+	projectFiltered []string // Filtered list based on projectFilter
+	projectFilter   string   // Current filter text for directory picker
+	projectCursor   int      // Selected item in directory list
 
 	// Scroll state
-	scrollOffset     int // Scroll offset for session list
-	repoScrollOffset int // Scroll offset for directory picker
+	scrollOffset        int // Scroll offset for session list
+	projectScrollOffset int // Scroll offset for directory picker
 
 	// Window size
 	width  int
@@ -216,11 +216,11 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.PickDirectory):
 		m.mode = ModePickDirectory
 		m.filter = "" // Clear any active filter
-		m.repoFilter = ""
-		m.repoCursor = 0
-		m.repoScrollOffset = 0
-		m.repoDirs = m.scanRepoDirectories()
-		m.repoFiltered = m.repoDirs
+		m.projectFilter = ""
+		m.projectCursor = 0
+		m.projectScrollOffset = 0
+		m.projectDirs = m.scanProjectDirectories()
+		m.projectFiltered = m.projectDirs
 		// Request window size to get proper height for layout
 		return m, tea.WindowSize()
 
@@ -313,72 +313,72 @@ func (m *Model) handlePickDirectoryMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, keys.Cancel):
 		// Clear filter first, then exit on second press
-		if m.repoFilter != "" {
-			m.repoFilter = ""
-			m.repoFiltered = m.repoDirs
-			m.repoCursor = 0
+		if m.projectFilter != "" {
+			m.projectFilter = ""
+			m.projectFiltered = m.projectDirs
+			m.projectCursor = 0
 			return m, nil
 		}
 		m.mode = ModeNormal
 		return m, nil
 
 	case key.Matches(msg, keys.Up):
-		if m.repoCursor > 0 {
-			m.repoCursor--
-			m.updateRepoScrollOffset()
+		if m.projectCursor > 0 {
+			m.projectCursor--
+			m.updateProjectScrollOffset()
 		}
 
 	case key.Matches(msg, keys.Down):
-		if m.repoCursor < len(m.repoFiltered)-1 {
-			m.repoCursor++
-			m.updateRepoScrollOffset()
+		if m.projectCursor < len(m.projectFiltered)-1 {
+			m.projectCursor++
+			m.updateProjectScrollOffset()
 		}
 
 	case key.Matches(msg, keys.Select):
-		if len(m.repoFiltered) > 0 && m.repoCursor < len(m.repoFiltered) {
-			return m.createSessionFromDir(m.repoFiltered[m.repoCursor])
+		if len(m.projectFiltered) > 0 && m.projectCursor < len(m.projectFiltered) {
+			return m.createSessionFromDir(m.projectFiltered[m.projectCursor])
 		}
 
 	case key.Matches(msg, keys.Quit):
 		return m, tea.Quit
 
 	case msg.Type == tea.KeyBackspace:
-		if len(m.repoFilter) > 0 {
-			m.repoFilter = m.repoFilter[:len(m.repoFilter)-1]
-			m.filterRepoDirs()
+		if len(m.projectFilter) > 0 {
+			m.projectFilter = m.projectFilter[:len(m.projectFilter)-1]
+			m.filterProjectDirs()
 		}
 
 	case msg.Type == tea.KeyRunes:
-		m.repoFilter += string(msg.Runes)
-		m.filterRepoDirs()
+		m.projectFilter += string(msg.Runes)
+		m.filterProjectDirs()
 	}
 
 	return m, nil
 }
 
-// filterRepoDirs filters the repo directories based on repoFilter
+// filterProjectDirs filters the project directories based on projectFilter
 // Filters match against the display path (last N components), not full path
-func (m *Model) filterRepoDirs() {
-	if m.repoFilter == "" {
-		m.repoFiltered = m.repoDirs
+func (m *Model) filterProjectDirs() {
+	if m.projectFilter == "" {
+		m.projectFiltered = m.projectDirs
 	} else {
-		filterLower := strings.ToLower(m.repoFilter)
-		m.repoFiltered = nil
-		for _, fullPath := range m.repoDirs {
+		filterLower := strings.ToLower(m.projectFilter)
+		m.projectFiltered = nil
+		for _, fullPath := range m.projectDirs {
 			displayPath := m.extractDisplayPath(fullPath)
 			if fuzzyMatch(displayPath, filterLower) {
-				m.repoFiltered = append(m.repoFiltered, fullPath)
+				m.projectFiltered = append(m.projectFiltered, fullPath)
 			}
 		}
 	}
 	// Reset cursor if out of bounds
-	if m.repoCursor >= len(m.repoFiltered) {
-		m.repoCursor = len(m.repoFiltered) - 1
+	if m.projectCursor >= len(m.projectFiltered) {
+		m.projectCursor = len(m.projectFiltered) - 1
 	}
-	if m.repoCursor < 0 {
-		m.repoCursor = 0
+	if m.projectCursor < 0 {
+		m.projectCursor = 0
 	}
-	m.updateRepoScrollOffset()
+	m.updateProjectScrollOffset()
 }
 
 func (m *Model) createSessionFromDir(fullPath string) (tea.Model, tea.Cmd) {
@@ -413,10 +413,10 @@ func (m *Model) createSessionFromDir(fullPath string) (tea.Model, tea.Cmd) {
 }
 
 // extractSessionName extracts a session name from a full path
-// Uses the last N path components based on ReposDepth config
+// Uses the last N path components based on ProjectDepth config
 func (m *Model) extractSessionName(fullPath string) string {
 	parts := strings.Split(fullPath, string(filepath.Separator))
-	depth := m.config.ReposDepth
+	depth := m.config.ProjectDepth
 	if depth > len(parts) {
 		depth = len(parts)
 	}
@@ -425,24 +425,24 @@ func (m *Model) extractSessionName(fullPath string) string {
 }
 
 // extractDisplayPath extracts a display path from a full path
-// Uses the last N path components based on ReposDepth config
+// Uses the last N path components based on ProjectDepth config
 func (m *Model) extractDisplayPath(fullPath string) string {
 	parts := strings.Split(fullPath, string(filepath.Separator))
-	depth := m.config.ReposDepth
+	depth := m.config.ProjectDepth
 	if depth > len(parts) {
 		depth = len(parts)
 	}
 	return strings.Join(parts[len(parts)-depth:], "/")
 }
 
-// scanRepoDirectories scans all configured repos directories at the configured depth
+// scanProjectDirectories scans all configured project directories at the configured depth
 // and returns full paths to each discovered directory
-func (m *Model) scanRepoDirectories() []string {
+func (m *Model) scanProjectDirectories() []string {
 	var dirs []string
-	depth := m.config.ReposDepth
+	depth := m.config.ProjectDepth
 
 	// Scan each configured base directory
-	for _, baseDir := range m.config.ReposDirs {
+	for _, baseDir := range m.config.ProjectDirs {
 		m.walkAtDepth(baseDir, "", depth, &dirs)
 	}
 
@@ -800,9 +800,9 @@ func (m *Model) sessionMaxVisibleItems() int {
 	return maxItems
 }
 
-// repoMaxVisibleItems returns the actual number of items that can be shown
+// projectMaxVisibleItems returns the actual number of items that can be shown
 // based on window height, matching the View's calculation
-func (m *Model) repoMaxVisibleItems() int {
+func (m *Model) projectMaxVisibleItems() int {
 	maxItems := m.config.MaxVisibleItems
 	contentH := m.contentHeight()
 	if contentH > 0 {
@@ -819,20 +819,20 @@ func (m *Model) repoMaxVisibleItems() int {
 	return maxItems
 }
 
-// updateRepoScrollOffset adjusts scroll offset to keep cursor visible in repo list
-func (m *Model) updateRepoScrollOffset() {
-	maxVisible := m.repoMaxVisibleItems()
+// updateProjectScrollOffset adjusts scroll offset to keep cursor visible in project list
+func (m *Model) updateProjectScrollOffset() {
+	maxVisible := m.projectMaxVisibleItems()
 	// If cursor is above visible area, scroll up
-	if m.repoCursor < m.repoScrollOffset {
-		m.repoScrollOffset = m.repoCursor
+	if m.projectCursor < m.projectScrollOffset {
+		m.projectScrollOffset = m.projectCursor
 	}
 	// If cursor is below visible area, scroll down
-	if m.repoCursor >= m.repoScrollOffset+maxVisible {
-		m.repoScrollOffset = m.repoCursor - maxVisible + 1
+	if m.projectCursor >= m.projectScrollOffset+maxVisible {
+		m.projectScrollOffset = m.projectCursor - maxVisible + 1
 	}
 	// Ensure scroll offset is not negative
-	if m.repoScrollOffset < 0 {
-		m.repoScrollOffset = 0
+	if m.projectScrollOffset < 0 {
+		m.projectScrollOffset = 0
 	}
 }
 
@@ -890,10 +890,10 @@ func (m Model) viewPickDirectory() string {
 	usedLines := 0
 
 	// Header - always show "Select directory", append filter if active
-	if m.repoFilter != "" {
+	if m.projectFilter != "" {
 		b.WriteString(ui.HeaderStyle.Render("Select directory"))
 		b.WriteString("  ")
-		b.WriteString(ui.FilterStyle.Render(m.repoFilter))
+		b.WriteString(ui.FilterStyle.Render(m.projectFilter))
 	} else {
 		b.WriteString(ui.HeaderStyle.Render("Select directory"))
 	}
@@ -905,24 +905,24 @@ func (m Model) viewPickDirectory() string {
 	usedLines++
 
 	// Use shared helper for consistent visible item calculation
-	maxItems := m.repoMaxVisibleItems()
+	maxItems := m.projectMaxVisibleItems()
 
 	// Directory list (only visible items)
-	endIdx := m.repoScrollOffset + maxItems
-	if endIdx > len(m.repoFiltered) {
-		endIdx = len(m.repoFiltered)
+	endIdx := m.projectScrollOffset + maxItems
+	if endIdx > len(m.projectFiltered) {
+		endIdx = len(m.projectFiltered)
 	}
-	visibleCount := endIdx - m.repoScrollOffset
+	visibleCount := endIdx - m.projectScrollOffset
 
 	// Get scrollbar characters for each line
-	scrollbar := ui.ScrollbarChars(len(m.repoFiltered), maxItems, m.repoScrollOffset, visibleCount)
+	scrollbar := ui.ScrollbarChars(len(m.projectFiltered), maxItems, m.projectScrollOffset, visibleCount)
 
 	contentLines := 0
-	for i := m.repoScrollOffset; i < endIdx; i++ {
-		fullPath := m.repoFiltered[i]
+	for i := m.projectScrollOffset; i < endIdx; i++ {
+		fullPath := m.projectFiltered[i]
 		displayPath := m.extractDisplayPath(fullPath)
-		selected := i == m.repoCursor
-		lineIdx := i - m.repoScrollOffset
+		selected := i == m.projectCursor
+		lineIdx := i - m.projectScrollOffset
 
 		// Scrollbar on the left
 		if lineIdx < len(scrollbar) {
@@ -940,8 +940,8 @@ func (m Model) viewPickDirectory() string {
 	}
 
 	// Empty state
-	if len(m.repoFiltered) == 0 {
-		if m.repoFilter != "" {
+	if len(m.projectFiltered) == 0 {
+		if m.projectFilter != "" {
 			b.WriteString("  No directories matching filter\n")
 		} else {
 			b.WriteString("  No directories found\n")
@@ -966,15 +966,15 @@ func (m Model) viewPickDirectory() string {
 
 	// Statusline (directory counts)
 	var statusline string
-	if m.repoFilter != "" {
-		statusline = fmt.Sprintf("%d/%d directories", len(m.repoFiltered), len(m.repoDirs))
+	if m.projectFilter != "" {
+		statusline = fmt.Sprintf("%d/%d directories", len(m.projectFiltered), len(m.projectDirs))
 	} else {
-		statusline = fmt.Sprintf("%d directories", len(m.repoDirs))
+		statusline = fmt.Sprintf("%d directories", len(m.projectDirs))
 	}
 	b.WriteString(ui.StatuslineStyle.Render(statusline))
 	b.WriteString("\n")
 
-	if m.repoFilter != "" {
+	if m.projectFilter != "" {
 		b.WriteString(ui.FooterStyle.Render(ui.HelpFiltering()))
 	} else {
 		b.WriteString(ui.FooterStyle.Render(ui.HelpPickDirectory()))

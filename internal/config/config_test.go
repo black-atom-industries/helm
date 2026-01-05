@@ -55,8 +55,8 @@ func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
 
 	// Check that defaults are set
-	if cfg.ReposDepth != 2 {
-		t.Errorf("ReposDepth = %d, want 2", cfg.ReposDepth)
+	if cfg.ProjectDepth != 2 {
+		t.Errorf("ProjectDepth = %d, want 2", cfg.ProjectDepth)
 	}
 
 	if cfg.MaxVisibleItems != 10 {

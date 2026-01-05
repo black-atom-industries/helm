@@ -58,8 +58,8 @@ var DefaultKeyMap = KeyMap{
 		key.WithHelp("C-n", "new"),
 	),
 	PickDirectory: key.NewBinding(
-		key.WithKeys("ctrl+o"),
-		key.WithHelp("C-o", "browse"),
+		key.WithKeys("ctrl+p"),
+		key.WithHelp("C-p", "projects"),
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("ctrl+c"),
@@ -101,7 +101,7 @@ func HelpNormal() string {
 		helpItem("C-h/l | ←→", "expand") + helpSep() +
 		helpItem("C-x", "kill") + helpSep() +
 		helpItem("C-n", "new") + helpSep() +
-		helpItem("C-o", "browse")
+		helpItem("C-p", "projects")
 }
 
 // HelpFiltering returns the help text when filter is active
