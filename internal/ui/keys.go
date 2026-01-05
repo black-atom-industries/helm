@@ -13,8 +13,8 @@ type KeyMap struct {
 	Create   key.Binding
 	Quit     key.Binding
 	Cancel   key.Binding
-	Confirm key.Binding
-	Jump1   key.Binding
+	Confirm  key.Binding
+	Jump1    key.Binding
 	Jump2    key.Binding
 	Jump3    key.Binding
 	Jump4    key.Binding
@@ -26,46 +26,47 @@ type KeyMap struct {
 }
 
 // DefaultKeyMap returns the default key bindings
+// Navigation uses Ctrl+key or arrows, letters are reserved for filtering
 var DefaultKeyMap = KeyMap{
 	Up: key.NewBinding(
-		key.WithKeys("k", "up"),
-		key.WithHelp("k", "up"),
+		key.WithKeys("ctrl+k", "ctrl+p", "up"),
+		key.WithHelp("↑", "up"),
 	),
 	Down: key.NewBinding(
-		key.WithKeys("j", "down"),
-		key.WithHelp("j", "down"),
+		key.WithKeys("ctrl+j", "ctrl+n", "down"),
+		key.WithHelp("↓", "down"),
 	),
 	Expand: key.NewBinding(
-		key.WithKeys("l", "right"),
-		key.WithHelp("l", "expand"),
+		key.WithKeys("ctrl+l", "right"),
+		key.WithHelp("→", "expand"),
 	),
 	Collapse: key.NewBinding(
-		key.WithKeys("h", "left"),
-		key.WithHelp("h", "collapse"),
+		key.WithKeys("ctrl+h", "left"),
+		key.WithHelp("←", "collapse"),
 	),
 	Select: key.NewBinding(
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "switch"),
 	),
 	Kill: key.NewBinding(
-		key.WithKeys("x"),
-		key.WithHelp("x", "kill"),
+		key.WithKeys("ctrl+x"),
+		key.WithHelp("C-x", "kill"),
 	),
 	Create: key.NewBinding(
-		key.WithKeys("c"),
-		key.WithHelp("c", "new"),
+		key.WithKeys("ctrl+o"),
+		key.WithHelp("C-o", "new"),
 	),
 	Quit: key.NewBinding(
-		key.WithKeys("q", "esc"),
-		key.WithHelp("q/esc", "quit"),
+		key.WithKeys("ctrl+c"),
+		key.WithHelp("C-c", "quit"),
 	),
 	Cancel: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "cancel"),
 	),
 	Confirm: key.NewBinding(
-		key.WithKeys("x"),
-		key.WithHelp("x", "confirm"),
+		key.WithKeys("ctrl+y"),
+		key.WithHelp("C-y", "confirm"),
 	),
 	Jump1: key.NewBinding(key.WithKeys("1")),
 	Jump2: key.NewBinding(key.WithKeys("2")),
@@ -78,23 +79,40 @@ var DefaultKeyMap = KeyMap{
 	Jump9: key.NewBinding(key.WithKeys("9")),
 }
 
+// helpItem formats a single help item (key + description)
+func helpItem(key, desc string) string {
+	return HelpKeyStyle.Render(key) + " " + HelpDescStyle.Render(desc)
+}
+
+// helpSep returns the separator between help items
+func helpSep() string {
+	return HelpSepStyle.Render(" · ")
+}
+
 // HelpNormal returns the help text for normal mode
 func HelpNormal() string {
-	return HelpKeyStyle.Render("1-9") + HelpDescStyle.Render(" jump  ") +
-		HelpKeyStyle.Render("j/k") + HelpDescStyle.Render(" nav  ") +
-		HelpKeyStyle.Render("h/l") + HelpDescStyle.Render(" expand  ") +
-		HelpKeyStyle.Render("x") + HelpDescStyle.Render(" kill  ") +
-		HelpKeyStyle.Render("c") + HelpDescStyle.Render(" new")
+	return helpItem("type", "filter") + helpSep() +
+		helpItem("C-jk/↑↓", "nav") + helpSep() +
+		helpItem("C-hl/←→", "expand") + helpSep() +
+		helpItem("C-x", "kill") + helpSep() +
+		helpItem("C-o", "new")
+}
+
+// HelpFiltering returns the help text when filter is active
+func HelpFiltering() string {
+	return helpItem("esc", "clear") + helpSep() +
+		helpItem("enter", "select") + helpSep() +
+		helpItem("C-c", "quit")
 }
 
 // HelpConfirmKill returns the help text for kill confirmation mode
 func HelpConfirmKill() string {
-	return HelpKeyStyle.Render("x") + HelpDescStyle.Render(" confirm  ") +
-		HelpKeyStyle.Render("esc") + HelpDescStyle.Render(" cancel")
+	return helpItem("C-y", "confirm") + helpSep() +
+		helpItem("esc", "cancel")
 }
 
 // HelpCreate returns the help text for create mode
 func HelpCreate() string {
-	return HelpKeyStyle.Render("enter") + HelpDescStyle.Render(" create  ") +
-		HelpKeyStyle.Render("esc") + HelpDescStyle.Render(" cancel")
+	return helpItem("enter", "create") + helpSep() +
+		helpItem("esc", "cancel")
 }

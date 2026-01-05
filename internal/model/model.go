@@ -46,7 +46,8 @@ type Model struct {
 	lastKey        string
 	killTarget     string // Name of session/window being killed
 	config         config.Config
-	maxNameWidth   int // For column alignment
+	maxNameWidth   int    // For column alignment
+	filter         string // Current filter text for fuzzy matching
 }
 
 // New creates a new Model
@@ -85,6 +86,13 @@ type errMsg struct {
 }
 
 type clearMessageMsg struct{}
+
+// clearMessageAfter returns a command that clears the message after a delay
+func clearMessageAfter(d time.Duration) tea.Cmd {
+	return tea.Tick(d, func(time.Time) tea.Msg {
+		return clearMessageMsg{}
+	})
+}
 
 // Update implements tea.Model
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -142,6 +150,15 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Quit):
 		return m, tea.Quit
 
+	case key.Matches(msg, keys.Cancel):
+		// Escape: clear filter if active, otherwise quit
+		if m.filter != "" {
+			m.filter = ""
+			m.rebuildItems()
+			return m, nil
+		}
+		return m, tea.Quit
+
 	case key.Matches(msg, keys.Up):
 		if m.cursor > 0 {
 			m.cursor--
@@ -162,15 +179,6 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.selectCurrent()
 
 	case key.Matches(msg, keys.Kill):
-		// Check for double-tap
-		now := time.Now()
-		if m.lastKey == "x" && now.Sub(m.lastKeyTime) < 300*time.Millisecond {
-			// Double tap - instant kill
-			return m.killCurrent(true)
-		}
-		m.lastKey = "x"
-		m.lastKeyTime = now
-		// Single tap - ask for confirmation
 		return m.confirmKill()
 
 	case key.Matches(msg, keys.Create):
@@ -179,30 +187,36 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.input.Focus()
 		return m, textinput.Blink
 
-	// Number jumps
-	case key.Matches(msg, keys.Jump1):
+	// Number jumps (only when no filter active)
+	case m.filter == "" && key.Matches(msg, keys.Jump1):
 		return m.handleJump(1)
-	case key.Matches(msg, keys.Jump2):
+	case m.filter == "" && key.Matches(msg, keys.Jump2):
 		return m.handleJump(2)
-	case key.Matches(msg, keys.Jump3):
+	case m.filter == "" && key.Matches(msg, keys.Jump3):
 		return m.handleJump(3)
-	case key.Matches(msg, keys.Jump4):
+	case m.filter == "" && key.Matches(msg, keys.Jump4):
 		return m.handleJump(4)
-	case key.Matches(msg, keys.Jump5):
+	case m.filter == "" && key.Matches(msg, keys.Jump5):
 		return m.handleJump(5)
-	case key.Matches(msg, keys.Jump6):
+	case m.filter == "" && key.Matches(msg, keys.Jump6):
 		return m.handleJump(6)
-	case key.Matches(msg, keys.Jump7):
+	case m.filter == "" && key.Matches(msg, keys.Jump7):
 		return m.handleJump(7)
-	case key.Matches(msg, keys.Jump8):
+	case m.filter == "" && key.Matches(msg, keys.Jump8):
 		return m.handleJump(8)
-	case key.Matches(msg, keys.Jump9):
+	case m.filter == "" && key.Matches(msg, keys.Jump9):
 		return m.handleJump(9)
-	}
 
-	// Clear last key if not 'x'
-	if msg.String() != "x" {
-		m.lastKey = ""
+	case msg.Type == tea.KeyBackspace:
+		if len(m.filter) > 0 {
+			m.filter = m.filter[:len(m.filter)-1]
+			m.rebuildItems()
+		}
+
+	case msg.Type == tea.KeyRunes:
+		// Add typed characters to filter
+		m.filter += string(msg.Runes)
+		m.rebuildItems()
 	}
 
 	return m, nil
@@ -423,8 +437,8 @@ func (m *Model) killCurrent(instant bool) (tea.Model, tea.Cmd) {
 	m.mode = ModeNormal
 	m.killTarget = ""
 
-	// Reload sessions
-	return m, m.loadSessions
+	// Reload sessions and clear message after 5 seconds
+	return m, tea.Batch(m.loadSessions, clearMessageAfter(5*time.Second))
 }
 
 func (m *Model) createSession(name string) (tea.Model, tea.Cmd) {
@@ -494,8 +508,14 @@ func (m *Model) calculateColumnWidths() {
 
 func (m *Model) rebuildItems() {
 	m.items = nil
+	filterLower := strings.ToLower(m.filter)
 
 	for i, session := range m.sessions {
+		// Apply fuzzy filter if active
+		if m.filter != "" && !fuzzyMatch(session.Name, filterLower) {
+			continue
+		}
+
 		m.items = append(m.items, Item{
 			IsSession:    true,
 			SessionIndex: i,
@@ -521,12 +541,24 @@ func (m *Model) rebuildItems() {
 	}
 }
 
+// fuzzyMatch checks if the pattern matches the text (case-insensitive, substring match)
+func fuzzyMatch(text, pattern string) bool {
+	textLower := strings.ToLower(text)
+	return strings.Contains(textLower, pattern)
+}
+
 // View implements tea.Model
 func (m Model) View() string {
 	var b strings.Builder
 
-	// Header
-	b.WriteString(ui.HeaderStyle.Render("tmux sessions"))
+	// Header with optional filter
+	if m.filter != "" {
+		b.WriteString(ui.HeaderStyle.Render("tsm"))
+		b.WriteString("  ")
+		b.WriteString(ui.FilterStyle.Render("/" + m.filter))
+	} else {
+		b.WriteString(ui.HeaderStyle.Render("tsm"))
+	}
 	b.WriteString("\n\n")
 
 	// Session list
@@ -549,7 +581,11 @@ func (m Model) View() string {
 
 	// Empty state
 	if len(m.items) == 0 {
-		b.WriteString("  No other sessions available\n")
+		if m.filter != "" {
+			b.WriteString("  No sessions matching filter\n")
+		} else {
+			b.WriteString("  No other sessions available\n")
+		}
 	}
 
 	b.WriteString("\n")
@@ -571,7 +607,11 @@ func (m Model) View() string {
 	// Help line
 	switch m.mode {
 	case ModeNormal:
-		b.WriteString(ui.FooterStyle.Render(ui.HelpNormal()))
+		if m.filter != "" {
+			b.WriteString(ui.FooterStyle.Render(ui.HelpFiltering()))
+		} else {
+			b.WriteString(ui.FooterStyle.Render(ui.HelpNormal()))
+		}
 	case ModeConfirmKill:
 		b.WriteString(ui.FooterStyle.Render(ui.HelpConfirmKill()))
 	case ModeCreate:

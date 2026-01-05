@@ -4,13 +4,14 @@ import "github.com/charmbracelet/lipgloss"
 
 // Colors
 var (
-	ColorPrimary   = lipgloss.Color("212") // Light blue
+	ColorPrimary   = lipgloss.Color("212") // Light blue/pink
 	ColorSecondary = lipgloss.Color("241") // Gray
 	ColorSuccess   = lipgloss.Color("120") // Green
 	ColorWarning   = lipgloss.Color("214") // Orange/Yellow
 	ColorError     = lipgloss.Color("196") // Red
 	ColorDim       = lipgloss.Color("240") // Dim gray
 	ColorClaude    = lipgloss.Color("209") // Claude orange
+	ColorMuted     = lipgloss.Color("245") // Muted gray (brighter than dim)
 )
 
 // Styles
@@ -43,7 +44,7 @@ var (
 	// Window row styles (indented)
 	WindowStyle = lipgloss.NewStyle().
 			Padding(0, 1).
-			PaddingLeft(7)
+			PaddingLeft(10)
 
 	// Text styles
 	IndexStyle = lipgloss.NewStyle().
@@ -64,12 +65,12 @@ var (
 				Bold(true)
 
 	ExpandedIcon  = lipgloss.NewStyle().Foreground(ColorPrimary).Render("▼")
-	CollapsedIcon = lipgloss.NewStyle().Foreground(ColorSecondary).Render("▶")
+	CollapsedIcon = lipgloss.NewStyle().Foreground(ColorMuted).Render("▶")
 
 	TimeStyle = lipgloss.NewStyle().
 			Foreground(ColorDim)
 
-	LastIcon = lipgloss.NewStyle().Foreground(ColorPrimary).Render("󰒮")
+	LastIcon = lipgloss.NewStyle().Foreground(ColorWarning).Render("󰒮")
 
 	// Claude status styles
 	ClaudeNewStyle = lipgloss.NewStyle().
@@ -90,10 +91,19 @@ var (
 
 	// Help styles
 	HelpKeyStyle = lipgloss.NewStyle().
-			Foreground(ColorSecondary)
+			Foreground(ColorPrimary).
+			Bold(true)
 
 	HelpDescStyle = lipgloss.NewStyle().
+			Foreground(ColorMuted)
+
+	HelpSepStyle = lipgloss.NewStyle().
 			Foreground(ColorDim)
+
+	// Filter style
+	FilterStyle = lipgloss.NewStyle().
+			Foreground(ColorWarning).
+			Bold(true)
 )
 
 // FormatClaudeStatus formats the Claude status for display
