@@ -30,7 +30,7 @@ const (
 var (
 	// Container styles
 	AppStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
+			Border(lipgloss.NormalBorder()).
 			BorderForeground(ColorDim).
 			Padding(0, 1)
 
