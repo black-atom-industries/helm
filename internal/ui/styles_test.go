@@ -7,57 +7,77 @@ import (
 
 func TestFormatClaudeStatus(t *testing.T) {
 	tests := []struct {
-		name      string
-		state     string
-		wantEmpty bool
-		contains  string
+		name           string
+		state          string
+		animationFrame int
+		wantEmpty      bool
+		contains       string
 	}{
 		{
-			name:      "empty state returns empty",
-			state:     "",
-			wantEmpty: true,
+			name:           "empty state returns empty",
+			state:          "",
+			animationFrame: 0,
+			wantEmpty:      true,
 		},
 		{
-			name:      "new state returns empty (no visual noise)",
-			state:     "new",
-			wantEmpty: true,
+			name:           "new state returns empty (no visual noise)",
+			state:          "new",
+			animationFrame: 0,
+			wantEmpty:      true,
 		},
 		{
-			name:      "working state",
-			state:     "working",
-			wantEmpty: false,
-			contains:  "⏳ working...",
+			name:           "working state frame 0",
+			state:          "working",
+			animationFrame: 0,
+			wantEmpty:      false,
+			contains:       ".",
 		},
 		{
-			name:      "waiting state",
-			state:     "waiting",
-			wantEmpty: false,
-			contains:  "💬 waiting...",
+			name:           "working state frame 1",
+			state:          "working",
+			animationFrame: 1,
+			wantEmpty:      false,
+			contains:       "..",
 		},
 		{
-			name:      "unknown state returns empty",
-			state:     "unknown",
-			wantEmpty: true,
+			name:           "working state frame 2",
+			state:          "working",
+			animationFrame: 2,
+			wantEmpty:      false,
+			contains:       "...",
+		},
+		{
+			name:           "waiting state",
+			state:          "waiting",
+			animationFrame: 0,
+			wantEmpty:      false,
+			contains:       "?",
+		},
+		{
+			name:           "unknown state returns empty",
+			state:          "unknown",
+			animationFrame: 0,
+			wantEmpty:      true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := FormatClaudeStatus(tt.state)
+			result := FormatClaudeStatus(tt.state, tt.animationFrame)
 
 			if tt.wantEmpty && result != "" {
-				t.Errorf("FormatClaudeStatus(%q) = %q, want empty", tt.state, result)
+				t.Errorf("FormatClaudeStatus(%q, %d) = %q, want empty", tt.state, tt.animationFrame, result)
 			}
 
 			if !tt.wantEmpty {
 				if result == "" {
-					t.Errorf("FormatClaudeStatus(%q) returned empty, want non-empty", tt.state)
+					t.Errorf("FormatClaudeStatus(%q, %d) returned empty, want non-empty", tt.state, tt.animationFrame)
 				}
 				if tt.contains != "" && !strings.Contains(result, tt.contains) {
-					t.Errorf("FormatClaudeStatus(%q) = %q, should contain %q", tt.state, result, tt.contains)
+					t.Errorf("FormatClaudeStatus(%q, %d) = %q, should contain %q", tt.state, tt.animationFrame, result, tt.contains)
 				}
-				if !strings.Contains(result, "Claude Code:") {
-					t.Errorf("FormatClaudeStatus(%q) = %q, should contain 'Claude Code:'", tt.state, result)
+				if !strings.Contains(result, "CC:") {
+					t.Errorf("FormatClaudeStatus(%q, %d) = %q, should contain 'CC:'", tt.state, tt.animationFrame, result)
 				}
 			}
 		})

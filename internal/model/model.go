@@ -64,6 +64,9 @@ type Model struct {
 	// Window size
 	width  int
 	height int
+
+	// Animation state
+	animationFrame int
 }
 
 // New creates a new Model
@@ -80,7 +83,7 @@ func New(currentSession string, cfg config.Config) Model {
 
 // Init implements tea.Model
 func (m Model) Init() tea.Cmd {
-	return m.loadSessions
+	return tea.Batch(m.loadSessions, animationTick())
 }
 
 // loadSessions fetches sessions from tmux
@@ -102,10 +105,19 @@ type errMsg struct {
 
 type clearMessageMsg struct{}
 
+type animationTickMsg struct{}
+
 // clearMessageAfter returns a command that clears the message after a delay
 func clearMessageAfter(d time.Duration) tea.Cmd {
 	return tea.Tick(d, func(time.Time) tea.Msg {
 		return clearMessageMsg{}
+	})
+}
+
+// animationTick returns a command that ticks the animation
+func animationTick() tea.Cmd {
+	return tea.Tick(300*time.Millisecond, func(time.Time) tea.Msg {
+		return animationTickMsg{}
 	})
 }
 
@@ -130,6 +142,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.message = ""
 		m.messageIsError = false
 		return m, nil
+
+	case animationTickMsg:
+		m.animationFrame = (m.animationFrame + 1) % 3
+		return m, animationTick()
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -1167,7 +1183,7 @@ func (m Model) renderSessionWithLabel(session tmux.Session, num int, isFirst boo
 	// Claude status
 	if status, ok := m.claudeStatuses[session.Name]; ok {
 		b.WriteString(" ")
-		b.WriteString(ui.FormatClaudeStatus(status.State))
+		b.WriteString(ui.FormatClaudeStatus(status.State, m.animationFrame))
 	}
 
 	return ui.SessionStyle.Render(b.String())

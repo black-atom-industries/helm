@@ -135,21 +135,25 @@ func RenderBorder(width int) string {
 }
 
 // FormatClaudeStatus formats the Claude status for display
-func FormatClaudeStatus(state string) string {
+// animationFrame cycles 0-2 for animated states
+func FormatClaudeStatus(state string, animationFrame int) string {
 	if state == "" {
 		return ""
 	}
 
-	label := ClaudeLabelStyle.Render("Claude Code:")
+	label := ClaudeLabelStyle.Render("CC:")
 
 	switch state {
 	case "new":
 		// Don't show badge for "new" - it's just noise
 		return ""
 	case "working":
-		return "[" + label + " " + ClaudeWorkingStyle.Render("⏳ working...") + "]"
+		// Animated ellipses: .  ..  ...
+		dots := []string{".  ", ".. ", "..."}
+		return "[" + label + " " + ClaudeWorkingStyle.Render(dots[animationFrame]) + "]"
 	case "waiting":
-		return "[" + label + " " + ClaudeWaitingStyle.Render("💬 waiting...") + "]"
+		// Prominent - needs user attention
+		return "[" + label + " " + ClaudeWorkingStyle.Render("?") + "]"
 	default:
 		return ""
 	}
