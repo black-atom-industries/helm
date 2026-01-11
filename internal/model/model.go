@@ -1152,7 +1152,11 @@ func (m Model) renderSessionWithLabel(session tmux.Session, num int, isFirst boo
 
 	// Last session icon (fixed width column)
 	if isFirst {
-		b.WriteString(ui.LastIcon)
+		if selected {
+			b.WriteString(ui.LastIconSelected)
+		} else {
+			b.WriteString(ui.LastIcon)
+		}
 	} else {
 		b.WriteString(" ")
 	}
@@ -1160,9 +1164,17 @@ func (m Model) renderSessionWithLabel(session tmux.Session, num int, isFirst boo
 
 	// Expand icon
 	if session.Expanded {
-		b.WriteString(ui.ExpandedIcon)
+		if selected {
+			b.WriteString(ui.ExpandedIconSelected)
+		} else {
+			b.WriteString(ui.ExpandedIcon)
+		}
 	} else {
-		b.WriteString(ui.CollapsedIcon)
+		if selected {
+			b.WriteString(ui.CollapsedIconSelected)
+		} else {
+			b.WriteString(ui.CollapsedIcon)
+		}
 	}
 	b.WriteString(" ")
 
@@ -1178,7 +1190,11 @@ func (m Model) renderSessionWithLabel(session tmux.Session, num int, isFirst boo
 	// Time ago (fixed width 8)
 	timeAgo := formatTimeAgo(session.LastActivity)
 	timePadded := fmt.Sprintf("%-8s", timeAgo)
-	b.WriteString(ui.TimeStyle.Render(timePadded))
+	if selected {
+		b.WriteString(ui.TimeSelectedStyle.Render(timePadded))
+	} else {
+		b.WriteString(ui.TimeStyle.Render(timePadded))
+	}
 
 	// Claude status
 	if status, ok := m.claudeStatuses[session.Name]; ok {

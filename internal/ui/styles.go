@@ -55,10 +55,19 @@ var (
 	SessionStyle = lipgloss.NewStyle().
 			Padding(0, 1)
 
+	SessionSelectedStyle = lipgloss.NewStyle().
+				Padding(0, 1).
+				Bold(true)
+
 	// Window row styles (indented)
 	WindowStyle = lipgloss.NewStyle().
 			Padding(0, 1).
 			PaddingLeft(10)
+
+	WindowSelectedStyle = lipgloss.NewStyle().
+				Padding(0, 1).
+				PaddingLeft(10).
+				Bold(true)
 
 	// Text styles
 	IndexStyle = lipgloss.NewStyle().
@@ -78,13 +87,20 @@ var (
 				Foreground(ColorWarning).
 				Bold(true)
 
-	ExpandedIcon  = lipgloss.NewStyle().Foreground(ColorPrimary).Render("▼")
-	CollapsedIcon = lipgloss.NewStyle().Foreground(ColorDim).Render("▶")
+	ExpandedIcon          = lipgloss.NewStyle().Foreground(ColorPrimary).Render("▼")
+	ExpandedIconSelected  = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("▼")
+	CollapsedIcon         = lipgloss.NewStyle().Foreground(ColorDim).Render("▶")
+	CollapsedIconSelected = lipgloss.NewStyle().Foreground(ColorDim).Bold(true).Render("▶")
 
 	TimeStyle = lipgloss.NewStyle().
 			Foreground(ColorDim)
 
-	LastIcon = lipgloss.NewStyle().Foreground(ColorWarning).Render("󰒮")
+	TimeSelectedStyle = lipgloss.NewStyle().
+				Foreground(ColorDim).
+				Bold(true)
+
+	LastIcon         = lipgloss.NewStyle().Foreground(ColorWarning).Render("󰒮")
+	LastIconSelected = lipgloss.NewStyle().Foreground(ColorWarning).Bold(true).Render("󰒮")
 
 	// Claude status styles
 	ClaudeNewStyle = lipgloss.NewStyle().
