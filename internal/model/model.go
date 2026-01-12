@@ -326,6 +326,9 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.cloneCloning = false
 		return m, m.fetchAvailableReposCmd()
 
+	case key.Matches(msg, keys.Lazygit):
+		return m.openLazygit()
+
 	// Number jumps (only when no filter active)
 	case m.filter == "" && key.Matches(msg, keys.Jump1):
 		return m.handleJump(1)
@@ -882,6 +885,31 @@ func (m *Model) selectCurrent() (tea.Model, tea.Cmd) {
 		m.setError("Error: %v", err)
 		return m, nil
 	}
+
+	return m, tea.Quit
+}
+
+func (m *Model) openLazygit() (tea.Model, tea.Cmd) {
+	if !m.isCursorValid() {
+		return m, nil
+	}
+
+	item := m.items[m.cursor]
+	if !item.IsSession {
+		// For windows, use the parent session
+		item = Item{IsSession: true, SessionIndex: item.SessionIndex}
+	}
+
+	session := m.sessions[item.SessionIndex]
+	path, err := git.GetSessionPath(session.Name)
+	if err != nil || path == "" {
+		m.setError("Could not get session path")
+		return m, nil
+	}
+
+	// Schedule lazygit popup to open after tsm closes, then reopen tsm
+	cmd := fmt.Sprintf("sleep 0.1 && tmux display-popup -w90%% -h90%% -d '%s' -E lazygit; tmux display-popup -w50%% -h35%% -B -E tsm", path)
+	_ = exec.Command("tmux", "run-shell", "-b", cmd).Start()
 
 	return m, tea.Quit
 }
