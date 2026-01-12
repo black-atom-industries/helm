@@ -148,3 +148,9 @@ func HelpCloneRepo() string {
 func HelpCloneRepoLoading() string {
 	return helpItem("esc", "cancel")
 }
+
+// HelpCloneSuccess returns the help text after successful clone
+func HelpCloneSuccess() string {
+	return helpItem("enter", "switch to session") + helpSep() +
+		helpItem("esc", "back to sessions")
+}

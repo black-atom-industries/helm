@@ -72,16 +72,19 @@ type Model struct {
 	animationFrame int
 
 	// Clone repo mode state
-	cloneRepos        []string // Available repos to clone (filtered)
-	cloneReposAll     []string // All available repos (unfiltered)
-	cloneFilter       string   // Current filter text
-	cloneCursor       int      // Selected repo index
-	cloneScrollOffset int      // Scroll offset
-	cloneBasePath     string   // From repos config
-	cloneLoading      bool     // True while fetching repos
-	cloneError        string   // Error message if fetch/clone fails
-	cloneCloning      bool     // True while cloning
-	cloneCloningRepo  string   // Repo being cloned
+	cloneRepos          []string // Available repos to clone (filtered)
+	cloneReposAll       []string // All available repos (unfiltered)
+	cloneFilter         string   // Current filter text
+	cloneCursor         int      // Selected repo index
+	cloneScrollOffset   int      // Scroll offset
+	cloneBasePath       string   // From repos config
+	cloneLoading        bool     // True while fetching repos
+	cloneError          string   // Error message if fetch/clone fails
+	cloneCloning        bool     // True while cloning
+	cloneCloningRepo    string   // Repo being cloned
+	cloneSuccess        bool     // True when clone completed, awaiting confirmation
+	cloneSuccessPath    string   // Path of cloned repo (for layout)
+	cloneSuccessSession string   // Session name to switch to
 }
 
 // New creates a new Model
@@ -194,13 +197,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case cloneSuccessMsg:
-		// Switch to the new session and quit
-		if err := tmux.SwitchClient(msg.sessionName); err != nil {
-			m.setError("Created but failed to switch: %v", err)
-			m.mode = ModeNormal
-			return m, m.loadSessions
-		}
-		return m, tea.Quit
+		// Store success state and await confirmation
+		m.cloneCloning = false
+		m.cloneSuccess = true
+		m.cloneSuccessPath = msg.repoPath
+		m.cloneSuccessSession = msg.sessionName
+		return m, nil
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -451,6 +453,29 @@ func (m *Model) handlePickDirectoryMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *Model) handleCloneRepoMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	keys := ui.DefaultKeyMap
+
+	// Handle confirmation state
+	if m.cloneSuccess {
+		switch {
+		case key.Matches(msg, keys.Select):
+			// Apply layout and switch to the session
+			m.applyLayout(m.cloneSuccessSession, m.cloneSuccessPath)
+			if err := tmux.SwitchClient(m.cloneSuccessSession); err != nil {
+				m.setError("Created but failed to switch: %v", err)
+				m.mode = ModeNormal
+				m.cloneSuccess = false
+				return m, m.loadSessions
+			}
+			return m, tea.Quit
+
+		case key.Matches(msg, keys.Cancel):
+			// Go back to session list without switching
+			m.mode = ModeNormal
+			m.cloneSuccess = false
+			return m, m.loadSessions
+		}
+		return m, nil
+	}
 
 	switch {
 	case key.Matches(msg, keys.Cancel):
@@ -1252,7 +1277,9 @@ func (m Model) viewCloneRepo() string {
 	usedLines := 0
 
 	// Header
-	if m.cloneFilter != "" {
+	if m.cloneSuccess {
+		b.WriteString(ui.HeaderStyle.Render("Clone complete"))
+	} else if m.cloneFilter != "" {
 		b.WriteString(ui.HeaderStyle.Render("Clone repository"))
 		b.WriteString("  ")
 		b.WriteString(ui.FilterStyle.Render(m.cloneFilter))
@@ -1269,7 +1296,17 @@ func (m Model) viewCloneRepo() string {
 	// Content area
 	contentLines := 0
 
-	if m.cloneLoading {
+	if m.cloneSuccess {
+		// Show success message with session info
+		b.WriteString(fmt.Sprintf("  Cloned: %s\n", m.cloneCloningRepo))
+		contentLines++
+		b.WriteString(fmt.Sprintf("  Session: %s\n", m.cloneSuccessSession))
+		contentLines++
+		b.WriteString("\n")
+		contentLines++
+		b.WriteString("  Switch to the new session?\n")
+		contentLines++
+	} else if m.cloneLoading {
 		b.WriteString("  Fetching available repositories...\n")
 		contentLines++
 	} else if m.cloneCloning {
@@ -1332,7 +1369,9 @@ func (m Model) viewCloneRepo() string {
 
 	// Statusline
 	var statusline string
-	if m.cloneLoading {
+	if m.cloneSuccess {
+		statusline = "Clone successful"
+	} else if m.cloneLoading {
 		statusline = "Loading..."
 	} else if m.cloneCloning {
 		statusline = "Cloning..."
@@ -1345,7 +1384,9 @@ func (m Model) viewCloneRepo() string {
 	b.WriteString("\n")
 
 	// Help line
-	if m.cloneLoading || m.cloneCloning {
+	if m.cloneSuccess {
+		b.WriteString(ui.FooterStyle.Render(ui.HelpCloneSuccess()))
+	} else if m.cloneLoading || m.cloneCloning {
 		b.WriteString(ui.FooterStyle.Render(ui.HelpCloneRepoLoading()))
 	} else if m.cloneFilter != "" {
 		b.WriteString(ui.FooterStyle.Render(ui.HelpFiltering()))
