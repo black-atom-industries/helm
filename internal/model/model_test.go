@@ -309,55 +309,43 @@ func TestContentHeight(t *testing.T) {
 
 func TestSessionMaxVisibleItems(t *testing.T) {
 	tests := []struct {
-		name            string
-		height          int
-		maxVisibleItems int
-		want            int
+		name   string
+		height int
+		want   int
 	}{
 		{
-			name:            "zero height returns conservative default",
-			height:          0,
-			maxVisibleItems: 10,
-			want:            5,
+			name:   "zero height returns fallback",
+			height: 0,
+			want:   10,
 		},
 		{
-			name:            "small window constrains below config",
-			height:          12, // contentHeight = 10, available = 10 - 5 = 5
-			maxVisibleItems: 10,
-			want:            5,
+			name:   "small window",
+			height: 12, // contentHeight = 10, available = 10 - 7 = 3
+			want:   3,
 		},
 		{
-			name:            "large window respects config max",
-			height:          50, // contentHeight = 48, available = 48 - 5 = 43
-			maxVisibleItems: 10,
-			want:            10, // Capped at config max
+			name:   "large window uses all space",
+			height: 50, // contentHeight = 48, available = 48 - 7 = 41
+			want:   41,
 		},
 		{
-			name:            "exact fit",
-			height:          17, // contentHeight = 15, available = 15 - 5 = 10
-			maxVisibleItems: 10,
-			want:            10,
-		},
-		{
-			name:            "very small window",
-			height:          8, // contentHeight = 6, available = 6 - 5 = 1
-			maxVisibleItems: 10,
-			want:            1,
+			name:   "very small window",
+			height: 10, // contentHeight = 8, available = 8 - 7 = 1
+			want:   1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := config.DefaultConfig()
-			cfg.MaxVisibleItems = tt.maxVisibleItems
 			m := Model{
 				height: tt.height,
 				config: cfg,
 			}
 			got := m.sessionMaxVisibleItems()
 			if got != tt.want {
-				t.Errorf("sessionMaxVisibleItems() with height=%d, maxVisible=%d = %d, want %d",
-					tt.height, tt.maxVisibleItems, got, tt.want)
+				t.Errorf("sessionMaxVisibleItems() with height=%d = %d, want %d",
+					tt.height, got, tt.want)
 			}
 		})
 	}
@@ -365,49 +353,43 @@ func TestSessionMaxVisibleItems(t *testing.T) {
 
 func TestProjectMaxVisibleItems(t *testing.T) {
 	tests := []struct {
-		name            string
-		height          int
-		maxVisibleItems int
-		want            int
+		name   string
+		height int
+		want   int
 	}{
 		{
-			name:            "zero height returns conservative default",
-			height:          0,
-			maxVisibleItems: 10,
-			want:            5,
+			name:   "zero height returns fallback",
+			height: 0,
+			want:   10,
 		},
 		{
-			name:            "small window constrains below config",
-			height:          12, // contentHeight = 10, available = 10 - 5 = 5
-			maxVisibleItems: 10,
-			want:            5,
+			name:   "small window",
+			height: 12, // contentHeight = 10, available = 10 - 5 = 5
+			want:   5,
 		},
 		{
-			name:            "large window respects config max",
-			height:          50, // contentHeight = 48, available = 48 - 5 = 43
-			maxVisibleItems: 10,
-			want:            10, // Capped at config max
+			name:   "large window uses all space",
+			height: 50, // contentHeight = 48, available = 48 - 5 = 43
+			want:   43,
 		},
 		{
-			name:            "exact fit",
-			height:          17, // contentHeight = 15, available = 15 - 5 = 10
-			maxVisibleItems: 10,
-			want:            10,
+			name:   "medium window",
+			height: 17, // contentHeight = 15, available = 15 - 5 = 10
+			want:   10,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := config.DefaultConfig()
-			cfg.MaxVisibleItems = tt.maxVisibleItems
 			m := Model{
 				height: tt.height,
 				config: cfg,
 			}
 			got := m.projectMaxVisibleItems()
 			if got != tt.want {
-				t.Errorf("projectMaxVisibleItems() with height=%d, maxVisible=%d = %d, want %d",
-					tt.height, tt.maxVisibleItems, got, tt.want)
+				t.Errorf("projectMaxVisibleItems() with height=%d = %d, want %d",
+					tt.height, got, tt.want)
 			}
 		})
 	}

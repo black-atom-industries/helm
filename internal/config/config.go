@@ -28,9 +28,6 @@ type Config struct {
 	// Scan depth for project directories (default: 2 for owner/repo structure)
 	ProjectDepth int `toml:"project_depth"`
 
-	// Maximum visible items in scrollable lists
-	MaxVisibleItems int `toml:"max_visible_items"`
-
 	// Default directory for new sessions created with C-n
 	DefaultSessionDir string `toml:"default_session_dir"`
 }
@@ -45,7 +42,6 @@ func DefaultConfig() Config {
 		CacheDir:            filepath.Join(home, ".cache", "tsm"),
 		ProjectDirs:         []string{filepath.Join(home, "repos")},
 		ProjectDepth:        2,
-		MaxVisibleItems:     10,
 		DefaultSessionDir:   home,
 	}
 }
@@ -82,11 +78,6 @@ func Load() (Config, error) {
 	// Ensure ProjectDepth is at least 1
 	if cfg.ProjectDepth < 1 {
 		cfg.ProjectDepth = 2
-	}
-
-	// Ensure MaxVisibleItems is at least 1
-	if cfg.MaxVisibleItems < 1 {
-		cfg.MaxVisibleItems = 10
 	}
 
 	// Environment variables override config file
@@ -142,9 +133,6 @@ func Init() error {
 
 # Scan depth for project directories (2 = owner/repo structure)
 # project_depth = 2
-
-# Maximum visible items in scrollable lists
-# max_visible_items = 10
 
 # Default directory for new sessions created with C-n
 # default_session_dir = "~"

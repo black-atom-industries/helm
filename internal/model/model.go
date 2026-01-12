@@ -586,17 +586,15 @@ func (m *Model) updateCloneScrollOffset() {
 
 // cloneMaxVisibleItems returns the number of items visible in clone mode
 func (m *Model) cloneMaxVisibleItems() int {
-	maxItems := m.config.MaxVisibleItems
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		availableForContent := contentH - 5
-		if availableForContent < maxItems && availableForContent > 0 {
-			maxItems = availableForContent
+		if availableForContent > 0 {
+			return availableForContent
 		}
-	} else {
-		maxItems = 5
 	}
-	return maxItems
+	// Fallback when height unknown
+	return 10
 }
 
 // cloneSelectedRepo starts cloning the selected repository
@@ -1136,38 +1134,31 @@ func (m *Model) borderWidth() int {
 // sessionMaxVisibleItems returns the actual number of session items that can be shown
 // based on window height, accounting for fixed UI elements
 func (m *Model) sessionMaxVisibleItems() int {
-	maxItems := m.config.MaxVisibleItems
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		// Reserve: header(1) + header border(1) + footer border(1) + message(1) + statusline(1) + help(2) = 7 lines
 		availableForContent := contentH - 7
-		if availableForContent < maxItems && availableForContent > 0 {
-			maxItems = availableForContent
+		if availableForContent > 0 {
+			return availableForContent
 		}
-	} else {
-		// Conservative default when height unknown
-		maxItems = 5
 	}
-	return maxItems
+	// Fallback when height unknown
+	return 10
 }
 
 // projectMaxVisibleItems returns the actual number of items that can be shown
 // based on window height, matching the View's calculation
 func (m *Model) projectMaxVisibleItems() int {
-	maxItems := m.config.MaxVisibleItems
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		// Reserve: header(1) + header border(1) + footer border(1) + statusline(1) + help(1) = 5 lines
-		// Directory picker has no message line
 		availableForContent := contentH - 5
-		if availableForContent < maxItems && availableForContent > 0 {
-			maxItems = availableForContent
+		if availableForContent > 0 {
+			return availableForContent
 		}
-	} else {
-		// Conservative default when height unknown
-		maxItems = 5
 	}
-	return maxItems
+	// Fallback when height unknown
+	return 10
 }
 
 // updateProjectScrollOffset adjusts scroll offset to keep cursor visible in project list

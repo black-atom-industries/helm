@@ -59,10 +59,6 @@ func TestDefaultConfig(t *testing.T) {
 		t.Errorf("ProjectDepth = %d, want 2", cfg.ProjectDepth)
 	}
 
-	if cfg.MaxVisibleItems != 10 {
-		t.Errorf("MaxVisibleItems = %d, want 10", cfg.MaxVisibleItems)
-	}
-
 	if cfg.ClaudeStatusEnabled != false {
 		t.Error("ClaudeStatusEnabled should be false by default")
 	}
