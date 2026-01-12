@@ -14,6 +14,8 @@ import (
 
 	"github.com/nikbrunner/tsm/internal/claude"
 	"github.com/nikbrunner/tsm/internal/config"
+	"github.com/nikbrunner/tsm/internal/github"
+	"github.com/nikbrunner/tsm/internal/repos"
 	"github.com/nikbrunner/tsm/internal/tmux"
 	"github.com/nikbrunner/tsm/internal/ui"
 )
@@ -26,6 +28,7 @@ const (
 	ModeConfirmKill
 	ModeCreate
 	ModePickDirectory
+	ModeCloneRepo
 )
 
 // Item represents either a session or a window in the flattened list
@@ -67,6 +70,18 @@ type Model struct {
 
 	// Animation state
 	animationFrame int
+
+	// Clone repo mode state
+	cloneRepos        []string // Available repos to clone (filtered)
+	cloneReposAll     []string // All available repos (unfiltered)
+	cloneFilter       string   // Current filter text
+	cloneCursor       int      // Selected repo index
+	cloneScrollOffset int      // Scroll offset
+	cloneBasePath     string   // From repos config
+	cloneLoading      bool     // True while fetching repos
+	cloneError        string   // Error message if fetch/clone fails
+	cloneCloning      bool     // True while cloning
+	cloneCloningRepo  string   // Repo being cloned
 }
 
 // New creates a new Model
@@ -106,6 +121,20 @@ type errMsg struct {
 type clearMessageMsg struct{}
 
 type animationTickMsg struct{}
+
+// Clone repo mode messages
+type cloneReposLoadedMsg struct {
+	repos []string
+}
+
+type cloneErrorMsg struct {
+	err error
+}
+
+type cloneSuccessMsg struct {
+	repoPath    string
+	sessionName string
+}
 
 // clearMessageAfter returns a command that clears the message after a delay
 func clearMessageAfter(d time.Duration) tea.Cmd {
@@ -147,6 +176,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.animationFrame = (m.animationFrame + 1) % 3
 		return m, animationTick()
 
+	case cloneReposLoadedMsg:
+		m.cloneLoading = false
+		m.cloneReposAll = msg.repos
+		m.cloneRepos = msg.repos
+		m.cloneCursor = 0
+		m.cloneScrollOffset = 0
+		if len(msg.repos) == 0 {
+			m.cloneError = "All repositories are already cloned!"
+		}
+		return m, nil
+
+	case cloneErrorMsg:
+		m.cloneLoading = false
+		m.cloneCloning = false
+		m.cloneError = msg.err.Error()
+		return m, nil
+
+	case cloneSuccessMsg:
+		// Switch to the new session and quit
+		if err := tmux.SwitchClient(msg.sessionName); err != nil {
+			m.setError("Created but failed to switch: %v", err)
+			m.mode = ModeNormal
+			return m, m.loadSessions
+		}
+		return m, tea.Quit
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -176,6 +231,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleCreateMode(msg)
 	case ModePickDirectory:
 		return m.handlePickDirectoryMode(msg)
+	case ModeCloneRepo:
+		return m.handleCloneRepoMode(msg)
 	}
 	return m, nil
 }
@@ -239,6 +296,26 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.projectFiltered = m.projectDirs
 		// Request window size to get proper height for layout
 		return m, tea.WindowSize()
+
+	case key.Matches(msg, keys.CloneRepo):
+		// Load repos config
+		cfg, err := repos.LoadConfig()
+		if err != nil {
+			m.setError("Failed to load repos config: %v", err)
+			return m, nil
+		}
+		m.cloneBasePath = cfg.ReposBasePath
+		m.mode = ModeCloneRepo
+		m.filter = "" // Clear any active filter
+		m.cloneFilter = ""
+		m.cloneCursor = 0
+		m.cloneScrollOffset = 0
+		m.cloneRepos = nil
+		m.cloneReposAll = nil
+		m.cloneError = ""
+		m.cloneLoading = true
+		m.cloneCloning = false
+		return m, m.fetchAvailableReposCmd()
 
 	// Number jumps (only when no filter active)
 	case m.filter == "" && key.Matches(msg, keys.Jump1):
@@ -370,6 +447,175 @@ func (m *Model) handlePickDirectoryMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m *Model) handleCloneRepoMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	keys := ui.DefaultKeyMap
+
+	switch {
+	case key.Matches(msg, keys.Cancel):
+		// If loading or cloning, just cancel and go back
+		if m.cloneLoading || m.cloneCloning {
+			m.mode = ModeNormal
+			m.cloneLoading = false
+			m.cloneCloning = false
+			m.cloneError = ""
+			return m, nil
+		}
+		// Clear filter first, then exit on second press
+		if m.cloneFilter != "" {
+			m.cloneFilter = ""
+			m.cloneRepos = m.cloneReposAll
+			m.cloneCursor = 0
+			m.cloneScrollOffset = 0
+			return m, nil
+		}
+		// If there's an error, clear it and go back
+		if m.cloneError != "" {
+			m.mode = ModeNormal
+			m.cloneError = ""
+			return m, nil
+		}
+		m.mode = ModeNormal
+		return m, nil
+
+	case key.Matches(msg, keys.Up):
+		if m.cloneCursor > 0 {
+			m.cloneCursor--
+			m.updateCloneScrollOffset()
+		}
+
+	case key.Matches(msg, keys.Down):
+		if m.cloneCursor < len(m.cloneRepos)-1 {
+			m.cloneCursor++
+			m.updateCloneScrollOffset()
+		}
+
+	case key.Matches(msg, keys.Select):
+		if len(m.cloneRepos) > 0 && m.cloneCursor < len(m.cloneRepos) && !m.cloneLoading && !m.cloneCloning && m.cloneError == "" {
+			return m.cloneSelectedRepo()
+		}
+
+	case key.Matches(msg, keys.Quit):
+		return m, tea.Quit
+
+	case msg.Type == tea.KeyBackspace:
+		if len(m.cloneFilter) > 0 && !m.cloneLoading && !m.cloneCloning {
+			m.cloneFilter = m.cloneFilter[:len(m.cloneFilter)-1]
+			m.filterCloneRepos()
+		}
+
+	case msg.Type == tea.KeyRunes:
+		if !m.cloneLoading && !m.cloneCloning && m.cloneError == "" {
+			m.cloneFilter += string(msg.Runes)
+			m.filterCloneRepos()
+		}
+	}
+
+	return m, nil
+}
+
+// filterCloneRepos filters the clone repos based on cloneFilter
+func (m *Model) filterCloneRepos() {
+	if m.cloneFilter == "" {
+		m.cloneRepos = m.cloneReposAll
+	} else {
+		filterLower := strings.ToLower(m.cloneFilter)
+		m.cloneRepos = nil
+		for _, repo := range m.cloneReposAll {
+			if fuzzyMatch(repo, filterLower) {
+				m.cloneRepos = append(m.cloneRepos, repo)
+			}
+		}
+	}
+	// Reset cursor if out of bounds
+	if m.cloneCursor >= len(m.cloneRepos) {
+		m.cloneCursor = len(m.cloneRepos) - 1
+	}
+	if m.cloneCursor < 0 {
+		m.cloneCursor = 0
+	}
+	m.updateCloneScrollOffset()
+}
+
+// updateCloneScrollOffset adjusts scroll offset to keep cursor visible
+func (m *Model) updateCloneScrollOffset() {
+	maxVisible := m.cloneMaxVisibleItems()
+	if m.cloneCursor < m.cloneScrollOffset {
+		m.cloneScrollOffset = m.cloneCursor
+	}
+	if m.cloneCursor >= m.cloneScrollOffset+maxVisible {
+		m.cloneScrollOffset = m.cloneCursor - maxVisible + 1
+	}
+	if m.cloneScrollOffset < 0 {
+		m.cloneScrollOffset = 0
+	}
+}
+
+// cloneMaxVisibleItems returns the number of items visible in clone mode
+func (m *Model) cloneMaxVisibleItems() int {
+	maxItems := m.config.MaxVisibleItems
+	contentH := m.contentHeight()
+	if contentH > 0 {
+		availableForContent := contentH - 5
+		if availableForContent < maxItems && availableForContent > 0 {
+			maxItems = availableForContent
+		}
+	} else {
+		maxItems = 5
+	}
+	return maxItems
+}
+
+// cloneSelectedRepo starts cloning the selected repository
+func (m *Model) cloneSelectedRepo() (tea.Model, tea.Cmd) {
+	selected := m.cloneRepos[m.cloneCursor]
+	m.cloneCloning = true
+	m.cloneCloningRepo = selected
+
+	destPath := filepath.Join(m.cloneBasePath, selected)
+	sessionName := sanitizeSessionName(selected)
+
+	return m, func() tea.Msg {
+		if err := github.CloneRepo(selected, destPath); err != nil {
+			return cloneErrorMsg{err: err}
+		}
+
+		// Create tmux session
+		if err := tmux.CreateSession(sessionName, destPath); err != nil {
+			return cloneErrorMsg{err: fmt.Errorf("cloned but failed to create session: %w", err)}
+		}
+
+		return cloneSuccessMsg{
+			repoPath:    destPath,
+			sessionName: sessionName,
+		}
+	}
+}
+
+// fetchAvailableReposCmd fetches repos from GitHub
+func (m *Model) fetchAvailableReposCmd() tea.Cmd {
+	basePath := m.cloneBasePath
+	return func() tea.Msg {
+		// Check gh CLI
+		if err := github.CheckGhCli(); err != nil {
+			return cloneErrorMsg{err: err}
+		}
+
+		// Fetch available repos
+		available, err := github.FetchAvailableRepos()
+		if err != nil {
+			return cloneErrorMsg{err: err}
+		}
+
+		// Get already cloned
+		cloned, _ := repos.ListClonedRepos(basePath)
+
+		// Filter out cloned
+		uncloned := repos.FilterUncloned(available, cloned)
+
+		return cloneReposLoadedMsg{repos: uncloned}
+	}
 }
 
 // filterProjectDirs filters the project directories based on projectFilter
@@ -897,6 +1143,9 @@ func (m Model) View() string {
 	if m.mode == ModePickDirectory {
 		return m.viewPickDirectory()
 	}
+	if m.mode == ModeCloneRepo {
+		return m.viewCloneRepo()
+	}
 	return m.viewSessionList()
 }
 
@@ -995,6 +1244,116 @@ func (m Model) viewPickDirectory() string {
 	} else {
 		b.WriteString(ui.FooterStyle.Render(ui.HelpPickDirectory()))
 	}
+	return ui.AppStyle.Render(b.String())
+}
+
+// viewCloneRepo renders the clone repository view
+func (m Model) viewCloneRepo() string {
+	var b strings.Builder
+	usedLines := 0
+
+	// Header
+	if m.cloneFilter != "" {
+		b.WriteString(ui.HeaderStyle.Render("Clone repository"))
+		b.WriteString("  ")
+		b.WriteString(ui.FilterStyle.Render(m.cloneFilter))
+	} else {
+		b.WriteString(ui.HeaderStyle.Render("Clone repository"))
+	}
+	b.WriteString("\n")
+	usedLines++
+
+	b.WriteString(ui.RenderBorder(m.borderWidth()))
+	b.WriteString("\n")
+	usedLines++
+
+	// Content area
+	contentLines := 0
+
+	if m.cloneLoading {
+		b.WriteString("  Fetching available repositories...\n")
+		contentLines++
+	} else if m.cloneCloning {
+		b.WriteString(fmt.Sprintf("  Cloning %s...\n", m.cloneCloningRepo))
+		contentLines++
+	} else if m.cloneError != "" {
+		b.WriteString(ui.ErrorMessageStyle.Render("  "+m.cloneError) + "\n")
+		contentLines++
+	} else if len(m.cloneRepos) == 0 {
+		if m.cloneFilter != "" {
+			b.WriteString("  No repositories matching filter\n")
+		} else {
+			b.WriteString("  No repositories available to clone\n")
+		}
+		contentLines++
+	} else {
+		// Repository list
+		maxItems := m.cloneMaxVisibleItems()
+		endIdx := m.cloneScrollOffset + maxItems
+		if endIdx > len(m.cloneRepos) {
+			endIdx = len(m.cloneRepos)
+		}
+		visibleCount := endIdx - m.cloneScrollOffset
+
+		scrollbar := ui.ScrollbarChars(len(m.cloneRepos), maxItems, m.cloneScrollOffset, visibleCount)
+
+		for i := m.cloneScrollOffset; i < endIdx; i++ {
+			repo := m.cloneRepos[i]
+			selected := i == m.cloneCursor
+			lineIdx := i - m.cloneScrollOffset
+
+			if lineIdx < len(scrollbar) {
+				b.WriteString(scrollbar[lineIdx])
+				b.WriteString(" ")
+			}
+
+			if selected {
+				b.WriteString(ui.FilterStyle.Render(repo))
+			} else {
+				b.WriteString(repo)
+			}
+			b.WriteString("\n")
+			contentLines++
+		}
+	}
+	usedLines += contentLines
+
+	// Padding to push footer to bottom
+	footerLines := 3
+	contentH := m.contentHeight()
+	if contentH > 0 {
+		padding := contentH - usedLines - footerLines
+		for i := 0; i < padding; i++ {
+			b.WriteString("\n")
+		}
+	}
+
+	b.WriteString(ui.RenderBorder(m.borderWidth()))
+	b.WriteString("\n")
+
+	// Statusline
+	var statusline string
+	if m.cloneLoading {
+		statusline = "Loading..."
+	} else if m.cloneCloning {
+		statusline = "Cloning..."
+	} else if m.cloneFilter != "" {
+		statusline = fmt.Sprintf("%d/%d repositories", len(m.cloneRepos), len(m.cloneReposAll))
+	} else {
+		statusline = fmt.Sprintf("%d repositories", len(m.cloneReposAll))
+	}
+	b.WriteString(ui.StatuslineStyle.Render(statusline))
+	b.WriteString("\n")
+
+	// Help line
+	if m.cloneLoading || m.cloneCloning {
+		b.WriteString(ui.FooterStyle.Render(ui.HelpCloneRepoLoading()))
+	} else if m.cloneFilter != "" {
+		b.WriteString(ui.FooterStyle.Render(ui.HelpFiltering()))
+	} else {
+		b.WriteString(ui.FooterStyle.Render(ui.HelpCloneRepo()))
+	}
+
 	return ui.AppStyle.Render(b.String())
 }
 

@@ -12,6 +12,7 @@ type KeyMap struct {
 	Kill          key.Binding
 	Create        key.Binding
 	PickDirectory key.Binding
+	CloneRepo     key.Binding
 	Quit          key.Binding
 	Cancel        key.Binding
 	Confirm       key.Binding
@@ -61,6 +62,10 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("ctrl+p"),
 		key.WithHelp("C-p", "projects"),
 	),
+	CloneRepo: key.NewBinding(
+		key.WithKeys("ctrl+a"),
+		key.WithHelp("C-a", "add repo"),
+	),
 	Quit: key.NewBinding(
 		key.WithKeys("ctrl+c"),
 		key.WithHelp("C-c", "quit"),
@@ -101,7 +106,8 @@ func HelpNormal() string {
 		helpItem("C-h/l | ←→", "expand") + helpSep() +
 		helpItem("C-x", "kill") + helpSep() +
 		helpItem("C-n", "new") + helpSep() +
-		helpItem("C-p", "projects")
+		helpItem("C-p", "projects") + helpSep() +
+		helpItem("C-a", "add repo")
 }
 
 // HelpFiltering returns the help text when filter is active
@@ -128,4 +134,16 @@ func HelpPickDirectory() string {
 	return helpItem("↑↓", "nav") + helpSep() +
 		helpItem("enter", "select") + helpSep() +
 		helpItem("esc", "back/cancel")
+}
+
+// HelpCloneRepo returns the help text for clone repo mode
+func HelpCloneRepo() string {
+	return helpItem("↑↓", "nav") + helpSep() +
+		helpItem("enter", "clone") + helpSep() +
+		helpItem("esc", "back/cancel")
+}
+
+// HelpCloneRepoLoading returns the help text while loading repos
+func HelpCloneRepoLoading() string {
+	return helpItem("esc", "cancel")
 }
