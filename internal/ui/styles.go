@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -115,6 +116,16 @@ var (
 	ClaudeLabelStyle = lipgloss.NewStyle().
 				Foreground(ColorClaude)
 
+	// Git status styles
+	GitDirtyStyle = lipgloss.NewStyle().
+			Foreground(ColorWarning)
+
+	GitAheadStyle = lipgloss.NewStyle().
+			Foreground(ColorSuccess)
+
+	GitBehindStyle = lipgloss.NewStyle().
+			Foreground(ColorError)
+
 	// Input styles
 	InputPromptStyle = lipgloss.NewStyle().
 				Foreground(ColorPrimary)
@@ -173,6 +184,45 @@ func FormatClaudeStatus(state string, animationFrame int) string {
 	default:
 		return ""
 	}
+}
+
+// FormatGitStatus formats git status for display
+// Returns empty string for clean repos (no indicator shown)
+// Format: [4 changed files, 2 commits ahead, 1 commit behind]
+func FormatGitStatus(dirty, ahead, behind int) string {
+	if dirty == 0 && ahead == 0 && behind == 0 {
+		return ""
+	}
+
+	var parts []string
+
+	if dirty > 0 {
+		label := "changed files"
+		if dirty == 1 {
+			label = "changed file"
+		}
+		parts = append(parts, GitDirtyStyle.Render(fmt.Sprintf("%d %s", dirty, label)))
+	}
+	if ahead > 0 {
+		label := "commits ahead"
+		if ahead == 1 {
+			label = "commit ahead"
+		}
+		parts = append(parts, GitAheadStyle.Render(fmt.Sprintf("%d %s", ahead, label)))
+	}
+	if behind > 0 {
+		label := "commits behind"
+		if behind == 1 {
+			label = "commit behind"
+		}
+		parts = append(parts, GitBehindStyle.Render(fmt.Sprintf("%d %s", behind, label)))
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return "[" + strings.Join(parts, ", ") + "]"
 }
 
 // ScrollbarChars returns scrollbar characters for each visible line

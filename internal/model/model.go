@@ -14,6 +14,7 @@ import (
 
 	"github.com/nikbrunner/tsm/internal/claude"
 	"github.com/nikbrunner/tsm/internal/config"
+	"github.com/nikbrunner/tsm/internal/git"
 	"github.com/nikbrunner/tsm/internal/github"
 	"github.com/nikbrunner/tsm/internal/repos"
 	"github.com/nikbrunner/tsm/internal/tmux"
@@ -43,6 +44,7 @@ type Item struct {
 type Model struct {
 	sessions       []tmux.Session
 	claudeStatuses map[string]claude.Status
+	gitStatuses    map[string]git.Status
 	currentSession string
 	cursor         int
 	items          []Item // Flattened list of visible items
@@ -161,6 +163,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case sessionsMsg:
 		m.sessions = msg.sessions
 		m.loadClaudeStatuses()
+		m.loadGitStatuses()
 		m.calculateColumnWidths()
 		m.rebuildItems()
 		if len(m.items) == 0 {
@@ -1048,6 +1051,23 @@ func (m *Model) loadClaudeStatuses() {
 	}
 }
 
+func (m *Model) loadGitStatuses() {
+	m.gitStatuses = make(map[string]git.Status)
+	if !m.config.GitStatusEnabled {
+		return
+	}
+	for _, s := range m.sessions {
+		path, err := git.GetSessionPath(s.Name)
+		if err != nil || path == "" {
+			continue
+		}
+		status := git.GetStatus(path)
+		if status.IsRepo && !status.IsClean() {
+			m.gitStatuses[s.Name] = status
+		}
+	}
+}
+
 func (m *Model) calculateColumnWidths() {
 	m.maxNameWidth = 0
 	for _, s := range m.sessions {
@@ -1669,6 +1689,12 @@ func (m Model) renderSessionWithLabel(session tmux.Session, num int, isFirst boo
 		b.WriteString(ui.TimeSelectedStyle.Render(timePadded))
 	} else {
 		b.WriteString(ui.TimeStyle.Render(timePadded))
+	}
+
+	// Git status
+	if status, ok := m.gitStatuses[session.Name]; ok {
+		b.WriteString(" ")
+		b.WriteString(ui.FormatGitStatus(status.Dirty, status.Ahead, status.Behind))
 	}
 
 	// Claude status

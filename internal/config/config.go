@@ -19,6 +19,9 @@ type Config struct {
 	// Enable Claude Code status integration
 	ClaudeStatusEnabled bool `yaml:"claude_status_enabled"`
 
+	// Enable git status indicator in session list
+	GitStatusEnabled bool `yaml:"git_status_enabled"`
+
 	// Directory for status cache files
 	CacheDir string `yaml:"cache_dir"`
 
@@ -39,6 +42,7 @@ func DefaultConfig() Config {
 		Layout:              "",
 		LayoutDir:           filepath.Join(home, ".config", "tmux", "layouts"),
 		ClaudeStatusEnabled: false,
+		GitStatusEnabled:    false,
 		CacheDir:            filepath.Join(home, ".cache", "tsm"),
 		ProjectDirs:         []string{filepath.Join(home, "repos")},
 		ProjectDepth:        2,
@@ -94,6 +98,9 @@ func Load() (Config, error) {
 	if os.Getenv("TMUX_SESSION_PICKER_CLAUDE_STATUS") == "1" {
 		cfg.ClaudeStatusEnabled = true
 	}
+	if os.Getenv("TMUX_SESSION_PICKER_GIT_STATUS") == "1" {
+		cfg.GitStatusEnabled = true
+	}
 
 	return cfg, nil
 }
@@ -125,6 +132,9 @@ func Init() error {
 
 # Enable Claude Code status integration
 # claude_status_enabled: false
+
+# Enable git status indicator (shows dirty/ahead/behind for repos)
+# git_status_enabled: false
 
 # Directory for status cache files
 # cache_dir: ~/.cache/tsm
