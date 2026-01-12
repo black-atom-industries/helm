@@ -5,31 +5,31 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
+	"gopkg.in/yaml.v3"
 )
 
 // Config holds all configuration options for tsm
 type Config struct {
 	// Layout script name to apply when creating new sessions
-	Layout string `toml:"layout"`
+	Layout string `yaml:"layout"`
 
 	// Directory containing layout scripts
-	LayoutDir string `toml:"layout_dir"`
+	LayoutDir string `yaml:"layout_dir"`
 
 	// Enable Claude Code status integration
-	ClaudeStatusEnabled bool `toml:"claude_status_enabled"`
+	ClaudeStatusEnabled bool `yaml:"claude_status_enabled"`
 
 	// Directory for status cache files
-	CacheDir string `toml:"cache_dir"`
+	CacheDir string `yaml:"cache_dir"`
 
 	// Base directories for project picker (C-p) - supports multiple paths
-	ProjectDirs []string `toml:"project_dirs"`
+	ProjectDirs []string `yaml:"project_dirs"`
 
 	// Scan depth for project directories (default: 2 for owner/repo structure)
-	ProjectDepth int `toml:"project_depth"`
+	ProjectDepth int `yaml:"project_depth"`
 
 	// Default directory for new sessions created with C-n
-	DefaultSessionDir string `toml:"default_session_dir"`
+	DefaultSessionDir string `yaml:"default_session_dir"`
 }
 
 // DefaultConfig returns configuration with sensible defaults
@@ -49,7 +49,7 @@ func DefaultConfig() Config {
 // Path returns the path to the config file
 func Path() string {
 	home := os.Getenv("HOME")
-	return filepath.Join(home, ".config", "tsm", "config.toml")
+	return filepath.Join(home, ".config", "tsm", "config.yml")
 }
 
 // Load reads configuration from file and environment variables.
@@ -60,7 +60,11 @@ func Load() (Config, error) {
 	// Load from config file if it exists
 	configPath := Path()
 	if _, err := os.Stat(configPath); err == nil {
-		if _, err := toml.DecodeFile(configPath, &cfg); err != nil {
+		data, err := os.ReadFile(configPath)
+		if err != nil {
+			return cfg, fmt.Errorf("failed to read config file: %w", err)
+		}
+		if err := yaml.Unmarshal(data, &cfg); err != nil {
 			return cfg, fmt.Errorf("failed to parse config file: %w", err)
 		}
 	}
@@ -114,28 +118,32 @@ func Init() error {
 # Environment variables override these settings
 
 # Layout script name to apply when creating new sessions
-# layout = "ide"
+# layout: ide
 
 # Directory containing layout scripts
-# layout_dir = "~/.config/tmux/layouts"
+# layout_dir: ~/.config/tmux/layouts
 
 # Enable Claude Code status integration
-# claude_status_enabled = false
+# claude_status_enabled: false
 
 # Directory for status cache files
-# cache_dir = "~/.cache/tsm"
+# cache_dir: ~/.cache/tsm
 
 # Base directories for project picker (C-p)
 # Supports multiple paths - all will be scanned
-# project_dirs = ["~/repos"]
+# project_dirs:
+#   - ~/repos
 # Example with multiple paths:
-# project_dirs = ["~/repos", "~/work", "~/personal"]
+# project_dirs:
+#   - ~/repos
+#   - ~/work
+#   - ~/personal
 
 # Scan depth for project directories (2 = owner/repo structure)
-# project_depth = 2
+# project_depth: 2
 
 # Default directory for new sessions created with C-n
-# default_session_dir = "~"
+# default_session_dir: ~
 `
 
 	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {

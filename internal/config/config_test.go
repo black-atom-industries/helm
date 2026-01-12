@@ -70,7 +70,7 @@ func TestDefaultConfig(t *testing.T) {
 
 func TestPath(t *testing.T) {
 	home := os.Getenv("HOME")
-	expected := filepath.Join(home, ".config", "tsm", "config.toml")
+	expected := filepath.Join(home, ".config", "tsm", "config.yml")
 
 	result := Path()
 	if result != expected {
