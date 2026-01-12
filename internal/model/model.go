@@ -1049,9 +1049,8 @@ func (m *Model) sessionMaxVisibleItems() int {
 	maxItems := m.config.MaxVisibleItems
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		// Reserve: header(1) + header border(1) + footer border(1) + statusline(1) + help(1) = 5 lines
-		// Message line adds 1 when present, but we use 5 for normal case
-		availableForContent := contentH - 5
+		// Reserve: header(1) + header border(1) + footer border(1) + message(1) + statusline(1) + help(2) = 7 lines
+		availableForContent := contentH - 7
 		if availableForContent < maxItems && availableForContent > 0 {
 			maxItems = availableForContent
 		}
@@ -1445,8 +1444,8 @@ func (m Model) viewSessionList() string {
 	}
 
 	// Add padding to push footer to bottom
-	// Footer: border (1) + message (1) + statusline (1) + help (1)
-	footerLines := 4
+	// Footer: border (1) + message (1) + statusline (1) + help (2 lines in normal mode)
+	footerLines := 5
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		padding := contentH - usedLines - footerLines

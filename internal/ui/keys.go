@@ -99,15 +99,16 @@ func helpSep() string {
 	return HelpSepStyle.Render(" · ")
 }
 
-// HelpNormal returns the help text for normal mode
+// HelpNormal returns the help text for normal mode (two lines)
 func HelpNormal() string {
-	return helpItem("type", "filter") + helpSep() +
+	line1 := helpItem("type", "filter") + helpSep() +
 		helpItem("C-j/k | ↑↓", "nav") + helpSep() +
 		helpItem("C-h/l | ←→", "expand") + helpSep() +
-		helpItem("C-x", "kill") + helpSep() +
-		helpItem("C-n", "new") + helpSep() +
+		helpItem("C-x", "kill")
+	line2 := helpItem("C-n", "new") + helpSep() +
 		helpItem("C-p", "projects") + helpSep() +
 		helpItem("C-a", "add repo")
+	return line1 + "\n" + line2
 }
 
 // HelpFiltering returns the help text when filter is active
