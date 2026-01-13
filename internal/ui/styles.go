@@ -154,11 +154,93 @@ var (
 	StatuslineStyle = lipgloss.NewStyle().
 			Foreground(ColorDim).
 			Padding(0, 1)
+
+	// Title bar style - inverted colors (colored background)
+	TitleBarStyle = lipgloss.NewStyle().
+			Background(ColorPrimary).
+			Foreground(lipgloss.Color("15")). // bright white text on colored bg
+			Bold(true)
+
+	// Prompt style
+	PromptStyle = lipgloss.NewStyle().
+			Foreground(ColorPrimary).
+			Padding(0, 1)
+
+	// State line style
+	StateStyle = lipgloss.NewStyle().
+			Foreground(ColorDim).
+			Padding(0, 1)
 )
 
 // RenderBorder returns a horizontal border line
 func RenderBorder(width int) string {
 	return BorderStyle.Render(strings.Repeat("─", width))
+}
+
+// RenderTitleBar renders the inverted title bar with logo on left and view name on right
+func RenderTitleBar(logo, viewName string, width int) string {
+	// Account for padding in AppStyle (1 on each side)
+	innerWidth := width - AppBorderOverheadX
+	if innerWidth < 10 {
+		innerWidth = 40 // fallback for initial render
+	}
+
+	// Calculate spacing between logo and view name
+	spacing := innerWidth - len(logo) - len(viewName) - 2 // -2 for padding spaces
+	if spacing < 1 {
+		spacing = 1
+	}
+
+	content := " " + logo + strings.Repeat(" ", spacing) + viewName + " "
+	return TitleBarStyle.Width(innerWidth).Render(content)
+}
+
+// RenderPrompt renders the prompt line with optional filter text
+func RenderPrompt(filter string, width int) string {
+	innerWidth := width - AppBorderOverheadX
+	if innerWidth < 10 {
+		innerWidth = 40 // fallback for initial render
+	}
+	prompt := "> " + filter
+	return PromptStyle.Width(innerWidth).Render(prompt)
+}
+
+// RenderFooter renders the 3-line footer (notification, state, hints)
+func RenderFooter(notification, state, hints string, isError bool, width int) string {
+	innerWidth := width - AppBorderOverheadX
+	if innerWidth < 10 {
+		innerWidth = 40 // fallback for initial render
+	}
+	var b strings.Builder
+
+	// Border
+	b.WriteString(RenderBorder(innerWidth))
+	b.WriteString("\n")
+
+	// Notification line (always 1 line, even if empty)
+	if notification != "" {
+		if isError {
+			b.WriteString(ErrorMessageStyle.Width(innerWidth).Render(notification))
+		} else {
+			b.WriteString(MessageStyle.Width(innerWidth).Render(notification))
+		}
+	} else {
+		b.WriteString(strings.Repeat(" ", innerWidth))
+	}
+	b.WriteString("\n")
+
+	// State line (always 1 line, even if empty)
+	if state != "" {
+		b.WriteString(StateStyle.Width(innerWidth).Render(state))
+	} else {
+		b.WriteString(strings.Repeat(" ", innerWidth))
+	}
+	b.WriteString("\n")
+
+	// Hints line
+	b.WriteString(FooterStyle.Width(innerWidth).Render(hints))
+
+	return b.String()
 }
 
 // FormatClaudeStatus formats the Claude status for display

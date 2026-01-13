@@ -35,6 +35,28 @@ const (
 	ModeBookmarks
 )
 
+// String returns the display name for the mode (used in title bar)
+func (m Mode) String() string {
+	switch m {
+	case ModeNormal:
+		return "Sessions"
+	case ModeBookmarks:
+		return "Bookmarks"
+	case ModePickDirectory:
+		return "Projects"
+	case ModeCloneRepo:
+		return "Clone"
+	case ModeCreate:
+		return "New Session"
+	case ModeConfirmKill:
+		return "Confirm Kill"
+	case ModeConfirmRemoveFolder:
+		return "Confirm Remove"
+	default:
+		return "Sessions"
+	}
+}
+
 // Item represents either a session or a window in the flattened list
 type Item struct {
 	IsSession    bool
@@ -97,6 +119,7 @@ type Model struct {
 // New creates a new Model
 func New(currentSession string, cfg config.Config) Model {
 	ti := textinput.New()
+	ti.Prompt = "" // We handle the prompt in RenderPrompt
 	ti.CharLimit = 50
 
 	// Create project list with filter function that matches on directory basename
@@ -1315,6 +1338,56 @@ func (m *Model) calculateColumnWidths() {
 	}
 }
 
+// stateText returns the state line text based on current mode and context
+func (m *Model) stateText() string {
+	switch m.mode {
+	case ModeNormal:
+		total := len(m.sessions)
+		visible := len(m.items)
+		if m.filter != "" {
+			return fmt.Sprintf("Showing %d/%d sessions", visible, total)
+		}
+		return fmt.Sprintf("%d sessions", total)
+	case ModeBookmarks:
+		total := len(m.config.Bookmarks)
+		if total == 0 {
+			return "No bookmarks"
+		}
+		return fmt.Sprintf("%d bookmarks", total)
+	case ModePickDirectory:
+		total := len(m.projectList.Items())
+		visible := m.projectList.Len()
+		if m.projectList.Filter() != "" {
+			return fmt.Sprintf("Showing %d/%d projects", visible, total)
+		}
+		return fmt.Sprintf("%d projects", total)
+	case ModeCloneRepo:
+		if m.cloneSuccess {
+			return "Clone successful"
+		}
+		if m.cloneLoading {
+			return "Loading repositories..."
+		}
+		if m.cloneCloning {
+			return fmt.Sprintf("Cloning %s...", m.cloneCloningRepo)
+		}
+		total := len(m.cloneList.Items())
+		visible := m.cloneList.Len()
+		if m.cloneList.Filter() != "" {
+			return fmt.Sprintf("Showing %d/%d repositories", visible, total)
+		}
+		return fmt.Sprintf("%d repositories", total)
+	case ModeCreate:
+		return "Enter session name"
+	case ModeConfirmKill:
+		return fmt.Sprintf("Kill session: %s?", m.killTarget)
+	case ModeConfirmRemoveFolder:
+		return fmt.Sprintf("Remove folder: %s?", filepath.Base(m.removeTarget))
+	default:
+		return ""
+	}
+}
+
 func (m *Model) rebuildItems() {
 	m.items = nil
 	filterLower := strings.ToLower(m.filter)
@@ -1394,8 +1467,8 @@ func (m *Model) borderWidth() int {
 func (m *Model) sessionMaxVisibleItems() int {
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		// Reserve: header(1) + header border(1) + footer border(1) + message(1) + statusline(1) + help(2) = 7 lines
-		availableForContent := contentH - 7
+		// Reserve: title(1) + prompt(1) + border(1) + footer border(1) + notification(1) + state(1) + hints(2) = 8 lines
+		availableForContent := contentH - 8
 		if availableForContent > 0 {
 			return availableForContent
 		}
@@ -1409,8 +1482,23 @@ func (m *Model) sessionMaxVisibleItems() int {
 func (m *Model) projectMaxVisibleItems() int {
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		// Reserve: header(1) + header border(1) + footer border(1) + statusline(1) + help(1) = 5 lines
-		availableForContent := contentH - 5
+		// Reserve: title(1) + prompt(1) + border(1) + footer border(1) + notification(1) + state(1) + hints(2) = 8 lines
+		availableForContent := contentH - 8
+		if availableForContent > 0 {
+			return availableForContent
+		}
+	}
+	// Fallback when height unknown
+	return 10
+}
+
+// cloneMaxVisibleItems returns the actual number of items that can be shown
+// in the clone repo view based on window height
+func (m *Model) cloneMaxVisibleItems() int {
+	contentH := m.contentHeight()
+	if contentH > 0 {
+		// Reserve: title(1) + prompt(1) + border(1) + footer border(1) + notification(1) + state(1) + hints(2) = 8 lines
+		availableForContent := contentH - 8
 		if availableForContent > 0 {
 			return availableForContent
 		}
@@ -1482,23 +1570,18 @@ func (m Model) View() string {
 // viewPickDirectory renders the directory picker view
 func (m Model) viewPickDirectory() string {
 	var b strings.Builder
-	usedLines := 0
 
-	// Header - always show "Select directory", append filter if active
-	filter := m.projectList.Filter()
-	if filter != "" {
-		b.WriteString(ui.HeaderStyle.Render("Select directory"))
-		b.WriteString("  ")
-		b.WriteString(ui.FilterStyle.Render(filter))
-	} else {
-		b.WriteString(ui.HeaderStyle.Render("Select directory"))
-	}
+	// Fixed header: title bar + prompt + border
+	b.WriteString(ui.RenderTitleBar("tsm", m.mode.String(), m.width))
 	b.WriteString("\n")
-	usedLines++
+
+	// Prompt line - show filter
+	filter := m.projectList.Filter()
+	b.WriteString(ui.RenderPrompt(filter, m.width))
+	b.WriteString("\n")
 
 	b.WriteString(ui.RenderBorder(m.borderWidth()))
 	b.WriteString("\n")
-	usedLines++
 
 	// Use shared helper for consistent visible item calculation
 	maxItems := m.projectMaxVisibleItems()
@@ -1543,86 +1626,55 @@ func (m Model) viewPickDirectory() string {
 		}
 		contentLines++
 	}
-	usedLines += contentLines
 
 	// Add padding to push footer to bottom
-	// Footer = border (1) + statusline (1) + help line (1) = 3 lines
-	// Add 1 more for message line when in confirmation mode
-	footerLines := 3
-	if m.mode == ModeConfirmRemoveFolder {
-		footerLines = 4
-	}
+	// Fixed header: 3 lines (title + prompt + border)
+	// Fixed footer: 5 lines (border + notification + state + hints(2))
+	headerLines := 3
+	footerLines := 5
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		padding := contentH - usedLines - footerLines
+		padding := contentH - headerLines - contentLines - footerLines
 		for i := 0; i < padding; i++ {
 			b.WriteString("\n")
 		}
 	}
 
-	b.WriteString(ui.RenderBorder(m.borderWidth()))
-	b.WriteString("\n")
-
-	// Message line (only for confirmation mode)
-	if m.mode == ModeConfirmRemoveFolder && m.message != "" {
-		if m.messageIsError {
-			b.WriteString(ui.ErrorMessageStyle.Render(m.message))
-		} else {
-			b.WriteString(ui.MessageStyle.Render(m.message))
-		}
-		b.WriteString("\n")
-	}
-
-	// Statusline (directory counts)
-	var statusline string
-	allItems := m.projectList.Items()
-	if filter != "" {
-		statusline = fmt.Sprintf("%d/%d directories", totalItems, len(allItems))
-	} else {
-		statusline = fmt.Sprintf("%d directories", len(allItems))
-	}
-	b.WriteString(ui.StatuslineStyle.Render(statusline))
-	b.WriteString("\n")
-
-	// Help line
+	// Fixed footer: notification + state + hints
+	var hints string
 	switch m.mode {
 	case ModeConfirmRemoveFolder:
-		b.WriteString(ui.FooterStyle.Render(ui.HelpConfirmRemoveFolder()))
+		hints = ui.HelpConfirmRemoveFolder()
 	default:
 		if m.returnToBookmarks {
-			// Show add bookmark help when coming from bookmarks mode
-			b.WriteString(ui.FooterStyle.Render(ui.HelpAddBookmark()))
+			hints = ui.HelpAddBookmark()
 		} else if filter != "" {
-			b.WriteString(ui.FooterStyle.Render(ui.HelpFiltering()))
+			hints = ui.HelpFiltering()
 		} else {
-			b.WriteString(ui.FooterStyle.Render(ui.HelpPickDirectory()))
+			hints = ui.HelpPickDirectory()
 		}
 	}
+
+	b.WriteString(ui.RenderFooter(m.message, m.stateText(), hints, m.messageIsError, m.width))
+
 	return ui.AppStyle.Render(b.String())
 }
 
 // viewCloneRepo renders the clone repository view
 func (m Model) viewCloneRepo() string {
 	var b strings.Builder
-	usedLines := 0
 
-	// Header
-	cloneFilter := m.cloneList.Filter()
-	if m.cloneSuccess {
-		b.WriteString(ui.HeaderStyle.Render("Clone complete"))
-	} else if cloneFilter != "" {
-		b.WriteString(ui.HeaderStyle.Render("Clone repository"))
-		b.WriteString("  ")
-		b.WriteString(ui.FilterStyle.Render(cloneFilter))
-	} else {
-		b.WriteString(ui.HeaderStyle.Render("Clone repository"))
-	}
+	// Fixed header: title bar + prompt + border
+	b.WriteString(ui.RenderTitleBar("tsm", m.mode.String(), m.width))
 	b.WriteString("\n")
-	usedLines++
+
+	// Prompt line - show filter
+	cloneFilter := m.cloneList.Filter()
+	b.WriteString(ui.RenderPrompt(cloneFilter, m.width))
+	b.WriteString("\n")
 
 	b.WriteString(ui.RenderBorder(m.borderWidth()))
 	b.WriteString("\n")
-	usedLines++
 
 	// Content area
 	contentLines := 0
@@ -1654,15 +1706,8 @@ func (m Model) viewCloneRepo() string {
 		}
 		contentLines++
 	} else {
-		// Repository list - calculate max visible items (same as project picker)
-		contentH := m.contentHeight()
-		maxItems := 10 // fallback
-		if contentH > 0 {
-			// Reserve: header(1) + header border(1) + footer border(1) + statusline(1) + help(1) = 5 lines
-			if available := contentH - 5; available > 0 {
-				maxItems = available
-			}
-		}
+		// Repository list - calculate max visible items
+		maxItems := m.cloneMaxVisibleItems()
 		m.cloneList.SetHeight(maxItems)
 
 		visibleRepos := m.cloneList.VisibleItems()
@@ -1688,47 +1733,33 @@ func (m Model) viewCloneRepo() string {
 			contentLines++
 		}
 	}
-	usedLines += contentLines
 
-	// Padding to push footer to bottom
-	footerLines := 3
+	// Add padding to push footer to bottom
+	// Fixed header: 3 lines (title + prompt + border)
+	// Fixed footer: 5 lines (border + notification + state + hints(2))
+	headerLines := 3
+	footerLines := 5
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		padding := contentH - usedLines - footerLines
+		padding := contentH - headerLines - contentLines - footerLines
 		for i := 0; i < padding; i++ {
 			b.WriteString("\n")
 		}
 	}
 
-	b.WriteString(ui.RenderBorder(m.borderWidth()))
-	b.WriteString("\n")
-
-	// Statusline
-	var statusline string
+	// Fixed footer: notification + state + hints
+	var hints string
 	if m.cloneSuccess {
-		statusline = "Clone successful"
-	} else if m.cloneLoading {
-		statusline = "Loading..."
-	} else if m.cloneCloning {
-		statusline = "Cloning..."
-	} else if cloneFilter != "" {
-		statusline = fmt.Sprintf("%d/%d repositories", m.cloneList.Len(), len(m.cloneList.Items()))
-	} else {
-		statusline = fmt.Sprintf("%d repositories", len(m.cloneList.Items()))
-	}
-	b.WriteString(ui.StatuslineStyle.Render(statusline))
-	b.WriteString("\n")
-
-	// Help line
-	if m.cloneSuccess {
-		b.WriteString(ui.FooterStyle.Render(ui.HelpCloneSuccess()))
+		hints = ui.HelpCloneSuccess()
 	} else if m.cloneLoading || m.cloneCloning {
-		b.WriteString(ui.FooterStyle.Render(ui.HelpCloneRepoLoading()))
+		hints = ui.HelpCloneRepoLoading()
 	} else if cloneFilter != "" {
-		b.WriteString(ui.FooterStyle.Render(ui.HelpFiltering()))
+		hints = ui.HelpFiltering()
 	} else {
-		b.WriteString(ui.FooterStyle.Render(ui.HelpCloneRepo()))
+		hints = ui.HelpCloneRepo()
 	}
+
+	b.WriteString(ui.RenderFooter(m.message, m.stateText(), hints, m.messageIsError, m.width))
 
 	return ui.AppStyle.Render(b.String())
 }
@@ -1736,23 +1767,15 @@ func (m Model) viewCloneRepo() string {
 // viewBookmarks renders the bookmarks picker view
 func (m Model) viewBookmarks() string {
 	var b strings.Builder
-	usedLines := 0
-
-	// Header
 	filter := m.bookmarkList.Filter()
-	if filter != "" {
-		b.WriteString(ui.HeaderStyle.Render("Bookmarks"))
-		b.WriteString("  ")
-		b.WriteString(ui.FilterStyle.Render(filter))
-	} else {
-		b.WriteString(ui.HeaderStyle.Render("Bookmarks"))
-	}
-	b.WriteString("\n")
-	usedLines++
 
+	// Fixed header: title bar + prompt + border
+	b.WriteString(ui.RenderTitleBar("tsm", m.mode.String(), m.width))
+	b.WriteString("\n")
+	b.WriteString(ui.RenderPrompt(filter, m.width))
+	b.WriteString("\n")
 	b.WriteString(ui.RenderBorder(m.borderWidth()))
 	b.WriteString("\n")
-	usedLines++
 
 	// Content area
 	contentLines := 0
@@ -1768,10 +1791,11 @@ func (m Model) viewBookmarks() string {
 		contentLines++
 	} else {
 		// Calculate max visible items
+		// Fixed header: 3 lines, Fixed footer: 4 lines
 		contentH := m.contentHeight()
 		maxItems := 10 // fallback
 		if contentH > 0 {
-			if available := contentH - 5; available > 0 {
+			if available := contentH - 7; available > 0 {
 				maxItems = available
 			}
 		}
@@ -1863,37 +1887,27 @@ func (m Model) viewBookmarks() string {
 			}
 		}
 	}
-	usedLines += contentLines
 
 	// Padding to push footer to bottom
-	footerLines := 3
+	// Fixed header: 3 lines, Fixed footer: 5 lines (border + notification + state + hints(2))
+	headerLines := 3
+	footerLines := 5
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		padding := contentH - usedLines - footerLines
+		padding := contentH - headerLines - contentLines - footerLines
 		for i := 0; i < padding; i++ {
 			b.WriteString("\n")
 		}
 	}
 
-	b.WriteString(ui.RenderBorder(m.borderWidth()))
-	b.WriteString("\n")
-
-	// Statusline
-	var statusline string
+	// Fixed footer
+	var hints string
 	if filter != "" {
-		statusline = fmt.Sprintf("%d/%d bookmarks", m.bookmarkList.Len(), len(m.bookmarkList.Items()))
+		hints = ui.HelpFiltering()
 	} else {
-		statusline = fmt.Sprintf("%d bookmarks (M-1 to M-%d)", len(m.config.Bookmarks), min(len(m.config.Bookmarks), 9))
+		hints = ui.HelpBookmarks()
 	}
-	b.WriteString(ui.StatuslineStyle.Render(statusline))
-	b.WriteString("\n")
-
-	// Help line
-	if filter != "" {
-		b.WriteString(ui.FooterStyle.Render(ui.HelpFiltering()))
-	} else {
-		b.WriteString(ui.FooterStyle.Render(ui.HelpBookmarks()))
-	}
+	b.WriteString(ui.RenderFooter(m.message, m.stateText(), hints, m.messageIsError, m.width))
 
 	return ui.AppStyle.Render(b.String())
 }
@@ -1901,22 +1915,17 @@ func (m Model) viewBookmarks() string {
 // viewSessionList renders the main session list view
 func (m Model) viewSessionList() string {
 	var b strings.Builder
-	usedLines := 0
 
-	// Header with optional filter
-	if m.filter != "" {
-		b.WriteString(ui.HeaderStyle.Render("tsm"))
-		b.WriteString("  ")
-		b.WriteString(ui.FilterStyle.Render(m.filter))
-	} else {
-		b.WriteString(ui.HeaderStyle.Render("tsm"))
-	}
+	// Fixed header: title bar + prompt + border
+	b.WriteString(ui.RenderTitleBar("tsm", m.mode.String(), m.width))
 	b.WriteString("\n")
-	usedLines++
+
+	// Prompt line - always show filter (input goes in notification line for create mode)
+	b.WriteString(ui.RenderPrompt(m.filter, m.width))
+	b.WriteString("\n")
 
 	b.WriteString(ui.RenderBorder(m.borderWidth()))
 	b.WriteString("\n")
-	usedLines++
 
 	// Session list (only visible items)
 	maxVisible := m.sessionMaxVisibleItems()
@@ -1999,68 +2008,40 @@ func (m Model) viewSessionList() string {
 		}
 		contentLines++
 	}
-	usedLines += contentLines
-
-	// Message line content (only rendered when there's content)
-	var messageContent string
-	if m.message != "" {
-		if m.messageIsError {
-			messageContent = ui.ErrorMessageStyle.Render(m.message)
-		} else {
-			messageContent = ui.MessageStyle.Render(m.message)
-		}
-	} else if m.mode == ModeCreate {
-		messageContent = ui.InputPromptStyle.Render(" New session: ") + m.input.View()
-	}
 
 	// Add padding to push footer to bottom
-	// Footer: border (1) + message (1) + statusline (1) + help (2 lines in normal mode)
+	// Fixed header: 3 lines (title + prompt + border)
+	// Fixed footer: 5 lines (border + notification + state + hints(2))
+	headerLines := 3
 	footerLines := 5
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		padding := contentH - usedLines - footerLines
+		padding := contentH - headerLines - contentLines - footerLines
 		for i := 0; i < padding; i++ {
 			b.WriteString("\n")
 		}
 	}
 
-	b.WriteString(ui.RenderBorder(m.borderWidth()))
-	b.WriteString("\n")
-
-	// Message line (always present, may be empty)
-	b.WriteString(messageContent)
-	b.WriteString("\n")
-
-	// Statusline (session counts)
-	var statusline string
-	if m.filter != "" {
-		// Count visible sessions (items that are sessions, not windows)
-		visibleSessions := 0
-		for _, item := range m.items {
-			if item.IsSession {
-				visibleSessions++
-			}
-		}
-		statusline = fmt.Sprintf("%d/%d sessions", visibleSessions, len(m.sessions))
-	} else {
-		statusline = fmt.Sprintf("%d sessions", len(m.sessions))
-	}
-	b.WriteString(ui.StatuslineStyle.Render(statusline))
-	b.WriteString("\n")
-
-	// Help line
+	// Fixed footer: notification + state + hints
+	var hints string
+	var notification string
 	switch m.mode {
 	case ModeNormal:
+		notification = m.message
 		if m.filter != "" {
-			b.WriteString(ui.FooterStyle.Render(ui.HelpFiltering()))
+			hints = ui.HelpFiltering()
 		} else {
-			b.WriteString(ui.FooterStyle.Render(ui.HelpNormal()))
+			hints = ui.HelpNormal()
 		}
 	case ModeConfirmKill:
-		b.WriteString(ui.FooterStyle.Render(ui.HelpConfirmKill()))
+		notification = m.message
+		hints = ui.HelpConfirmKill()
 	case ModeCreate:
-		b.WriteString(ui.FooterStyle.Render(ui.HelpCreate()))
+		notification = "New session: " + m.input.View()
+		hints = ui.HelpCreate()
 	}
+
+	b.WriteString(ui.RenderFooter(notification, m.stateText(), hints, m.messageIsError, m.width))
 
 	return ui.AppStyle.Render(b.String())
 }
