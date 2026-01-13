@@ -1,6 +1,6 @@
-# AGENTS.md
+# CLAUDE.md
 
-This file provides guidance to AI agents (Claude Code, etc.) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
@@ -22,30 +22,41 @@ For quick iteration: `go build -o tsm ./cmd/tsm/ && cp tsm ~/.local/bin/tsm`
 ## Architecture
 
 ```
-cmd/tsm/main.go          # Entry point, handles `tsm init` subcommand
+cmd/tsm/main.go           # Entry point, handles `tsm init` subcommand
 internal/
-  model/model.go         # Bubbletea Model - main state and Update/View logic
+  model/model.go          # Bubbletea Model - main state, Update/View logic
   ui/
-    keys.go              # Key bindings (KeyMap) and help text functions
-    styles.go            # Lipgloss colors and styles
-  config/config.go       # TOML config loading (~/.config/tsm/config.toml)
-  tmux/tmux.go           # tmux command wrappers (list sessions, switch, kill)
-  claude/status.go       # Claude Code status file parsing
-hooks/tsm-hook.sh        # Claude Code hook for status updates
+    keys.go               # Key bindings (KeyMap) and help text
+    styles.go             # Lipgloss colors and styles
+    columns.go            # Row rendering (sessions, windows, bookmarks)
+    scrolllist.go         # Generic scrollable list with filtering
+  config/config.go        # TOML config (~/.config/tsm/config.toml)
+  tmux/tmux.go            # tmux command wrappers (list, switch, kill)
+  claude/status.go        # Claude Code status file parsing
+  git/status.go           # Git status per session (dirty, ahead/behind)
+  repos/config.go         # Repos base path config (~/.config/repos/)
+  github/github.go        # GitHub API for repo listing
+hooks/tsm-hook.sh         # Claude Code hook for status updates
 ```
 
 ### Bubbletea Model Flow
 
-The model (`internal/model/model.go`) has three modes:
-- **ModeNormal**: Session list with fuzzy filtering (typing filters, Ctrl+keys navigate)
-- **ModeConfirmKill**: Kill confirmation prompt
+The model (`internal/model/model.go`) has seven modes:
+- **ModeNormal**: Session list with fuzzy filtering
+- **ModeBookmarks**: Bookmarked repos (local dirs without active sessions)
+- **ModePickDirectory**: Directory picker for new sessions
+- **ModeCloneRepo**: Clone repos from GitHub
 - **ModeCreate**: Text input for new session name
+- **ModeConfirmKill**: Kill confirmation prompt
+- **ModeConfirmRemoveFolder**: Folder removal confirmation
 
 Key state:
 - `sessions []tmux.Session` - Raw session data
 - `items []Item` - Flattened view (sessions + expanded windows)
 - `filter string` - Current filter text
 - `cursor int` - Selected item index
+- `projectList *ui.ScrollList[string]` - Directory picker state
+- `cloneList *ui.ScrollList[string]` - Clone repo picker state
 
 ### Key Bindings
 
@@ -53,9 +64,13 @@ Navigation uses Ctrl modifiers to reserve letters for filtering:
 - `Ctrl+j/k` or arrows: Navigate
 - `Ctrl+h/l` or arrows: Collapse/Expand sessions
 - `Ctrl+n`: Create new session
-- `Ctrl+x`: Kill (requires `Ctrl+y` to confirm)
+- `Ctrl+p`: Pick directory (projects)
+- `Ctrl+b`: Bookmarks
+- `Ctrl+x`: Kill (requires confirmation)
+- `Ctrl+r`: Clone repo
+- `Ctrl+g`: Lazygit
 - `1-9`: Jump to session (only when no filter active)
-- Type letters: Fuzzy filter sessions
+- Type letters: Fuzzy filter
 
 ## Configuration
 
