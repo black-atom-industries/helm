@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,6 +16,9 @@ func TestGetStatus(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
+	// Use current timestamp to avoid stale detection
+	currentTimestamp := time.Now().Unix()
+
 	tests := []struct {
 		name        string
 		filename    string
@@ -25,21 +29,21 @@ func TestGetStatus(t *testing.T) {
 		{
 			name:        "valid working status",
 			filename:    "test-session.status",
-			content:     "working:1704067200",
+			content:     "working:" + fmt.Sprintf("%d", currentTimestamp),
 			wantState:   "working",
 			wantTimeSet: true,
 		},
 		{
 			name:        "valid waiting status",
 			filename:    "test-session.status",
-			content:     "waiting:1704067200",
+			content:     "waiting:" + fmt.Sprintf("%d", currentTimestamp),
 			wantState:   "waiting",
 			wantTimeSet: true,
 		},
 		{
 			name:        "valid new status",
 			filename:    "test-session.status",
-			content:     "new:1704067200",
+			content:     "new:" + fmt.Sprintf("%d", currentTimestamp),
 			wantState:   "new",
 			wantTimeSet: true,
 		},

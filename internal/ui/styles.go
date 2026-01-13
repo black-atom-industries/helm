@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -100,9 +101,6 @@ var (
 				Foreground(ColorDim).
 				Bold(true)
 
-	LastIcon         = lipgloss.NewStyle().Foreground(ColorWarning).Render("󰒮")
-	LastIconSelected = lipgloss.NewStyle().Foreground(ColorWarning).Bold(true).Render("󰒮")
-
 	// Claude status styles
 	ClaudeNewStyle = lipgloss.NewStyle().
 			Foreground(ColorDim)
@@ -113,8 +111,8 @@ var (
 	ClaudeWaitingStyle = lipgloss.NewStyle().
 				Foreground(ColorSuccess)
 
-	ClaudeLabelStyle = lipgloss.NewStyle().
-				Foreground(ColorClaude)
+	ClaudeWaitingUrgentStyle = lipgloss.NewStyle().
+					Foreground(ColorError)
 
 	// Git status styles
 	GitDirtyStyle = lipgloss.NewStyle().
@@ -243,28 +241,32 @@ func RenderFooter(notification, state, hints string, isError bool, width int) st
 	return b.String()
 }
 
-// FormatClaudeStatus formats the Claude status for display
-// animationFrame cycles 0-2 for animated states
-func FormatClaudeStatus(state string, animationFrame int) string {
-	if state == "" {
-		return ""
-	}
+// ClaudeSpinnerFrames is the 4-frame braille spinner for "working" state
+// Uses bottom 4 dots (positions 2,3,5,6) for better vertical alignment
+var ClaudeSpinnerFrames = []string{"⠤", "⠆", "⠒", "⠰"}
 
-	label := ClaudeLabelStyle.Render("CC:")
+// ClaudeWaitThreshold is the duration after which "waiting" escalates from ? to !
+const ClaudeWaitThreshold = 5 * time.Minute
 
+// FormatClaudeIcon formats the Claude status as a single character icon
+// animationFrame cycles 0-3 for the spinner, waitDuration determines ? vs !
+func FormatClaudeIcon(state string, animationFrame int, waitDuration time.Duration) string {
 	switch state {
 	case "new":
-		// Don't show badge for "new" - it's just noise
-		return ""
+		// Don't show icon for "new" - it's just noise
+		return " "
 	case "working":
-		// Animated ellipses: .  ..  ...
-		dots := []string{".  ", ".. ", "..."}
-		return "[" + label + " " + ClaudeWorkingStyle.Render(dots[animationFrame]) + "]"
+		// Animated spinner
+		frame := animationFrame % len(ClaudeSpinnerFrames)
+		return ClaudeWorkingStyle.Render(ClaudeSpinnerFrames[frame])
 	case "waiting":
-		// Prominent - needs user attention
-		return "[" + label + " " + ClaudeWorkingStyle.Render("?") + "]"
+		// Escalate from ? to ! after threshold
+		if waitDuration >= ClaudeWaitThreshold {
+			return ClaudeWaitingUrgentStyle.Render("!")
+		}
+		return ClaudeWaitingStyle.Render("?")
 	default:
-		return ""
+		return " "
 	}
 }
 

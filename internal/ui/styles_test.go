@@ -3,81 +3,119 @@ package ui
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
-func TestFormatClaudeStatus(t *testing.T) {
+func TestFormatClaudeIcon(t *testing.T) {
 	tests := []struct {
 		name           string
 		state          string
 		animationFrame int
-		wantEmpty      bool
+		waitDuration   time.Duration
+		wantSpace      bool // true if should return " " (reserved space)
 		contains       string
 	}{
 		{
-			name:           "empty state returns empty",
+			name:           "empty state returns space",
 			state:          "",
 			animationFrame: 0,
-			wantEmpty:      true,
+			waitDuration:   0,
+			wantSpace:      true,
 		},
 		{
-			name:           "new state returns empty (no visual noise)",
+			name:           "new state returns space (no visual noise)",
 			state:          "new",
 			animationFrame: 0,
-			wantEmpty:      true,
+			waitDuration:   0,
+			wantSpace:      true,
 		},
 		{
 			name:           "working state frame 0",
 			state:          "working",
 			animationFrame: 0,
-			wantEmpty:      false,
-			contains:       ".",
+			waitDuration:   0,
+			wantSpace:      false,
+			contains:       "⠤",
 		},
 		{
 			name:           "working state frame 1",
 			state:          "working",
 			animationFrame: 1,
-			wantEmpty:      false,
-			contains:       "..",
+			waitDuration:   0,
+			wantSpace:      false,
+			contains:       "⠆",
 		},
 		{
 			name:           "working state frame 2",
 			state:          "working",
 			animationFrame: 2,
-			wantEmpty:      false,
-			contains:       "...",
+			waitDuration:   0,
+			wantSpace:      false,
+			contains:       "⠒",
 		},
 		{
-			name:           "waiting state",
+			name:           "working state frame 3",
+			state:          "working",
+			animationFrame: 3,
+			waitDuration:   0,
+			wantSpace:      false,
+			contains:       "⠰",
+		},
+		{
+			name:           "working state frame wraps around",
+			state:          "working",
+			animationFrame: 4,
+			waitDuration:   0,
+			wantSpace:      false,
+			contains:       "⠤", // Back to frame 0
+		},
+		{
+			name:           "waiting state under threshold",
 			state:          "waiting",
 			animationFrame: 0,
-			wantEmpty:      false,
+			waitDuration:   4 * time.Minute,
+			wantSpace:      false,
 			contains:       "?",
 		},
 		{
-			name:           "unknown state returns empty",
+			name:           "waiting state at threshold",
+			state:          "waiting",
+			animationFrame: 0,
+			waitDuration:   5 * time.Minute,
+			wantSpace:      false,
+			contains:       "!",
+		},
+		{
+			name:           "waiting state over threshold",
+			state:          "waiting",
+			animationFrame: 0,
+			waitDuration:   10 * time.Minute,
+			wantSpace:      false,
+			contains:       "!",
+		},
+		{
+			name:           "unknown state returns space",
 			state:          "unknown",
 			animationFrame: 0,
-			wantEmpty:      true,
+			waitDuration:   0,
+			wantSpace:      true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := FormatClaudeStatus(tt.state, tt.animationFrame)
+			result := FormatClaudeIcon(tt.state, tt.animationFrame, tt.waitDuration)
 
-			if tt.wantEmpty && result != "" {
-				t.Errorf("FormatClaudeStatus(%q, %d) = %q, want empty", tt.state, tt.animationFrame, result)
+			if tt.wantSpace && result != " " {
+				t.Errorf("FormatClaudeIcon(%q, %d, %v) = %q, want space", tt.state, tt.animationFrame, tt.waitDuration, result)
 			}
 
-			if !tt.wantEmpty {
-				if result == "" {
-					t.Errorf("FormatClaudeStatus(%q, %d) returned empty, want non-empty", tt.state, tt.animationFrame)
+			if !tt.wantSpace {
+				if result == " " {
+					t.Errorf("FormatClaudeIcon(%q, %d, %v) returned space, want non-space", tt.state, tt.animationFrame, tt.waitDuration)
 				}
 				if tt.contains != "" && !strings.Contains(result, tt.contains) {
-					t.Errorf("FormatClaudeStatus(%q, %d) = %q, should contain %q", tt.state, tt.animationFrame, result, tt.contains)
-				}
-				if !strings.Contains(result, "CC:") {
-					t.Errorf("FormatClaudeStatus(%q, %d) = %q, should contain 'CC:'", tt.state, tt.animationFrame, result)
+					t.Errorf("FormatClaudeIcon(%q, %d, %v) = %q, should contain %q", tt.state, tt.animationFrame, tt.waitDuration, result, tt.contains)
 				}
 			}
 		})

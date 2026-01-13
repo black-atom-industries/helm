@@ -27,8 +27,6 @@ type RowOpts struct {
 	Selected bool
 
 	// Optional - set to enable
-	ShowLastIcon   bool           // Show ★ for first item
-	IsFirst        bool           // Is this the first item (for ★)
 	ShowExpandIcon bool           // Show ▸/▾ expand indicator
 	Expanded       bool           // Expansion state
 	LastActivity   *time.Time     // Show time ago if set
@@ -56,17 +54,6 @@ func RenderIndex(num int, selected bool) string {
 		return IndexSelectedStyle.Render(label)
 	}
 	return IndexStyle.Render(label)
-}
-
-// RenderLastIcon renders the "last session" indicator
-func RenderLastIcon(isFirst, selected bool) string {
-	if isFirst {
-		if selected {
-			return LastIconSelected
-		}
-		return LastIcon
-	}
-	return " " // Fixed width placeholder
 }
 
 // RenderExpandIcon renders the expand/collapse indicator
@@ -151,12 +138,14 @@ func RenderGitStatusColumn(status *git.Status, maxWidth int) string {
 	return formatted
 }
 
-// RenderClaudeStatusColumn renders the Claude status badge
-func RenderClaudeStatusColumn(status *claude.Status, animFrame int) string {
-	if status == nil {
-		return ""
+// RenderClaudeIcon renders a single-character Claude status icon
+// Returns a space for no status to preserve column alignment
+func RenderClaudeIcon(status *claude.Status, animFrame int) string {
+	if status == nil || status.State == "" {
+		return " " // Reserved space for alignment
 	}
-	return FormatClaudeStatus(status.State, animFrame)
+	waitDuration := time.Since(status.Timestamp)
+	return FormatClaudeIcon(status.State, animFrame, waitDuration)
 }
 
 // SessionRowOpts wraps RowOpts with session-specific settings
@@ -169,11 +158,9 @@ func RenderSessionRow(name string, lastActivity time.Time, layout RowLayout, opt
 	cols := []string{
 		RenderIndex(opts.Num, opts.Selected),
 		" ",
-	}
-
-	// Last icon (optional)
-	if opts.ShowLastIcon {
-		cols = append(cols, RenderLastIcon(opts.IsFirst, opts.Selected), " ")
+		// Claude icon (after index, before expand arrow)
+		RenderClaudeIcon(opts.ClaudeStatus, opts.AnimFrame),
+		" ",
 	}
 
 	// Expand icon (optional)
@@ -197,14 +184,6 @@ func RenderSessionRow(name string, lastActivity time.Time, layout RowLayout, opt
 		cols = append(cols, " ", strings.Repeat(" ", layout.GitStatusWidth))
 	}
 
-	// Claude status (optional column)
-	if opts.ClaudeStatus != nil {
-		claudeStr := RenderClaudeStatusColumn(opts.ClaudeStatus, opts.AnimFrame)
-		if claudeStr != "" {
-			cols = append(cols, " ", claudeStr)
-		}
-	}
-
 	content := strings.Join(cols, "")
 	return SessionStyle.Render(content)
 }
@@ -213,6 +192,9 @@ func RenderSessionRow(name string, lastActivity time.Time, layout RowLayout, opt
 func RenderBookmarkRow(name string, layout RowLayout, opts RowOpts) string {
 	cols := []string{
 		RenderIndex(opts.Num, opts.Selected),
+		" ",
+		// Claude icon column (always reserved for alignment with session rows)
+		RenderClaudeIcon(opts.ClaudeStatus, opts.AnimFrame),
 		" ",
 		RenderSessionName(name, layout.NameWidth, opts.Selected),
 	}
