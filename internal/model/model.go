@@ -86,7 +86,8 @@ type Model struct {
 	cloneSuccessSession string // Session name to switch to
 
 	// Bookmarks mode state (uses ScrollList for cursor/scroll/filter)
-	bookmarkList *ui.ScrollList[config.Bookmark]
+	bookmarkList     *ui.ScrollList[config.Bookmark]
+	bookmarkExpanded map[string]bool // Tracks which bookmarks are expanded (by path)
 
 	// Loading state
 	sessionsLoaded bool // True after sessions have been loaded at least once
@@ -116,12 +117,13 @@ func New(currentSession string, cfg config.Config) Model {
 	})
 
 	return Model{
-		currentSession: currentSession,
-		input:          ti,
-		config:         cfg,
-		projectList:    projectList,
-		cloneList:      cloneList,
-		bookmarkList:   bookmarkList,
+		currentSession:   currentSession,
+		input:            ti,
+		config:           cfg,
+		projectList:      projectList,
+		cloneList:        cloneList,
+		bookmarkList:     bookmarkList,
+		bookmarkExpanded: make(map[string]bool),
 	}
 }
 
@@ -601,6 +603,21 @@ func (m *Model) handleBookmarksMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Down):
 		m.bookmarkList.MoveCursor(1)
 
+	case key.Matches(msg, keys.Expand):
+		// Expand bookmark if it has a session
+		if selected, ok := m.bookmarkList.SelectedItem(); ok {
+			sessionName := m.extractSessionName(selected.Path)
+			if session := m.findSessionByName(sessionName); session != nil {
+				m.bookmarkExpanded[selected.Path] = true
+			}
+		}
+
+	case key.Matches(msg, keys.Collapse):
+		// Collapse bookmark
+		if selected, ok := m.bookmarkList.SelectedItem(); ok {
+			m.bookmarkExpanded[selected.Path] = false
+		}
+
 	case key.Matches(msg, keys.Select):
 		if selected, ok := m.bookmarkList.SelectedItem(); ok {
 			return m.openBookmark(selected)
@@ -894,6 +911,16 @@ func (m *Model) extractDisplayPath(fullPath string) string {
 		depth = len(parts)
 	}
 	return strings.Join(parts[len(parts)-depth:], "/")
+}
+
+// findSessionByName finds a session by its name, returns nil if not found
+func (m *Model) findSessionByName(name string) *tmux.Session {
+	for i := range m.sessions {
+		if m.sessions[i].Name == name {
+			return &m.sessions[i]
+		}
+	}
+	return nil
 }
 
 // scanProjectDirectories scans all configured project directories at the configured depth
@@ -1739,6 +1766,27 @@ func (m Model) viewBookmarks() string {
 		visibleBookmarks := m.bookmarkList.VisibleItems()
 		scrollOffset := m.bookmarkList.ScrollOffset()
 
+		// Calculate layout for bookmarks - find max name width
+		maxNameWidth := 0
+		maxGitWidth := 0
+		for _, bookmark := range visibleBookmarks {
+			sessionName := m.extractSessionName(bookmark.Path)
+			if len(sessionName) > maxNameWidth {
+				maxNameWidth = len(sessionName)
+			}
+			// Check if session has git status
+			if _, ok := m.gitStatuses[sessionName]; ok && m.config.GitStatusEnabled {
+				if ui.GitStatusColumnWidth > maxGitWidth {
+					maxGitWidth = ui.GitStatusColumnWidth
+				}
+			}
+		}
+
+		layout := ui.RowLayout{
+			NameWidth:      maxNameWidth,
+			GitStatusWidth: maxGitWidth,
+		}
+
 		scrollbar := ui.ScrollbarChars(m.bookmarkList.Len(), m.bookmarkList.Height(), scrollOffset, len(visibleBookmarks))
 
 		for i, bookmark := range visibleBookmarks {
@@ -1751,16 +1799,54 @@ func (m Model) viewBookmarks() string {
 				b.WriteString(" ")
 			}
 
-			// Format: "1. owner/repo"
-			name := m.extractDisplayPath(bookmark.Path)
-			line := fmt.Sprintf("%d. %s", slot, name)
-			if selected {
-				b.WriteString(ui.FilterStyle.Render(line))
+			sessionName := m.extractSessionName(bookmark.Path)
+			session := m.findSessionByName(sessionName)
+			expanded := m.bookmarkExpanded[bookmark.Path]
+
+			if session != nil {
+				// Session exists - show full session data with expand icon
+				lastActivity := session.LastActivity
+				opts := ui.SessionRowOpts{
+					RowOpts: ui.RowOpts{
+						Num:            slot,
+						Name:           sessionName,
+						Selected:       selected,
+						ShowLastIcon:   false,
+						ShowExpandIcon: true,
+						Expanded:       expanded,
+						LastActivity:   &lastActivity,
+						AnimFrame:      m.animationFrame,
+					},
+				}
+				if status, ok := m.gitStatuses[sessionName]; ok {
+					opts.GitStatus = &status
+				}
+				if status, ok := m.claudeStatuses[sessionName]; ok {
+					opts.ClaudeStatus = &status
+				}
+				b.WriteString(ui.RenderSessionRow(sessionName, session.LastActivity, layout, opts))
+				b.WriteString("\n")
+				contentLines++
+
+				// Show windows if expanded
+				if expanded {
+					for _, window := range session.Windows {
+						b.WriteString(ui.RenderWindowRow(window.Index, window.Name, ui.WindowRowOpts{Selected: false}))
+						b.WriteString("\n")
+						contentLines++
+					}
+				}
 			} else {
-				b.WriteString(line)
+				// No session - show simple bookmark row
+				opts := ui.RowOpts{
+					Num:      slot,
+					Name:     sessionName,
+					Selected: selected,
+				}
+				b.WriteString(ui.RenderBookmarkRow(sessionName, layout, opts))
+				b.WriteString("\n")
+				contentLines++
 			}
-			b.WriteString("\n")
-			contentLines++
 		}
 	}
 	usedLines += contentLines
@@ -1859,12 +1945,19 @@ func (m Model) viewSessionList() string {
 			sessionNum++
 
 			// Build options for this row
+			lastActivity := session.LastActivity
 			opts := ui.SessionRowOpts{
-				Num:       sessionNum,
-				IsFirst:   sessionNum == 1,
-				Selected:  selected,
-				Expanded:  session.Expanded,
-				AnimFrame: m.animationFrame,
+				RowOpts: ui.RowOpts{
+					Num:            sessionNum,
+					Name:           session.Name,
+					Selected:       selected,
+					ShowLastIcon:   true,
+					IsFirst:        sessionNum == 1,
+					ShowExpandIcon: true,
+					Expanded:       session.Expanded,
+					LastActivity:   &lastActivity,
+					AnimFrame:      m.animationFrame,
+				},
 			}
 			if status, ok := m.gitStatuses[session.Name]; ok {
 				opts.GitStatus = &status

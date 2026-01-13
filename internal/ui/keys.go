@@ -191,6 +191,7 @@ func HelpCloneSuccess() string {
 // HelpBookmarks returns the help text for bookmarks mode
 func HelpBookmarks() string {
 	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
+		helpItem("C-h/l | ←→", "Expand") + helpSep() +
 		helpItem("Enter", "Open") + helpSep() +
 		helpItem("C-p/n", "Move") + helpSep() +
 		helpItem("C-a", "Add") + helpSep() +

@@ -17,15 +17,24 @@ type RowLayout struct {
 	GitStatusWidth int
 }
 
-// SessionRowOpts contains per-row options for rendering a session
-type SessionRowOpts struct {
-	Num          int
-	IsFirst      bool
-	Selected     bool
-	Expanded     bool
-	GitStatus    *git.Status
-	ClaudeStatus *claude.Status
-	AnimFrame    int
+// RowOpts contains options for rendering a generic row
+// Required: Num, Name, Selected
+// Optional: all others (use zero values to omit)
+type RowOpts struct {
+	// Required
+	Num      int
+	Name     string
+	Selected bool
+
+	// Optional - set to enable
+	ShowLastIcon   bool           // Show ★ for first item
+	IsFirst        bool           // Is this the first item (for ★)
+	ShowExpandIcon bool           // Show ▸/▾ expand indicator
+	Expanded       bool           // Expansion state
+	LastActivity   *time.Time     // Show time ago if set
+	GitStatus      *git.Status    // Show git status if set
+	ClaudeStatus   *claude.Status // Show claude status if set
+	AnimFrame      int            // Animation frame for claude status
 }
 
 // WindowRowOpts contains per-row options for rendering a window
@@ -150,23 +159,42 @@ func RenderClaudeStatusColumn(status *claude.Status, animFrame int) string {
 	return FormatClaudeStatus(status.State, animFrame)
 }
 
+// SessionRowOpts wraps RowOpts with session-specific settings
+type SessionRowOpts struct {
+	RowOpts
+}
+
 // RenderSessionRow composes all columns into a complete session row
 func RenderSessionRow(name string, lastActivity time.Time, layout RowLayout, opts SessionRowOpts) string {
 	cols := []string{
 		RenderIndex(opts.Num, opts.Selected),
 		" ",
-		RenderLastIcon(opts.IsFirst, opts.Selected),
-		" ",
-		RenderExpandIcon(opts.Expanded, opts.Selected),
-		" ",
-		RenderSessionName(name, layout.NameWidth, opts.Selected),
-		"  ",
-		RenderTimeAgo(lastActivity, opts.Selected),
+	}
+
+	// Last icon (optional)
+	if opts.ShowLastIcon {
+		cols = append(cols, RenderLastIcon(opts.IsFirst, opts.Selected), " ")
+	}
+
+	// Expand icon (optional)
+	if opts.ShowExpandIcon {
+		cols = append(cols, RenderExpandIcon(opts.Expanded, opts.Selected), " ")
+	}
+
+	// Name (always shown)
+	cols = append(cols, RenderSessionName(name, layout.NameWidth, opts.Selected))
+
+	// Time ago (optional)
+	if opts.LastActivity != nil {
+		cols = append(cols, "  ", RenderTimeAgo(*opts.LastActivity, opts.Selected))
 	}
 
 	// Git status (optional column)
-	if layout.GitStatusWidth > 0 {
+	if layout.GitStatusWidth > 0 && opts.GitStatus != nil {
 		cols = append(cols, " ", RenderGitStatusColumn(opts.GitStatus, layout.GitStatusWidth))
+	} else if layout.GitStatusWidth > 0 {
+		// Pad for alignment even when no git status
+		cols = append(cols, " ", strings.Repeat(" ", layout.GitStatusWidth))
 	}
 
 	// Claude status (optional column)
@@ -175,6 +203,23 @@ func RenderSessionRow(name string, lastActivity time.Time, layout RowLayout, opt
 		if claudeStr != "" {
 			cols = append(cols, " ", claudeStr)
 		}
+	}
+
+	content := strings.Join(cols, "")
+	return SessionStyle.Render(content)
+}
+
+// RenderBookmarkRow composes a bookmark row (simpler than session row)
+func RenderBookmarkRow(name string, layout RowLayout, opts RowOpts) string {
+	cols := []string{
+		RenderIndex(opts.Num, opts.Selected),
+		" ",
+		RenderSessionName(name, layout.NameWidth, opts.Selected),
+	}
+
+	// Git status (optional)
+	if layout.GitStatusWidth > 0 && opts.GitStatus != nil {
+		cols = append(cols, " ", RenderGitStatusColumn(opts.GitStatus, layout.GitStatusWidth))
 	}
 
 	content := strings.Join(cols, "")
