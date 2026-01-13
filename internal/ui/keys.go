@@ -35,63 +35,63 @@ type KeyMap struct {
 var DefaultKeyMap = KeyMap{
 	Up: key.NewBinding(
 		key.WithKeys("ctrl+k", "up"),
-		key.WithHelp("↑", "up"),
+		key.WithHelp("↑", "Up"),
 	),
 	Down: key.NewBinding(
 		key.WithKeys("ctrl+j", "down"),
-		key.WithHelp("↓", "down"),
+		key.WithHelp("↓", "Down"),
 	),
 	Expand: key.NewBinding(
 		key.WithKeys("ctrl+l", "right"),
-		key.WithHelp("→", "expand"),
+		key.WithHelp("→", "Expand"),
 	),
 	Collapse: key.NewBinding(
 		key.WithKeys("ctrl+h", "left"),
-		key.WithHelp("←", "collapse"),
+		key.WithHelp("←", "Collapse"),
 	),
 	Select: key.NewBinding(
 		key.WithKeys("enter"),
-		key.WithHelp("enter", "switch"),
+		key.WithHelp("enter", "Switch"),
 	),
 	Kill: key.NewBinding(
 		key.WithKeys("ctrl+x"),
-		key.WithHelp("C-x", "kill"),
+		key.WithHelp("C-x", "Kill"),
 	),
 	Create: key.NewBinding(
 		key.WithKeys("ctrl+n"),
-		key.WithHelp("C-n", "new"),
+		key.WithHelp("C-n", "New"),
 	),
 	PickDirectory: key.NewBinding(
 		key.WithKeys("ctrl+p"),
-		key.WithHelp("C-p", "projects"),
+		key.WithHelp("C-p", "Projects"),
 	),
 	CloneRepo: key.NewBinding(
 		key.WithKeys("ctrl+r"),
-		key.WithHelp("C-r", "clone repo"),
+		key.WithHelp("C-r", "Clone repo"),
 	),
 	Lazygit: key.NewBinding(
 		key.WithKeys("ctrl+g"),
-		key.WithHelp("C-g", "lazygit"),
+		key.WithHelp("C-g", "Lazygit"),
 	),
 	Bookmarks: key.NewBinding(
 		key.WithKeys("ctrl+b"),
-		key.WithHelp("C-b", "bookmarks"),
+		key.WithHelp("C-b", "Bookmarks"),
 	),
 	AddBookmark: key.NewBinding(
 		key.WithKeys("ctrl+a"),
-		key.WithHelp("C-a", "add bookmark"),
+		key.WithHelp("C-a", "Add bookmark"),
 	),
 	Quit: key.NewBinding(
 		key.WithKeys("ctrl+c"),
-		key.WithHelp("C-c", "quit"),
+		key.WithHelp("C-c", "Quit"),
 	),
 	Cancel: key.NewBinding(
 		key.WithKeys("esc"),
-		key.WithHelp("esc", "cancel"),
+		key.WithHelp("esc", "Cancel"),
 	),
 	Confirm: key.NewBinding(
 		key.WithKeys("ctrl+y"),
-		key.WithHelp("C-y", "confirm"),
+		key.WithHelp("C-y", "Confirm"),
 	),
 	Jump1: key.NewBinding(key.WithKeys("1")),
 	Jump2: key.NewBinding(key.WithKeys("2")),
@@ -116,84 +116,84 @@ func helpSep() string {
 
 // HelpNormal returns the help text for normal mode (two lines)
 func HelpNormal() string {
-	line1 := helpItem("type", "filter") + helpSep() +
-		helpItem("C-j/k | ↑↓", "nav") + helpSep() +
-		helpItem("C-h/l | ←→", "expand") + helpSep() +
-		helpItem("C-x", "kill")
-	line2 := helpItem("C-n", "new") + helpSep() +
-		helpItem("C-p", "projects") + helpSep() +
-		helpItem("C-b", "bookmarks") + helpSep() +
-		helpItem("C-a", "bookmark") + helpSep() +
-		helpItem("C-r", "clone") + helpSep() +
-		helpItem("C-g", "lazygit")
+	line1 := helpItem("Type", "filter") + helpSep() +
+		helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
+		helpItem("C-h/l | ←→", "Expand") + helpSep() +
+		helpItem("C-x", "Kill")
+	line2 := helpItem("C-n", "New") + helpSep() +
+		helpItem("C-p", "Projects") + helpSep() +
+		helpItem("C-b", "Bookmarks") + helpSep() +
+		helpItem("C-a", "Bookmark") + helpSep() +
+		helpItem("C-r", "Clone") + helpSep() +
+		helpItem("C-g", "Lazygit")
 	return line1 + "\n" + line2
 }
 
 // HelpFiltering returns the help text when filter is active
 func HelpFiltering() string {
-	return helpItem("esc", "clear") + helpSep() +
-		helpItem("enter", "select") + helpSep() +
-		helpItem("C-c", "quit")
+	return helpItem("Esc", "Clear") + helpSep() +
+		helpItem("Enter", "Select") + helpSep() +
+		helpItem("C-c", "Quit")
 }
 
 // HelpConfirmKill returns the help text for kill confirmation mode
 func HelpConfirmKill() string {
-	return helpItem("C-x", "confirm") + helpSep() +
-		helpItem("esc", "cancel")
+	return helpItem("C-x", "Confirm") + helpSep() +
+		helpItem("Esc", "Cancel")
 }
 
 // HelpCreate returns the help text for create mode
 func HelpCreate() string {
-	return helpItem("enter", "create") + helpSep() +
-		helpItem("esc", "cancel")
+	return helpItem("Enter", "Create") + helpSep() +
+		helpItem("Esc", "Cancel")
 }
 
 // HelpPickDirectory returns the help text for directory picker mode
 func HelpPickDirectory() string {
-	return helpItem("C-j/k | ↑↓", "nav") + helpSep() +
-		helpItem("enter", "select") + helpSep() +
-		helpItem("C-a", "bookmark") + helpSep() +
-		helpItem("C-x", "remove") + helpSep() +
-		helpItem("esc", "back")
+	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
+		helpItem("Enter", "Select") + helpSep() +
+		helpItem("C-a", "Bookmark") + helpSep() +
+		helpItem("C-x", "Remove") + helpSep() +
+		helpItem("Esc", "Back")
 }
 
 // HelpAddBookmark returns the help text when adding a bookmark from project picker
 func HelpAddBookmark() string {
-	return helpItem("C-j/k | ↑↓", "nav") + helpSep() +
-		helpItem("C-a", "add bookmark") + helpSep() +
-		helpItem("esc", "back")
+	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
+		helpItem("C-a", "Add bookmark") + helpSep() +
+		helpItem("Esc", "Back")
 }
 
 // HelpConfirmRemoveFolder returns the help text for folder removal confirmation
 func HelpConfirmRemoveFolder() string {
-	return helpItem("C-x", "confirm") + helpSep() +
-		helpItem("esc", "cancel")
+	return helpItem("C-x", "Confirm") + helpSep() +
+		helpItem("Esc", "Cancel")
 }
 
 // HelpCloneRepo returns the help text for clone repo mode
 func HelpCloneRepo() string {
-	return helpItem("C-j/k | ↑↓", "nav") + helpSep() +
-		helpItem("enter", "clone") + helpSep() +
-		helpItem("esc", "back/cancel")
+	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
+		helpItem("Enter", "Clone") + helpSep() +
+		helpItem("Esc", "Back/Cancel")
 }
 
 // HelpCloneRepoLoading returns the help text while loading repos
 func HelpCloneRepoLoading() string {
-	return helpItem("esc", "cancel")
+	return helpItem("Esc", "Cancel")
 }
 
 // HelpCloneSuccess returns the help text after successful clone
 func HelpCloneSuccess() string {
-	return helpItem("enter", "switch to session") + helpSep() +
-		helpItem("esc", "back to sessions")
+	return helpItem("Enter", "Switch to session") + helpSep() +
+		helpItem("Esc", "Back to sessions")
 }
 
 // HelpBookmarks returns the help text for bookmarks mode
 func HelpBookmarks() string {
-	return helpItem("C-j/k | ↑↓", "nav") + helpSep() +
-		helpItem("enter", "open") + helpSep() +
-		helpItem("C-p/n", "move") + helpSep() +
-		helpItem("C-a", "add") + helpSep() +
-		helpItem("C-x", "remove") + helpSep() +
-		helpItem("esc", "back")
+	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
+		helpItem("Enter", "Open") + helpSep() +
+		helpItem("C-p/n", "Move") + helpSep() +
+		helpItem("C-a", "Add") + helpSep() +
+		helpItem("C-x", "Remove") + helpSep() +
+		helpItem("Esc", "Back")
 }
