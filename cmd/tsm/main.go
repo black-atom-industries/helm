@@ -128,28 +128,17 @@ func runBookmark(slotStr string) error {
 }
 
 // printTmuxBindings outputs tmux bind commands for configured bookmarks
+// Uses Alt+Shift+number keybindings (M-! through M-()
 func printTmuxBindings() error {
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
+	// Shifted number keys: 1=! 2=@ 3=# 4=$ 5=% 6=^ 7=& 8=* 9=(
+	shiftedKeys := []string{"!", "@", "#", "$", "%", "^", "&", "*", "("}
 
-	if len(cfg.Bookmarks) == 0 {
-		fmt.Println("# No bookmarks configured")
-		fmt.Println("# Add bookmarks to ~/.config/tsm/config.yml:")
-		fmt.Println("# bookmarks:")
-		fmt.Println("#   - path: ~/repos/my-project")
-		return nil
-	}
-
-	fmt.Println("# tsm bookmark bindings")
+	fmt.Println("# tsm bookmark bindings (Alt+Shift+1-9)")
 	fmt.Println("# Add to your tmux.conf or source with: run-shell \"tsm tmux-bindings | tmux source-stdin\"")
-	for i := range cfg.Bookmarks {
-		slot := i + 1
-		if slot > 9 {
-			break // Only slots 1-9
-		}
-		fmt.Printf("bind -n M-%d run-shell \"tsm bookmark %d\"\n", slot, slot)
+
+	// Always output all 9 slots
+	for i := 0; i < 9; i++ {
+		fmt.Printf("bind -n M-%s run-shell \"tsm bookmark %d\"\n", shiftedKeys[i], i+1)
 	}
 
 	return nil
