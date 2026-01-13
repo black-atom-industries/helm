@@ -10,9 +10,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/nikbrunner/tsm/internal/config"
-	"github.com/nikbrunner/tsm/internal/model"
-	"github.com/nikbrunner/tsm/internal/tmux"
+	"github.com/black-atom-industries/helm/internal/config"
+	"github.com/black-atom-industries/helm/internal/model"
+	"github.com/black-atom-industries/helm/internal/tmux"
 )
 
 func main() {
@@ -34,7 +34,7 @@ func main() {
 			return
 		case "bookmark":
 			if len(os.Args) < 3 {
-				fmt.Println("Usage: tsm bookmark <N>")
+				fmt.Println("Usage: helm bookmark <N>")
 				fmt.Println("Opens bookmark at slot N (1-9)")
 				os.Exit(1)
 			}
@@ -51,14 +51,14 @@ func main() {
 			return
 		default:
 			fmt.Printf("Unknown command: %s\n", os.Args[1])
-			fmt.Println("Usage: tsm [init | bookmark <N> | tmux-bindings]")
+			fmt.Println("Usage: helm [init | bookmark <N> | tmux-bindings]")
 			os.Exit(1)
 		}
 	}
 
 	// Check if running inside tmux
 	if os.Getenv("TMUX") == "" {
-		fmt.Println("Error: tsm must be run from within tmux")
+		fmt.Println("Error: helm must be run from within tmux")
 		os.Exit(1)
 	}
 
@@ -136,12 +136,12 @@ func printTmuxBindings() error {
 	// Shifted number keys: 1=! 2=@ 3=# 4=$ 5=% 6=^ 7=& 8=* 9=(
 	shiftedKeys := []string{"!", "@", "#", "$", "%", "^", "&", "*", "("}
 
-	fmt.Println("# tsm bookmark bindings (Alt+Shift+1-9)")
-	fmt.Println("# Add to your tmux.conf or source with: run-shell \"tsm tmux-bindings | tmux source-stdin\"")
+	fmt.Println("# helm bookmark bindings (Alt+Shift+1-9)")
+	fmt.Println("# Add to your tmux.conf or source with: run-shell \"helm tmux-bindings | tmux source-stdin\"")
 
 	// Always output all 9 slots
 	for i := 0; i < 9; i++ {
-		fmt.Printf("bind -n M-%s run-shell \"tsm bookmark %d\"\n", shiftedKeys[i], i+1)
+		fmt.Printf("bind -n M-%s run-shell \"helm bookmark %d\"\n", shiftedKeys[i], i+1)
 	}
 
 	return nil

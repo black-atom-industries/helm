@@ -7,8 +7,8 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/nikbrunner/tsm/internal/claude"
-	"github.com/nikbrunner/tsm/internal/git"
+	"github.com/black-atom-industries/helm/internal/claude"
+	"github.com/black-atom-industries/helm/internal/git"
 )
 
 // RowLayout holds calculated column widths for consistent alignment across rows
@@ -217,20 +217,20 @@ func RenderWindowRow(index int, name string, opts WindowRowOpts) string {
 	return WindowStyle.Render(content)
 }
 
-// RenderPaneRow composes a pane row (future use for tsm-xdn)
+// RenderPaneRow composes a pane row (future use for helm-xdn)
 // Panes will be indented further than windows
 func RenderPaneRow(index int, title string, opts PaneRowOpts) string {
 	text := fmt.Sprintf("%d: %s", index, title)
 	if opts.Selected {
-		// TODO: Add PaneSelectedStyle when implementing tsm-xdn
+		// TODO: Add PaneSelectedStyle when implementing helm-xdn
 		return WindowSelectedStyle.PaddingLeft(14).Render(text)
 	}
-	// TODO: Add PaneStyle when implementing tsm-xdn
+	// TODO: Add PaneStyle when implementing helm-xdn
 	return WindowStyle.PaddingLeft(14).Render(text)
 }
 
 // ItemDepth represents the hierarchy level of an item
-// This design allows easy extension for panes (tsm-xdn)
+// This design allows easy extension for panes (helm-xdn)
 type ItemDepth int
 
 const (

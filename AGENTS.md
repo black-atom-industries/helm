@@ -4,25 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-tsm (**t**mux **s**ession **m**anager) is a Go TUI application for managing tmux sessions. It provides fuzzy filtering, session/window navigation, and Claude Code status integration. Built with Bubbletea/Lipgloss.
+helm ("Take the helm of your workspaces") is a Go TUI application for managing tmux sessions. It provides fuzzy filtering, session/window navigation, and Claude Code status integration. Built with Bubbletea/Lipgloss.
+
+Part of the [Black Atom Industries](https://github.com/black-atom-industries) cockpit.
 
 ## Build Commands
 
 ```bash
-make build          # Build binary to ./tsm
-make install        # Build and install to ~/.local/bin/tsm
+make build          # Build binary to ./helm
+make install        # Build and install to ~/.local/bin/helm
 make test           # Run tests
 make fmt            # Format code
 make lint           # Run golangci-lint
 make tidy           # go mod tidy
 ```
 
-For quick iteration: `go build -o tsm ./cmd/tsm/ && cp tsm ~/.local/bin/tsm`
+For quick iteration: `go build -o helm ./cmd/helm/ && cp helm ~/.local/bin/helm`
 
 ## Architecture
 
 ```
-cmd/tsm/main.go           # Entry point, handles `tsm init` subcommand
+cmd/helm/main.go          # Entry point, handles `helm init` subcommand
 internal/
   model/model.go          # Bubbletea Model - main state, Update/View logic
   ui/
@@ -30,13 +32,13 @@ internal/
     styles.go             # Lipgloss colors and styles
     columns.go            # Row rendering (sessions, windows, bookmarks)
     scrolllist.go         # Generic scrollable list with filtering
-  config/config.go        # TOML config (~/.config/tsm/config.toml)
+  config/config.go        # YAML config (~/.config/helm/config.yml)
   tmux/tmux.go            # tmux command wrappers (list, switch, kill)
   claude/status.go        # Claude Code status file parsing
   git/status.go           # Git status per session (dirty, ahead/behind)
   repos/config.go         # Repos base path config (~/.config/repos/)
   github/github.go        # GitHub API for repo listing
-hooks/tsm-hook.sh         # Claude Code hook for status updates
+hooks/helm-hook.sh        # Claude Code hook for status updates
 ```
 
 ### Bubbletea Model Flow
@@ -74,13 +76,13 @@ Navigation uses Ctrl modifiers to reserve letters for filtering:
 
 ## Configuration
 
-Config file: `~/.config/tsm/config.toml`
+Config file: `~/.config/helm/config.yml`
 
-```toml
-layout = "ide"                    # Layout script for new sessions
-layout_dir = "~/.config/tmux/layouts"
-claude_status_enabled = true      # Show [CC: working/waiting] status
-cache_dir = "~/.cache/tsm"
+```yaml
+layout: ide                       # Layout script for new sessions
+layout_dir: ~/.config/tmux/layouts
+claude_status_enabled: true       # Show CC status indicator
+cache_dir: ~/.cache/helm
 ```
 
 Environment variables override config: `TMUX_LAYOUT`, `TMUX_LAYOUTS_DIR`, `TMUX_SESSION_PICKER_CLAUDE_STATUS=1`
@@ -89,23 +91,26 @@ Environment variables override config: `TMUX_LAYOUT`, `TMUX_LAYOUTS_DIR`, `TMUX_
 
 Must test inside tmux:
 ```bash
-tmux display-popup -w50% -h35% -B -E "./tsm"
+tmux display-popup -w50% -h35% -B -E "./helm"
 ```
 
 ### Automated Visual Testing
 
 To test UI changes and capture a screenshot for visual verification:
 ```bash
-tmux display-popup -w50% -h35% -B -E "~/.local/bin/tsm" &
+tmux display-popup -w50% -h35% -B -E "~/.local/bin/helm" &
 sleep 0.8
-screencapture -x /tmp/tsm_test.png
+screencapture -x /tmp/helm_test.png
 ```
 
-Then read `/tmp/tsm_test.png` to visually verify the UI looks correct.
+Then read `/tmp/helm_test.png` to visually verify the UI looks correct.
 
 ## Claude Status Integration
 
-The hook (`hooks/tsm-hook.sh`) writes status files to `~/.cache/tsm/<session>.status`. The TUI reads these to show `[CC: new|working|waiting]` badges per session.
+The hook (`hooks/helm-hook.sh`) writes status files to `~/.cache/helm/<session>.status`. The TUI reads these to show animated status indicators per session:
+- `⠤⠆⠒⠰` (spinner) - Claude actively processing
+- `?` - Claude waiting for input
+- `!` - Claude waiting for input > 5 minutes
 
 ---
 

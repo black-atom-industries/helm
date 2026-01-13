@@ -1,10 +1,10 @@
 .PHONY: build install clean test coverage
 
-BINARY_NAME=tsm
+BINARY_NAME=helm
 INSTALL_DIR=$(HOME)/.local/bin
 
 build:
-	go build -o $(BINARY_NAME) ./cmd/tsm/
+	go build -o $(BINARY_NAME) ./cmd/helm/
 
 install: build
 	mkdir -p $(INSTALL_DIR)

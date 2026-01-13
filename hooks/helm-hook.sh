@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Claude Code hook - writes status to ~/.cache/tsm/
-# Used by tsm to display Claude status per session
+# Claude Code hook - writes status to ~/.cache/helm/
+# Used by helm to display Claude status per session
 
-STATUS_DIR="$HOME/.cache/tsm"
+STATUS_DIR="$HOME/.cache/helm"
 mkdir -p "$STATUS_DIR"
 
 # Read JSON from stdin (required by Claude Code hooks)

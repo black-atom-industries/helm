@@ -13,7 +13,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/nikbrunner/tsm
+        - github.com/black-atom-industries/helm
 
 issues:
   max-issues-per-linter: 50

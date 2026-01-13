@@ -1,4 +1,4 @@
-module github.com/nikbrunner/tsm
+module github.com/black-atom-industries/helm
 
 go 1.25.5
 

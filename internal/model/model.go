@@ -13,13 +13,13 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/nikbrunner/tsm/internal/claude"
-	"github.com/nikbrunner/tsm/internal/config"
-	"github.com/nikbrunner/tsm/internal/git"
-	"github.com/nikbrunner/tsm/internal/github"
-	"github.com/nikbrunner/tsm/internal/repos"
-	"github.com/nikbrunner/tsm/internal/tmux"
-	"github.com/nikbrunner/tsm/internal/ui"
+	"github.com/black-atom-industries/helm/internal/claude"
+	"github.com/black-atom-industries/helm/internal/config"
+	"github.com/black-atom-industries/helm/internal/git"
+	"github.com/black-atom-industries/helm/internal/github"
+	"github.com/black-atom-industries/helm/internal/repos"
+	"github.com/black-atom-industries/helm/internal/tmux"
+	"github.com/black-atom-industries/helm/internal/ui"
 )
 
 // Mode represents the current UI mode
@@ -1136,8 +1136,8 @@ func (m *Model) openLazygit() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Schedule lazygit popup to open after tsm closes, then reopen tsm with same dimensions
-	cmd := fmt.Sprintf("sleep 0.1 && tmux display-popup -w%s -h%s -d '%s' -E lazygit; tmux display-popup -w%d -h%d -B -E tsm",
+	// Schedule lazygit popup to open after helm closes, then reopen helm with same dimensions
+	cmd := fmt.Sprintf("sleep 0.1 && tmux display-popup -w%s -h%s -d '%s' -E lazygit; tmux display-popup -w%d -h%d -B -E helm",
 		m.config.LazygitPopup.Width, m.config.LazygitPopup.Height, path, m.width, m.height)
 	_ = exec.Command("tmux", "run-shell", "-b", cmd).Start()
 
@@ -1572,7 +1572,7 @@ func (m Model) viewPickDirectory() string {
 	var b strings.Builder
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("tsm", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar("helm", m.mode.String(), m.width))
 	b.WriteString("\n")
 
 	// Prompt line - show filter
@@ -1665,7 +1665,7 @@ func (m Model) viewCloneRepo() string {
 	var b strings.Builder
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("tsm", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar("helm", m.mode.String(), m.width))
 	b.WriteString("\n")
 
 	// Prompt line - show filter
@@ -1770,7 +1770,7 @@ func (m Model) viewBookmarks() string {
 	filter := m.bookmarkList.Filter()
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("tsm", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar("helm", m.mode.String(), m.width))
 	b.WriteString("\n")
 	b.WriteString(ui.RenderPrompt(filter, m.width))
 	b.WriteString("\n")
@@ -1916,7 +1916,7 @@ func (m Model) viewSessionList() string {
 	var b strings.Builder
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("tsm", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar("helm", m.mode.String(), m.width))
 	b.WriteString("\n")
 
 	// Prompt line - always show filter (input goes in notification line for create mode)

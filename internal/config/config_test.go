@@ -70,7 +70,7 @@ func TestDefaultConfig(t *testing.T) {
 
 func TestPath(t *testing.T) {
 	home := os.Getenv("HOME")
-	expected := filepath.Join(home, ".config", "tsm", "config.yml")
+	expected := filepath.Join(home, ".config", "helm", "config.yml")
 
 	result := Path()
 	if result != expected {
@@ -80,7 +80,7 @@ func TestPath(t *testing.T) {
 
 func TestBookmarksPath(t *testing.T) {
 	home := os.Getenv("HOME")
-	expected := filepath.Join(home, ".config", "tsm", "bookmarks.yml")
+	expected := filepath.Join(home, ".config", "helm", "bookmarks.yml")
 
 	result := BookmarksPath()
 	if result != expected {
@@ -90,7 +90,7 @@ func TestBookmarksPath(t *testing.T) {
 
 func TestSaveAndLoadBookmarks(t *testing.T) {
 	// Create a temp directory for the test
-	tmpDir, err := os.MkdirTemp("", "tsm-config-test")
+	tmpDir, err := os.MkdirTemp("", "helm-config-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestSaveAndLoadBookmarks(t *testing.T) {
 	t.Setenv("HOME", tmpDir)
 
 	// Create config directory
-	configDir := filepath.Join(tmpDir, ".config", "tsm")
+	configDir := filepath.Join(tmpDir, ".config", "helm")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestSaveAndLoadBookmarks(t *testing.T) {
 
 func TestBookmarksFileTakesPriorityOverConfig(t *testing.T) {
 	// Create a temp directory for the test
-	tmpDir, err := os.MkdirTemp("", "tsm-config-test")
+	tmpDir, err := os.MkdirTemp("", "helm-config-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestBookmarksFileTakesPriorityOverConfig(t *testing.T) {
 	t.Setenv("HOME", tmpDir)
 
 	// Create config directory
-	configDir := filepath.Join(tmpDir, ".config", "tsm")
+	configDir := filepath.Join(tmpDir, ".config", "helm")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}

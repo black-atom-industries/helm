@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config holds all configuration options for tsm
+// Config holds all configuration options for helm
 type Config struct {
 	// Layout script name to apply when creating new sessions
 	Layout string `yaml:"layout"`
@@ -60,7 +60,7 @@ func DefaultConfig() Config {
 		LayoutDir:           filepath.Join(home, ".config", "tmux", "layouts"),
 		ClaudeStatusEnabled: false,
 		GitStatusEnabled:    false,
-		CacheDir:            filepath.Join(home, ".cache", "tsm"),
+		CacheDir:            filepath.Join(home, ".cache", "helm"),
 		ProjectDirs:         []string{filepath.Join(home, "repos")},
 		ProjectDepth:        2,
 		DefaultSessionDir:   home,
@@ -74,13 +74,13 @@ func DefaultConfig() Config {
 // Path returns the path to the config file
 func Path() string {
 	home := os.Getenv("HOME")
-	return filepath.Join(home, ".config", "tsm", "config.yml")
+	return filepath.Join(home, ".config", "helm", "config.yml")
 }
 
 // BookmarksPath returns the path to the separate bookmarks file
 func BookmarksPath() string {
 	home := os.Getenv("HOME")
-	return filepath.Join(home, ".config", "tsm", "bookmarks.yml")
+	return filepath.Join(home, ".config", "helm", "bookmarks.yml")
 }
 
 // BookmarksFile represents the structure of the bookmarks file
@@ -189,7 +189,7 @@ func Init() error {
 	}
 
 	// Write default config with comments
-	content := `# tsm configuration
+	content := `# helm configuration
 # Environment variables override these settings
 
 # Layout script name to apply when creating new sessions
@@ -205,7 +205,7 @@ func Init() error {
 # git_status_enabled: false
 
 # Directory for status cache files
-# cache_dir: ~/.cache/tsm
+# cache_dir: ~/.cache/helm
 
 # Base directories for project picker (C-p)
 # Supports multiple paths - all will be scanned
@@ -229,8 +229,8 @@ func Init() error {
 #   height: 90%
 
 # Quick-access session bookmarks (slots 1-9, maps to M-1 through M-9)
-# Use 'tsm tmux-bindings' to generate tmux keybindings
-# Note: Bookmarks are stored separately in ~/.config/tsm/bookmarks.yml
+# Use 'helm tmux-bindings' to generate tmux keybindings
+# Note: Bookmarks are stored separately in ~/.config/helm/bookmarks.yml
 # to preserve comments in this file when bookmarks are modified via the TUI.
 `
 

@@ -3,8 +3,8 @@ package model
 import (
 	"testing"
 
-	"github.com/nikbrunner/tsm/internal/config"
-	"github.com/nikbrunner/tsm/internal/tmux"
+	"github.com/black-atom-industries/helm/internal/config"
+	"github.com/black-atom-industries/helm/internal/tmux"
 )
 
 func TestFuzzyMatch(t *testing.T) {
