@@ -87,6 +87,9 @@ type Model struct {
 
 	// Bookmarks mode state (uses ScrollList for cursor/scroll/filter)
 	bookmarkList *ui.ScrollList[config.Bookmark]
+
+	// Loading state
+	sessionsLoaded bool // True after sessions have been loaded at least once
 }
 
 // New creates a new Model
@@ -181,12 +184,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case sessionsMsg:
 		m.sessions = msg.sessions
+		m.sessionsLoaded = true
 		m.loadClaudeStatuses()
 		m.loadGitStatuses()
 		m.calculateColumnWidths()
 		m.rebuildItems()
 		if len(m.items) == 0 {
-			m.message = "No other sessions. Press c to create one."
+			m.message = "No other sessions. Press C-n to create one."
 		}
 		return m, nil
 
@@ -728,14 +732,7 @@ func (m *Model) openBookmark(bookmark config.Bookmark) (tea.Model, tea.Cmd) {
 		}
 
 		// Apply layout if configured
-		if m.config.Layout != "" && m.config.LayoutDir != "" {
-			layoutPath := filepath.Join(m.config.LayoutDir, m.config.Layout+".sh")
-			if _, err := os.Stat(layoutPath); err == nil {
-				cmd := exec.Command(layoutPath, sessionName)
-				cmd.Dir = bookmark.Path
-				_ = cmd.Run()
-			}
-		}
+		m.applyLayout(sessionName, bookmark.Path)
 	}
 
 	// Switch to the session
@@ -1551,7 +1548,10 @@ func (m Model) viewPickDirectory() string {
 	case ModeConfirmRemoveFolder:
 		b.WriteString(ui.FooterStyle.Render(ui.HelpConfirmRemoveFolder()))
 	default:
-		if filter != "" {
+		if m.returnToBookmarks {
+			// Show add bookmark help when coming from bookmarks mode
+			b.WriteString(ui.FooterStyle.Render(ui.HelpAddBookmark()))
+		} else if filter != "" {
 			b.WriteString(ui.FooterStyle.Render(ui.HelpFiltering()))
 		} else {
 			b.WriteString(ui.FooterStyle.Render(ui.HelpPickDirectory()))
@@ -1883,8 +1883,8 @@ func (m Model) viewSessionList() string {
 		contentLines++
 	}
 
-	// Empty state
-	if len(m.items) == 0 {
+	// Empty state (only show after sessions have loaded to avoid flash)
+	if len(m.items) == 0 && m.sessionsLoaded {
 		if m.filter != "" {
 			b.WriteString("  No sessions matching filter\n")
 		} else {

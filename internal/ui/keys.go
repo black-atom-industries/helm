@@ -150,10 +150,17 @@ func HelpCreate() string {
 
 // HelpPickDirectory returns the help text for directory picker mode
 func HelpPickDirectory() string {
-	return helpItem("↑↓", "nav") + helpSep() +
+	return helpItem("C-j/k | ↑↓", "nav") + helpSep() +
 		helpItem("enter", "select") + helpSep() +
 		helpItem("C-a", "bookmark") + helpSep() +
 		helpItem("C-x", "remove") + helpSep() +
+		helpItem("esc", "back")
+}
+
+// HelpAddBookmark returns the help text when adding a bookmark from project picker
+func HelpAddBookmark() string {
+	return helpItem("C-j/k | ↑↓", "nav") + helpSep() +
+		helpItem("C-a", "add bookmark") + helpSep() +
 		helpItem("esc", "back")
 }
 
@@ -165,7 +172,7 @@ func HelpConfirmRemoveFolder() string {
 
 // HelpCloneRepo returns the help text for clone repo mode
 func HelpCloneRepo() string {
-	return helpItem("↑↓", "nav") + helpSep() +
+	return helpItem("C-j/k | ↑↓", "nav") + helpSep() +
 		helpItem("enter", "clone") + helpSep() +
 		helpItem("esc", "back/cancel")
 }
@@ -183,7 +190,7 @@ func HelpCloneSuccess() string {
 
 // HelpBookmarks returns the help text for bookmarks mode
 func HelpBookmarks() string {
-	return helpItem("↑↓", "nav") + helpSep() +
+	return helpItem("C-j/k | ↑↓", "nav") + helpSep() +
 		helpItem("enter", "open") + helpSep() +
 		helpItem("C-p/n", "move") + helpSep() +
 		helpItem("C-a", "add") + helpSep() +
