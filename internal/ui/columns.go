@@ -71,17 +71,17 @@ func RenderExpandIcon(expanded, selected bool) string {
 }
 
 // RenderName renders a name with padding to a fixed width
-func RenderName(name string, width int, selected bool, style lipgloss.Style) string {
+func RenderName(name string, width int, selected bool, selectedStyle, defaultStyle lipgloss.Style) string {
 	padded := fmt.Sprintf("%-*s", width, name)
 	if selected {
-		return style.Render(padded)
+		return selectedStyle.Render(padded)
 	}
-	return padded
+	return defaultStyle.Render(padded)
 }
 
 // RenderSessionName renders the session name
 func RenderSessionName(name string, width int, selected bool) string {
-	return RenderName(name, width, selected, SessionNameSelectedStyle)
+	return RenderName(name, width, selected, SessionNameSelectedStyle, SessionNameStyle)
 }
 
 // RenderWindowName renders the window name with index
@@ -90,7 +90,7 @@ func RenderWindowName(index int, name string, selected bool) string {
 	if selected {
 		return WindowNameSelectedStyle.Render(text)
 	}
-	return text
+	return WindowNameStyle.Render(text)
 }
 
 // RenderTimeAgo renders the time since last activity
@@ -235,18 +235,18 @@ func RenderTableHeader(layout RowLayout, opts TableHeaderOpts) string {
 	// Name column header
 	nameLabel := opts.NameLabel
 	if nameLabel == "" {
-		nameLabel = "Name"
+		nameLabel = "NAME"
 	}
 	cols = append(cols, dim.Render(fmt.Sprintf("%-*s", layout.NameWidth, nameLabel)))
 
 	// Time column header
 	if opts.ShowTime {
-		cols = append(cols, "  ", dim.Render(fmt.Sprintf("%-8s", "Activity")))
+		cols = append(cols, "  ", dim.Render(fmt.Sprintf("%-8s", "ACT")))
 	}
 
 	// Git column header
 	if opts.ShowGit && layout.GitStatusWidth > 0 {
-		cols = append(cols, " ", dim.Render(fmt.Sprintf("%-*s", layout.GitStatusWidth, "Git")))
+		cols = append(cols, " ", dim.Render(fmt.Sprintf("%-*s", layout.GitStatusWidth, "GIT")))
 	}
 
 	content := strings.Join(cols, "")

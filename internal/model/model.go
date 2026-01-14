@@ -39,21 +39,21 @@ const (
 func (m Mode) String() string {
 	switch m {
 	case ModeNormal:
-		return "Sessions"
+		return "SESS"
 	case ModeBookmarks:
-		return "Bookmarks"
+		return "BKMK"
 	case ModePickDirectory:
-		return "Projects"
+		return "PROJ"
 	case ModeCloneRepo:
-		return "Clone"
+		return "CLONE"
 	case ModeCreate:
-		return "New Session"
+		return "NEW"
 	case ModeConfirmKill:
-		return "Confirm Kill"
+		return "KILL"
 	case ModeConfirmRemoveFolder:
-		return "Confirm Remove"
+		return "DEL"
 	default:
-		return "Sessions"
+		return "SESS"
 	}
 }
 
@@ -1567,7 +1567,7 @@ func (m Model) viewPickDirectory() string {
 	var b strings.Builder
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("helm", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar("HELM", m.mode.String(), m.width))
 	b.WriteString("\n")
 
 	// Prompt line - show filter
@@ -1660,7 +1660,7 @@ func (m Model) viewCloneRepo() string {
 	var b strings.Builder
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("helm", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar("HELM", m.mode.String(), m.width))
 	b.WriteString("\n")
 
 	// Prompt line - show filter
@@ -1765,7 +1765,7 @@ func (m Model) viewBookmarks() string {
 	filter := m.bookmarkList.Filter()
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("helm", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar("HELM", m.mode.String(), m.width))
 	b.WriteString("\n")
 	b.WriteString(ui.RenderPrompt(filter, m.width))
 	b.WriteString("\n")
@@ -1820,7 +1820,7 @@ func (m Model) viewBookmarks() string {
 			ShowExpandIcon: false,
 			ShowTime:       false,
 			ShowGit:        maxGitWidth > 0,
-			NameLabel:      "Bookmark",
+			NameLabel:      "BKMK",
 		})
 		b.WriteString(header)
 		b.WriteString("\n")
@@ -1919,7 +1919,7 @@ func (m Model) viewSessionList() string {
 	var b strings.Builder
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("helm", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar("HELM", m.mode.String(), m.width))
 	b.WriteString("\n")
 
 	// Prompt line - always show filter (input goes in notification line for create mode)
@@ -1944,7 +1944,7 @@ func (m Model) viewSessionList() string {
 			ShowExpandIcon: true,
 			ShowTime:       true,
 			ShowGit:        m.maxGitStatusWidth > 0,
-			NameLabel:      "Session",
+			NameLabel:      "SESS",
 		})
 		b.WriteString(header)
 		b.WriteString("\n")

@@ -20,24 +20,24 @@ var (
 	// Container styles
 	AppStyle = lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
-			BorderForeground(ColorDim).
+			BorderForeground(Colors.Fg.Border).
 			Padding(0, 1)
 
 	HeaderStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(ColorPrimary).
+			Foreground(Colors.Fg.Accent).
 			Padding(0, 1)
 
 	FooterStyle = lipgloss.NewStyle().
-			Foreground(ColorSecondary).
+			Foreground(Colors.Fg.Subtle).
 			Padding(0, 1)
 
 	MessageStyle = lipgloss.NewStyle().
-			Foreground(ColorPrimary).
+			Foreground(Colors.Fg.Accent).
 			Padding(0, 1)
 
 	ErrorMessageStyle = lipgloss.NewStyle().
-				Foreground(ColorError).
+				Foreground(Colors.Fg.Error).
 				Padding(0, 1)
 
 	// Session row styles
@@ -60,115 +60,121 @@ var (
 
 	// Text styles
 	IndexStyle = lipgloss.NewStyle().
-			Foreground(ColorSecondary).
+			Foreground(Colors.Fg.Subtle).
 			Width(3)
 
 	IndexSelectedStyle = lipgloss.NewStyle().
-				Foreground(ColorWarning).
+				Foreground(Colors.Fg.Selected).
 				Bold(true).
 				Width(3)
 
+	SessionNameStyle = lipgloss.NewStyle().
+				Foreground(Colors.Fg.SessionName)
+
 	SessionNameSelectedStyle = lipgloss.NewStyle().
-					Foreground(ColorWarning).
+					Foreground(Colors.Fg.Selected).
 					Bold(true)
 
+	WindowNameStyle = lipgloss.NewStyle().
+			Foreground(Colors.Fg.WindowName)
+
 	WindowNameSelectedStyle = lipgloss.NewStyle().
-				Foreground(ColorWarning).
+				Foreground(Colors.Fg.Selected).
 				Bold(true)
 
-	ExpandedIcon          = lipgloss.NewStyle().Foreground(ColorPrimary).Render("▼")
-	ExpandedIconSelected  = lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("▼")
-	CollapsedIcon         = lipgloss.NewStyle().Foreground(ColorDim).Render("▶")
-	CollapsedIconSelected = lipgloss.NewStyle().Foreground(ColorDim).Bold(true).Render("▶")
+	ExpandedIcon          = lipgloss.NewStyle().Foreground(Colors.Fg.Accent).Render("▼")
+	ExpandedIconSelected  = lipgloss.NewStyle().Foreground(Colors.Fg.Accent).Bold(true).Render("▼")
+	CollapsedIcon         = lipgloss.NewStyle().Foreground(Colors.Fg.Muted).Render("▶")
+	CollapsedIconSelected = lipgloss.NewStyle().Foreground(Colors.Fg.Muted).Bold(true).Render("▶")
 
 	TimeStyle = lipgloss.NewStyle().
-			Foreground(ColorDim)
+			Foreground(Colors.Fg.Muted)
 
 	TimeSelectedStyle = lipgloss.NewStyle().
-				Foreground(ColorDim).
+				Foreground(Colors.Fg.Muted).
 				Bold(true)
 
 	// Claude status styles
 	ClaudeNewStyle = lipgloss.NewStyle().
-			Foreground(ColorDim)
+			Foreground(Colors.Fg.Muted)
 
 	ClaudeWorkingStyle = lipgloss.NewStyle().
-				Foreground(ColorWarning)
+				Foreground(Colors.Fg.ClaudeWorking)
 
 	ClaudeWaitingStyle = lipgloss.NewStyle().
-				Foreground(ColorSuccess)
+				Foreground(Colors.Fg.ClaudeWaiting)
 
 	ClaudeWaitingUrgentStyle = lipgloss.NewStyle().
-					Foreground(ColorError)
+					Foreground(Colors.Fg.ClaudeUrgent)
 
-	// Git status styles (hardcoded hex colors - independent of terminal theme)
+	// Git status styles
 	GitFilesStyle = lipgloss.NewStyle().
-			Foreground(HexGitFiles)
+			Foreground(Colors.Fg.GitFiles)
 
 	GitAddStyle = lipgloss.NewStyle().
-			Foreground(HexGitAdd)
+			Foreground(Colors.Fg.GitAdd)
 
 	GitDelStyle = lipgloss.NewStyle().
-			Foreground(HexGitDel)
+			Foreground(Colors.Fg.GitDel)
 
 	// Input styles
 	InputPromptStyle = lipgloss.NewStyle().
-				Foreground(ColorPrimary)
+				Foreground(Colors.Fg.Accent)
 
 	// Help styles
 	HelpKeyStyle = lipgloss.NewStyle().
-			Foreground(ColorPrimary).
+			Foreground(Colors.Fg.Accent).
 			Bold(true)
 
 	HelpDescStyle = lipgloss.NewStyle().
-			Foreground(ColorDim)
+			Foreground(Colors.Fg.Muted)
 
 	HelpSepStyle = lipgloss.NewStyle().
-			Foreground(ColorDim)
+			Foreground(Colors.Fg.Muted)
 
 	// Filter style
 	FilterStyle = lipgloss.NewStyle().
-			Foreground(ColorWarning).
+			Foreground(Colors.Fg.Selected).
 			Bold(true)
 
 	// Border style
 	BorderStyle = lipgloss.NewStyle().
-			Foreground(ColorDim)
+			Foreground(Colors.Fg.Border)
 
 	// Statusline style
 	StatuslineStyle = lipgloss.NewStyle().
-			Foreground(ColorDim).
+			Foreground(Colors.Fg.Muted).
 			Padding(0, 1)
 
 	// Title bar style - inverted colors (colored background)
 	TitleBarStyle = lipgloss.NewStyle().
-			Background(ColorPrimary).
-			Foreground(lipgloss.Color("15")). // bright white text on colored bg
+			Background(Colors.Bg.TitleBar).
+			Foreground(Colors.Fg.TitleBar).
 			Bold(true)
 
 	// Prompt style
 	PromptStyle = lipgloss.NewStyle().
-			Foreground(ColorPrimary).
+			Foreground(Colors.Fg.Accent).
 			Padding(0, 1)
 
 	// State line style
 	StateStyle = lipgloss.NewStyle().
-			Foreground(ColorDim).
+			Foreground(Colors.Fg.Muted).
 			Padding(0, 1)
 
 	// Table header style (subtle, dim)
 	TableHeaderStyle = lipgloss.NewStyle().
 				Padding(0, 1)
 
-	// Table header text style (bold, dim)
+	// Table header text style (bold)
 	TableHeaderTextStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(ColorDim)
+				Foreground(Colors.Fg.TableHeader)
 
 	// CC header label style (bold, orange for Claude branding)
 	CCHeaderStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(HexClaudeOrange)
+			Foreground(Colors.Fg.ClaudeHeader)
 )
 
 // RenderBorder returns a horizontal border line
@@ -371,7 +377,7 @@ func ScrollbarChars(totalItems, visibleItems, scrollOffset, height int) []string
 
 	// Build scrollbar
 	trackChar := BorderStyle.Render("│")
-	thumbChar := lipgloss.NewStyle().Foreground(ColorSecondary).Render("┃")
+	thumbChar := lipgloss.NewStyle().Foreground(Colors.Fg.Subtle).Render("┃")
 
 	for i := 0; i < height; i++ {
 		if i >= thumbPos && i < thumbPos+thumbSize {
