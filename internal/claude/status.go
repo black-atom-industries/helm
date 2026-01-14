@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// StaleThreshold is how long before a status is considered stale.
+// StaleThreshold is how long before a "working" status is considered stale.
 // If Claude Code hasn't updated the status file in this time, assume it's not running.
 const StaleThreshold = 2 * time.Minute
 
@@ -18,10 +18,14 @@ type Status struct {
 	Timestamp time.Time // When the status was last updated
 }
 
-// IsStale returns true if the status hasn't been updated within StaleThreshold.
+// IsStale returns true if the status hasn't been updated within the appropriate threshold.
 func (s Status) IsStale() bool {
 	if s.State == "" {
 		return false // No status to be stale
+	}
+	// "waiting" never goes stale - cleanup happens via SessionEnd hook
+	if s.State == "waiting" {
+		return false
 	}
 	return time.Since(s.Timestamp) > StaleThreshold
 }
