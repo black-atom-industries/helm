@@ -8,7 +8,9 @@ build:
 
 install: build
 	mkdir -p $(INSTALL_DIR)
+	rm -f $(INSTALL_DIR)/$(BINARY_NAME)
 	cp $(BINARY_NAME) $(INSTALL_DIR)/$(BINARY_NAME)
+	xattr -c $(INSTALL_DIR)/$(BINARY_NAME)
 	@echo "Installed $(BINARY_NAME) to $(INSTALL_DIR)"
 
 clean:
