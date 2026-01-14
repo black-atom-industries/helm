@@ -137,10 +137,17 @@ func CreateSession(name, dir string) error {
 // SwitchClient switches the tmux client to a session or window.
 // If running inside tmux, uses switch-client. If outside, uses attach-session.
 func SwitchClient(target string) error {
+	var cmd *exec.Cmd
 	if os.Getenv("TMUX") != "" {
-		return exec.Command("tmux", "switch-client", "-t", target).Run()
+		cmd = exec.Command("tmux", "switch-client", "-t", target)
+	} else {
+		cmd = exec.Command("tmux", "attach-session", "-t", target)
+		// Connect terminal for interactive attach
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 	}
-	return exec.Command("tmux", "attach-session", "-t", target).Run()
+	return cmd.Run()
 }
 
 // SelectWindow selects a specific window in the current client
