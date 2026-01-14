@@ -218,10 +218,12 @@ type TableHeaderOpts struct {
 
 // RenderTableHeader renders a header row above the content list
 func RenderTableHeader(layout RowLayout, opts TableHeaderOpts) string {
+	dim := TableHeaderTextStyle // shorthand for dim text
+
 	cols := []string{
-		fmt.Sprintf("%-3s", "#"),
+		dim.Render(fmt.Sprintf("%-3s", "#")),
 		" ",
-		"CC", // Claude Code status column
+		CCHeaderStyle.Render("CC"), // Claude Code status column (orange)
 		" ",
 	}
 
@@ -235,16 +237,16 @@ func RenderTableHeader(layout RowLayout, opts TableHeaderOpts) string {
 	if nameLabel == "" {
 		nameLabel = "Name"
 	}
-	cols = append(cols, fmt.Sprintf("%-*s", layout.NameWidth, nameLabel))
+	cols = append(cols, dim.Render(fmt.Sprintf("%-*s", layout.NameWidth, nameLabel)))
 
 	// Time column header
 	if opts.ShowTime {
-		cols = append(cols, "  ", fmt.Sprintf("%-8s", "Activity"))
+		cols = append(cols, "  ", dim.Render(fmt.Sprintf("%-8s", "Activity")))
 	}
 
 	// Git column header
 	if opts.ShowGit && layout.GitStatusWidth > 0 {
-		cols = append(cols, " ", fmt.Sprintf("%-*s", layout.GitStatusWidth, "Git"))
+		cols = append(cols, " ", dim.Render(fmt.Sprintf("%-*s", layout.GitStatusWidth, "Git")))
 	}
 
 	content := strings.Join(cols, "")

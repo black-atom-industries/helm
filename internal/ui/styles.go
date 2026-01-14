@@ -8,19 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// ANSI 16 colors - adapts to terminal theme
-// 0-7: black, red, green, yellow, blue, magenta, cyan, white
-// 8-15: bright variants
-var (
-	ColorPrimary   = lipgloss.Color("4") // Blue
-	ColorSecondary = lipgloss.Color("7") // White/light gray
-	ColorSuccess   = lipgloss.Color("2") // Green
-	ColorWarning   = lipgloss.Color("3") // Yellow
-	ColorError     = lipgloss.Color("1") // Red
-	ColorDim       = lipgloss.Color("8") // Bright black (dark gray)
-	ColorClaude    = lipgloss.Color("5") // Magenta (distinctive for Claude)
-)
-
 // Border and padding overhead for the app container
 const (
 	// AppBorderOverhead is the total cells used by border + padding per axis
@@ -116,13 +103,13 @@ var (
 
 	// Git status styles (hardcoded hex colors - independent of terminal theme)
 	GitFilesStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#61AFEF")) // Blue
+			Foreground(HexGitFiles)
 
 	GitAddStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#98C379")) // Green
+			Foreground(HexGitAdd)
 
 	GitDelStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#E06C75")) // Red
+			Foreground(HexGitDel)
 
 	// Input styles
 	InputPromptStyle = lipgloss.NewStyle().
@@ -171,8 +158,15 @@ var (
 
 	// Table header style (subtle, dim)
 	TableHeaderStyle = lipgloss.NewStyle().
-				Foreground(ColorDim).
 				Padding(0, 1)
+
+	// Table header text style (dim, for column labels)
+	TableHeaderTextStyle = lipgloss.NewStyle().
+				Foreground(ColorDim)
+
+	// CC header label style (hardcoded orange)
+	CCHeaderStyle = lipgloss.NewStyle().
+			Foreground(HexClaudeOrange)
 )
 
 // RenderBorder returns a horizontal border line
