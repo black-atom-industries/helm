@@ -9,15 +9,15 @@ import (
 
 // Status represents git repository status for a session
 type Status struct {
-	IsRepo bool
-	Dirty  int // Count of uncommitted changes (staged + unstaged + untracked)
-	Ahead  int // Commits ahead of upstream
-	Behind int // Commits behind upstream
+	IsRepo    bool
+	Dirty     int // Count of uncommitted changes (staged + unstaged + untracked)
+	Additions int // Lines added
+	Deletions int // Lines deleted
 }
 
 // IsClean returns true if there are no changes to show
 func (s Status) IsClean() bool {
-	return !s.IsRepo || (s.Dirty == 0 && s.Ahead == 0 && s.Behind == 0)
+	return !s.IsRepo || (s.Dirty == 0 && s.Additions == 0 && s.Deletions == 0)
 }
 
 // GetSessionPath returns the current working directory of a tmux session's active pane
@@ -43,8 +43,8 @@ func GetStatus(dir string) Status {
 	// Get dirty count: staged + unstaged + untracked
 	status.Dirty = getDirtyCount(dir)
 
-	// Get ahead/behind counts
-	status.Ahead, status.Behind = getAheadBehind(dir)
+	// Get line additions/deletions
+	status.Additions, status.Deletions = getLineStats(dir)
 
 	return status
 }
@@ -64,23 +64,25 @@ func getDirtyCount(dir string) int {
 	return len(lines)
 }
 
-// getAheadBehind returns commits ahead and behind upstream
-func getAheadBehind(dir string) (ahead, behind int) {
-	cmd := exec.Command("git", "-C", dir, "rev-list", "--left-right", "--count", "HEAD...@{u}")
-	out, err := cmd.Output()
-	if err != nil {
-		// No upstream configured or other error
-		return 0, 0
-	}
+// getLineStats returns lines added and deleted in working directory
+func getLineStats(dir string) (additions, deletions int) {
+	// Get stats for all uncommitted changes (staged + unstaged)
+	cmd := exec.Command("git", "-C", dir, "diff", "--numstat", "HEAD")
+	out, _ := cmd.Output()
 
-	parts := strings.Fields(strings.TrimSpace(string(out)))
-	if len(parts) != 2 {
-		return 0, 0
+	for _, line := range strings.Split(string(out), "\n") {
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) >= 2 && parts[0] != "-" {
+			add, _ := strconv.Atoi(parts[0])
+			del, _ := strconv.Atoi(parts[1])
+			additions += add
+			deletions += del
+		}
 	}
-
-	ahead, _ = strconv.Atoi(parts[0])
-	behind, _ = strconv.Atoi(parts[1])
-	return ahead, behind
+	return additions, deletions
 }
 
 // isDir checks if path is a directory

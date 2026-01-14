@@ -129,8 +129,8 @@ func RenderGitStatusColumn(status *git.Status, maxWidth int) string {
 		return strings.Repeat(" ", maxWidth)
 	}
 
-	formatted := FormatGitStatus(status.Dirty, status.Ahead, status.Behind)
-	actualWidth := GitStatusWidth(status.Dirty, status.Ahead, status.Behind)
+	formatted := FormatGitStatus(status.Dirty, status.Additions, status.Deletions)
+	actualWidth := GitStatusWidth(status.Dirty, status.Additions, status.Deletions)
 
 	if actualWidth < maxWidth {
 		return formatted + strings.Repeat(" ", maxWidth-actualWidth)

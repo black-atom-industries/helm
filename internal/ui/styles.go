@@ -114,15 +114,15 @@ var (
 	ClaudeWaitingUrgentStyle = lipgloss.NewStyle().
 					Foreground(ColorError)
 
-	// Git status styles (hardcoded ANSI colors)
+	// Git status styles (hardcoded hex colors - independent of terminal theme)
 	GitFilesStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("4")) // Blue
+			Foreground(lipgloss.Color("#61AFEF")) // Blue
 
-	GitAheadStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("2")) // Green
+	GitAddStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#98C379")) // Green
 
-	GitBehindStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("1")) // Red
+	GitDelStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#E06C75")) // Red
 
 	// Input styles
 	InputPromptStyle = lipgloss.NewStyle().
@@ -275,22 +275,26 @@ const GitStatusColumnWidth = 20 // fits "99 files +99 -99"
 
 // FormatGitStatus formats git status for display
 // Returns empty string for clean repos (no indicator shown)
-// Format: 3 files +2 -1 (files blue, +ahead green, -behind red)
-func FormatGitStatus(dirty, ahead, behind int) string {
-	if dirty == 0 && ahead == 0 && behind == 0 {
+// Format: 3 files +44 -7 (files blue, +additions green, -deletions red)
+func FormatGitStatus(dirty, additions, deletions int) string {
+	if dirty == 0 && additions == 0 && deletions == 0 {
 		return ""
 	}
 
 	var parts []string
 
 	if dirty > 0 {
-		parts = append(parts, GitFilesStyle.Render(fmt.Sprintf("%d files", dirty)))
+		label := "files"
+		if dirty == 1 {
+			label = "file"
+		}
+		parts = append(parts, GitFilesStyle.Render(fmt.Sprintf("%d %s", dirty, label)))
 	}
-	if ahead > 0 {
-		parts = append(parts, GitAheadStyle.Render(fmt.Sprintf("+%d", ahead)))
+	if additions > 0 {
+		parts = append(parts, GitAddStyle.Render(fmt.Sprintf("+%d", additions)))
 	}
-	if behind > 0 {
-		parts = append(parts, GitBehindStyle.Render(fmt.Sprintf("-%d", behind)))
+	if deletions > 0 {
+		parts = append(parts, GitDelStyle.Render(fmt.Sprintf("-%d", deletions)))
 	}
 
 	if len(parts) == 0 {
@@ -301,21 +305,25 @@ func FormatGitStatus(dirty, ahead, behind int) string {
 }
 
 // GitStatusWidth returns the visual width of a git status string (without ANSI codes)
-func GitStatusWidth(dirty, ahead, behind int) int {
-	if dirty == 0 && ahead == 0 && behind == 0 {
+func GitStatusWidth(dirty, additions, deletions int) int {
+	if dirty == 0 && additions == 0 && deletions == 0 {
 		return 0
 	}
 
 	var parts []string
 
 	if dirty > 0 {
-		parts = append(parts, fmt.Sprintf("%d files", dirty))
+		label := "files"
+		if dirty == 1 {
+			label = "file"
+		}
+		parts = append(parts, fmt.Sprintf("%d %s", dirty, label))
 	}
-	if ahead > 0 {
-		parts = append(parts, fmt.Sprintf("+%d", ahead))
+	if additions > 0 {
+		parts = append(parts, fmt.Sprintf("+%d", additions))
 	}
-	if behind > 0 {
-		parts = append(parts, fmt.Sprintf("-%d", behind))
+	if deletions > 0 {
+		parts = append(parts, fmt.Sprintf("-%d", deletions))
 	}
 
 	if len(parts) == 0 {
