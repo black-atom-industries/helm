@@ -18,11 +18,12 @@ const (
 	FooterOverhead     = 5 // BottomBorderHeight + NotificationHeight + StateLineHeight + HintsHeight
 
 	// Optional content elements
-	TableHeaderHeight = 1
+	TableHeaderHeight     = 1
+	TableDottedLineHeight = 1
 
 	// Computed totals for visible items calculation
-	BaseOverhead            = 8 // HeaderOverhead + FooterOverhead
-	WithTableHeaderOverhead = 9 // BaseOverhead + TableHeaderHeight
+	BaseOverhead            = 8  // HeaderOverhead + FooterOverhead
+	WithTableHeaderOverhead = 10 // BaseOverhead + TableHeaderHeight + TableDottedLineHeight
 
 	// Fallback values
 	DefaultVisibleItems = 10
