@@ -114,6 +114,10 @@ type Model struct {
 
 	// Loading state
 	sessionsLoaded bool // True after sessions have been loaded at least once
+
+	// Git status loading state
+	gitStatusPending     map[string]bool // Sessions still being fetched (by name)
+	gitStatusShowLoading bool            // True after 500ms delay if still loading
 }
 
 // New creates a new Model
@@ -205,6 +209,16 @@ type cloneSuccessMsg struct {
 	sessionName string
 }
 
+// gitStatusSingleMsg is sent when a single session's git status is ready
+type gitStatusSingleMsg struct {
+	sessionName string
+	status      git.Status
+	hasStatus   bool // true if status should be shown (repo with changes)
+}
+
+// gitStatusLoadingMsg is sent after 500ms to show loading indicator
+type gitStatusLoadingMsg struct{}
+
 // clearMessageAfter returns a command that clears the message after a delay
 func clearMessageAfter(d time.Duration) tea.Cmd {
 	return tea.Tick(d, func(time.Time) tea.Msg {
@@ -227,13 +241,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sessionsLoaded = true
 		m.saveSessionCache() // Cache for instant startup next time
 		m.loadClaudeStatuses()
-		m.loadGitStatuses()
+		// Initialize git statuses map (will be populated async)
+		if m.gitStatuses == nil {
+			m.gitStatuses = make(map[string]git.Status)
+		}
+		// Reserve git status column width to prevent layout shift
+		if m.config.GitStatusEnabled {
+			m.maxGitStatusWidth = ui.GitStatusColumnWidth
+		}
 		m.calculateColumnWidths()
 		m.rebuildItems()
 		if len(m.items) == 0 {
 			m.message = "No other sessions. Press C-n to create one."
 		}
-		return m, nil
+		// Fetch git statuses asynchronously to avoid blocking UI
+		return m, m.fetchGitStatusesCmd()
 
 	case errMsg:
 		m.setError("Error: %v", msg.err)
@@ -268,6 +290,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cloneSuccess = true
 		m.cloneSuccessPath = msg.repoPath
 		m.cloneSuccessSession = msg.sessionName
+		return m, nil
+
+	case gitStatusSingleMsg:
+		// Single git status loaded - update incrementally
+		if msg.hasStatus {
+			m.gitStatuses[msg.sessionName] = msg.status
+		}
+		delete(m.gitStatusPending, msg.sessionName)
+		if len(m.gitStatusPending) == 0 {
+			m.gitStatusShowLoading = false
+		}
+		return m, nil
+
+	case gitStatusLoadingMsg:
+		// 500ms elapsed - show loading indicator if still fetching
+		if len(m.gitStatusPending) > 0 {
+			m.gitStatusShowLoading = true
+		}
 		return m, nil
 
 	case tea.WindowSizeMsg:
@@ -1309,24 +1349,44 @@ func (m *Model) loadClaudeStatuses() {
 	}
 }
 
-func (m *Model) loadGitStatuses() {
-	m.gitStatuses = make(map[string]git.Status)
-	if !m.config.GitStatusEnabled {
-		m.maxGitStatusWidth = 0
-		return
+// fetchGitStatusesCmd returns commands that fetch git statuses in parallel
+// Each session's status is fetched independently and updates the UI as soon as ready
+func (m *Model) fetchGitStatusesCmd() tea.Cmd {
+	if !m.config.GitStatusEnabled || len(m.sessions) == 0 {
+		return nil
 	}
-	// Always reserve column width when git status is enabled (prevents layout shift)
-	m.maxGitStatusWidth = ui.GitStatusColumnWidth
+
+	// Track which sessions we're waiting for
+	m.gitStatusPending = make(map[string]bool)
+	m.gitStatusShowLoading = false
 	for _, s := range m.sessions {
-		path, err := git.GetSessionPath(s.Name)
-		if err != nil || path == "" {
-			continue
-		}
-		status := git.GetStatus(path)
-		if status.IsRepo && !status.IsClean() {
-			m.gitStatuses[s.Name] = status
-		}
+		m.gitStatusPending[s.Name] = true
 	}
+
+	// Create a command for each session - they run in parallel via tea.Batch
+	cmds := make([]tea.Cmd, 0, len(m.sessions)+1)
+
+	// Add delayed loading indicator (500ms)
+	cmds = append(cmds, tea.Tick(500*time.Millisecond, func(time.Time) tea.Msg {
+		return gitStatusLoadingMsg{}
+	}))
+
+	for _, s := range m.sessions {
+		sessionName := s.Name // capture for closure
+		cmds = append(cmds, func() tea.Msg {
+			path, err := git.GetSessionPath(sessionName)
+			if err != nil || path == "" {
+				return gitStatusSingleMsg{sessionName: sessionName, hasStatus: false}
+			}
+			status := git.GetStatus(path)
+			if status.IsRepo && !status.IsClean() {
+				return gitStatusSingleMsg{sessionName: sessionName, status: status, hasStatus: true}
+			}
+			return gitStatusSingleMsg{sessionName: sessionName, hasStatus: false}
+		})
+	}
+
+	return tea.Batch(cmds...)
 }
 
 func (m *Model) calculateColumnWidths() {
@@ -1870,6 +1930,9 @@ func (m Model) viewBookmarks() string {
 				if status, ok := m.gitStatuses[sessionName]; ok {
 					opts.GitStatus = &status
 				}
+				if m.gitStatusShowLoading && m.gitStatusPending[sessionName] {
+					opts.GitStatusLoading = true
+				}
 				if status, ok := m.claudeStatuses[sessionName]; ok {
 					opts.ClaudeStatus = &status
 				}
@@ -2014,6 +2077,9 @@ func (m Model) viewSessionList() string {
 			}
 			if status, ok := m.gitStatuses[session.Name]; ok {
 				opts.GitStatus = &status
+			}
+			if m.gitStatusShowLoading && m.gitStatusPending[session.Name] {
+				opts.GitStatusLoading = true
 			}
 			if status, ok := m.claudeStatuses[session.Name]; ok {
 				opts.ClaudeStatus = &status

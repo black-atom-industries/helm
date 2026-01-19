@@ -126,6 +126,9 @@ var (
 	GitDelStyle = lipgloss.NewStyle().
 			Foreground(Colors.Fg.GitDel)
 
+	GitLoadingStyle = lipgloss.NewStyle().
+			Foreground(Colors.Fg.Muted)
+
 	// Input styles
 	InputPromptStyle = lipgloss.NewStyle().
 				Foreground(Colors.Fg.Accent)

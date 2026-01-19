@@ -27,12 +27,13 @@ type RowOpts struct {
 	Selected bool
 
 	// Optional - set to enable
-	ShowExpandIcon bool           // Show ▸/▾ expand indicator
-	Expanded       bool           // Expansion state
-	LastActivity   *time.Time     // Show time ago if set
-	GitStatus      *git.Status    // Show git status if set
-	ClaudeStatus   *claude.Status // Show claude status if set
-	AnimFrame      int            // Animation frame for claude status
+	ShowExpandIcon   bool           // Show ▸/▾ expand indicator
+	Expanded         bool           // Expansion state
+	LastActivity     *time.Time     // Show time ago if set
+	GitStatus        *git.Status    // Show git status if set
+	GitStatusLoading bool           // Show loading indicator for git status
+	ClaudeStatus     *claude.Status // Show claude status if set
+	AnimFrame        int            // Animation frame for claude status
 }
 
 // WindowRowOpts contains per-row options for rendering a window
@@ -128,9 +129,20 @@ func FormatTimeAgo(t time.Time) string {
 }
 
 // RenderGitStatusColumn renders the git status with padding to a fixed width
-func RenderGitStatusColumn(status *git.Status, maxWidth int, selected bool) string {
+func RenderGitStatusColumn(status *git.Status, maxWidth int, selected bool, loading bool, animFrame int) string {
 	if maxWidth == 0 {
 		return ""
+	}
+
+	// Show spinner if still fetching
+	if loading {
+		frame := animFrame % len(ClaudeSpinnerFrames)
+		spinner := GitLoadingStyle.Render(ClaudeSpinnerFrames[frame])
+		if maxWidth > 1 {
+			padding := SpacerStyle(strings.Repeat(" ", maxWidth-1), selected)
+			return spinner + padding
+		}
+		return spinner
 	}
 
 	if status == nil {
@@ -191,11 +203,8 @@ func RenderSessionRow(name string, lastActivity time.Time, layout RowLayout, opt
 	}
 
 	// Git status (optional column)
-	if layout.GitStatusWidth > 0 && opts.GitStatus != nil {
-		cols = append(cols, SpacerStyle(" ", opts.Selected), RenderGitStatusColumn(opts.GitStatus, layout.GitStatusWidth, opts.Selected))
-	} else if layout.GitStatusWidth > 0 {
-		// Pad for alignment even when no git status
-		cols = append(cols, SpacerStyle(" ", opts.Selected), SpacerStyle(strings.Repeat(" ", layout.GitStatusWidth), opts.Selected))
+	if layout.GitStatusWidth > 0 {
+		cols = append(cols, SpacerStyle(" ", opts.Selected), RenderGitStatusColumn(opts.GitStatus, layout.GitStatusWidth, opts.Selected, opts.GitStatusLoading, opts.AnimFrame))
 	}
 
 	content := strings.Join(cols, "")
@@ -217,8 +226,8 @@ func RenderBookmarkRow(name string, layout RowLayout, opts RowOpts, width int) s
 	}
 
 	// Git status (optional)
-	if layout.GitStatusWidth > 0 && opts.GitStatus != nil {
-		cols = append(cols, SpacerStyle(" ", opts.Selected), RenderGitStatusColumn(opts.GitStatus, layout.GitStatusWidth, opts.Selected))
+	if layout.GitStatusWidth > 0 {
+		cols = append(cols, SpacerStyle(" ", opts.Selected), RenderGitStatusColumn(opts.GitStatus, layout.GitStatusWidth, opts.Selected, opts.GitStatusLoading, opts.AnimFrame))
 	}
 
 	content := strings.Join(cols, "")
