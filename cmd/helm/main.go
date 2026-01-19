@@ -35,7 +35,7 @@ func main() {
 		case "bookmark":
 			if len(os.Args) < 3 {
 				fmt.Println("Usage: helm bookmark <N>")
-				fmt.Println("Opens bookmark at slot N (1-9)")
+				fmt.Println("Opens bookmark at slot N (0-9)")
 				os.Exit(1)
 			}
 			if err := runBookmark(os.Args[2]); err != nil {
@@ -86,11 +86,11 @@ func main() {
 	}
 }
 
-// runBookmark opens the bookmark at slot N (1-9)
+// runBookmark opens the bookmark at slot N (0-9)
 func runBookmark(slotStr string) error {
 	slot, err := strconv.Atoi(slotStr)
-	if err != nil || slot < 1 || slot > 9 {
-		return fmt.Errorf("invalid slot: %s (must be 1-9)", slotStr)
+	if err != nil || slot < 0 || slot > 9 {
+		return fmt.Errorf("invalid slot: %s (must be 0-9)", slotStr)
 	}
 
 	cfg, err := config.Load()
@@ -98,12 +98,11 @@ func runBookmark(slotStr string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	idx := slot - 1
-	if idx >= len(cfg.Bookmarks) {
+	if slot >= len(cfg.Bookmarks) {
 		return fmt.Errorf("no bookmark at slot %d", slot)
 	}
 
-	bookmark := cfg.Bookmarks[idx]
+	bookmark := cfg.Bookmarks[slot]
 	sessionName := extractSessionName(bookmark.Path, cfg.ProjectDepth)
 
 	// Create session if it doesn't exist
@@ -131,17 +130,17 @@ func runBookmark(slotStr string) error {
 }
 
 // printTmuxBindings outputs tmux bind commands for configured bookmarks
-// Uses Alt+Shift+number keybindings (M-! through M-()
+// Uses Alt+Shift+number keybindings (M-) through M-()
 func printTmuxBindings() error {
-	// Shifted number keys: 1=! 2=@ 3=# 4=$ 5=% 6=^ 7=& 8=* 9=(
-	shiftedKeys := []string{"!", "@", "#", "$", "%", "^", "&", "*", "("}
+	// Shifted number keys: 0=) 1=! 2=@ 3=# 4=$ 5=% 6=^ 7=& 8=* 9=(
+	shiftedKeys := []string{")", "!", "@", "#", "$", "%", "^", "&", "*", "("}
 
-	fmt.Println("# helm bookmark bindings (Alt+Shift+1-9)")
+	fmt.Println("# helm bookmark bindings (Alt+Shift+0-9)")
 	fmt.Println("# Add to your tmux.conf or source with: run-shell \"helm tmux-bindings | tmux source-stdin\"")
 
-	// Always output all 9 slots
-	for i := 0; i < 9; i++ {
-		fmt.Printf("bind -n M-%s run-shell \"helm bookmark %d\"\n", shiftedKeys[i], i+1)
+	// Always output all 10 slots
+	for i := 0; i < 10; i++ {
+		fmt.Printf("bind -n M-%s run-shell \"helm bookmark %d\"\n", shiftedKeys[i], i)
 	}
 
 	return nil

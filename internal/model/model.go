@@ -448,6 +448,8 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.addSelectedToBookmarks()
 
 	// Number jumps (only when no filter active)
+	case m.filter == "" && key.Matches(msg, keys.Jump0):
+		return m.handleJump(0)
 	case m.filter == "" && key.Matches(msg, keys.Jump1):
 		return m.handleJump(1)
 	case m.filter == "" && key.Matches(msg, keys.Jump2):
@@ -1085,10 +1087,9 @@ func (m *Model) handleJump(num int) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Session labels: 1, 2, 3... map to session indices 0, 1, 2...
-	sessionIdx := num - 1
-	if sessionIdx >= 0 && sessionIdx < len(m.sessions) {
-		session := m.sessions[sessionIdx]
+	// Session labels: 0, 1, 2... map to session indices 0, 1, 2...
+	if num >= 0 && num < len(m.sessions) {
+		session := m.sessions[num]
 		if err := tmux.SwitchClient(session.Name); err != nil {
 			m.setError("Error: %v", err)
 			return m, nil
@@ -1980,7 +1981,7 @@ func (m Model) viewBookmarks() string {
 		for i, bookmark := range visibleBookmarks {
 			absoluteIdx := scrollOffset + i
 			selected := m.bookmarkList.IsSelected(absoluteIdx)
-			slot := absoluteIdx + 1
+			slot := absoluteIdx
 
 			if i < len(scrollbar) {
 				if selected {
@@ -2143,7 +2144,6 @@ func (m Model) viewSessionList() string {
 		switch item.Type {
 		case ItemTypeSession:
 			session := m.sessions[item.SessionIndex]
-			sessionNum++
 
 			// Build options for this row
 			lastActivity := session.LastActivity
@@ -2169,6 +2169,7 @@ func (m Model) viewSessionList() string {
 			}
 
 			b.WriteString(ui.RenderSessionRow(session.Name, session.LastActivity, layout, opts, m.rowWidth()))
+			sessionNum++
 
 		case ItemTypeWindow:
 			session := m.sessions[item.SessionIndex]

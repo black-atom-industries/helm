@@ -19,6 +19,7 @@ type KeyMap struct {
 	Quit          key.Binding
 	Cancel        key.Binding
 	Confirm       key.Binding
+	Jump0         key.Binding
 	Jump1         key.Binding
 	Jump2         key.Binding
 	Jump3         key.Binding
@@ -93,6 +94,7 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("ctrl+y"),
 		key.WithHelp("C-y", "Confirm"),
 	),
+	Jump0: key.NewBinding(key.WithKeys("0")),
 	Jump1: key.NewBinding(key.WithKeys("1")),
 	Jump2: key.NewBinding(key.WithKeys("2")),
 	Jump3: key.NewBinding(key.WithKeys("3")),
