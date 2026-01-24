@@ -394,6 +394,14 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.collapseCurrent()
 
 	case key.Matches(msg, keys.Select):
+		// If filter is active but no results, create a new session with filter text
+		if m.filter != "" && len(m.items) == 0 {
+			name := strings.TrimSpace(m.filter)
+			if name == "" {
+				return m, nil
+			}
+			return m.createSession(name)
+		}
 		return m.selectCurrent()
 
 	case key.Matches(msg, keys.Kill):
@@ -2216,7 +2224,11 @@ func (m Model) viewSessionList() string {
 	case ModeNormal:
 		notification = m.message
 		if m.filter != "" {
-			hints = ui.HelpFiltering()
+			if len(m.items) == 0 {
+				hints = ui.HelpFilteringNoResults()
+			} else {
+				hints = ui.HelpFiltering()
+			}
 		} else {
 			hints = ui.HelpNormal()
 		}

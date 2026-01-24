@@ -138,6 +138,13 @@ func HelpFiltering() string {
 		helpItem("C-c", "Quit")
 }
 
+// HelpFilteringNoResults returns the help text when filter has no matches
+func HelpFilteringNoResults() string {
+	return helpItem("Esc", "Clear") + helpSep() +
+		helpItem("Enter", "Create") + helpSep() +
+		helpItem("C-c", "Quit")
+}
+
 // HelpConfirmKill returns the help text for kill confirmation mode
 func HelpConfirmKill() string {
 	return helpItem("C-x", "Confirm") + helpSep() +
