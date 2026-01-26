@@ -33,6 +33,7 @@ const (
 	ModeConfirmRemoveFolder
 	ModeCloneRepo
 	ModeBookmarks
+	ModeCreatePath // Path input for creating session at arbitrary path
 )
 
 // String returns the display name for the mode (used in title bar)
@@ -48,6 +49,8 @@ func (m Mode) String() string {
 		return "CLONE"
 	case ModeCreate:
 		return "NEW"
+	case ModeCreatePath:
+		return "PATH"
 	case ModeConfirmKill:
 		return "KILL"
 	case ModeConfirmRemoveFolder:
@@ -94,8 +97,13 @@ type Model struct {
 	filter            string // Current filter text for fuzzy matching
 
 	// Directory picker state (uses ScrollList for cursor/scroll/filter)
-	projectList       *ui.ScrollList[string]
-	returnToBookmarks bool // True if we should return to bookmarks mode after project picker
+	projectList        *ui.ScrollList[string]
+	returnToBookmarks  bool   // True if we should return to bookmarks mode after project picker
+	pendingSessionName string // Session name pending directory selection (for create-from-filter flow)
+
+	// Path input state (for ModeCreatePath)
+	pathInput       textinput.Model // Text input for path entry
+	pathCompletions []string        // Available path completions
 
 	// Scroll state
 	scrollOffset int // Scroll offset for session list
@@ -136,6 +144,11 @@ func New(currentSession string, cfg config.Config) Model {
 	ti.Prompt = "" // We handle the prompt in RenderPrompt
 	ti.CharLimit = 50
 
+	// Path input for ModeCreatePath
+	pathInput := textinput.New()
+	pathInput.Prompt = ""
+	pathInput.CharLimit = 256
+
 	// Create project list with filter function that matches on directory basename
 	projectList := ui.NewScrollList(func(fullPath string, filter string) bool {
 		name := filepath.Base(fullPath)
@@ -157,6 +170,7 @@ func New(currentSession string, cfg config.Config) Model {
 	m := Model{
 		currentSession:   currentSession,
 		input:            ti,
+		pathInput:        pathInput,
 		config:           cfg,
 		projectList:      projectList,
 		cloneList:        cloneList,
@@ -336,6 +350,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
+	// Handle text input updates in create path mode
+	if m.mode == ModeCreatePath {
+		var cmd tea.Cmd
+		m.pathInput, cmd = m.pathInput.Update(msg)
+		return m, cmd
+	}
+
 	return m, nil
 }
 
@@ -347,6 +368,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleConfirmKillMode(msg)
 	case ModeCreate:
 		return m.handleCreateMode(msg)
+	case ModeCreatePath:
+		return m.handleCreatePathMode(msg)
 	case ModePickDirectory:
 		return m.handlePickDirectoryMode(msg)
 	case ModeConfirmRemoveFolder:
@@ -394,13 +417,28 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.collapseCurrent()
 
 	case key.Matches(msg, keys.Select):
-		// If filter is active but no results, create a new session with filter text
+		// If filter is active but no results, transition to path input mode
 		if m.filter != "" && len(m.items) == 0 {
 			name := strings.TrimSpace(m.filter)
 			if name == "" {
 				return m, nil
 			}
-			return m.createSession(name)
+			m.pendingSessionName = sanitizeSessionName(name)
+			m.mode = ModeCreatePath
+			m.filter = ""
+			// Pre-fill with first ProjectDir + session name
+			defaultPath := ""
+			if len(m.config.ProjectDirs) > 0 {
+				defaultPath = filepath.Join(m.config.ProjectDirs[0], m.pendingSessionName)
+			} else {
+				homeDir, _ := os.UserHomeDir()
+				defaultPath = filepath.Join(homeDir, m.pendingSessionName)
+			}
+			m.pathInput.SetValue(defaultPath)
+			m.pathInput.SetCursor(len(defaultPath))
+			m.pathInput.Focus()
+			m.updatePathCompletions()
+			return m, textinput.Blink
 		}
 		return m.selectCurrent()
 
@@ -540,6 +578,161 @@ func (m *Model) handleCreateMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m *Model) handleCreatePathMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	keys := ui.DefaultKeyMap
+
+	switch {
+	case key.Matches(msg, keys.Cancel):
+		m.mode = ModeNormal
+		m.pendingSessionName = ""
+		m.pathInput.Blur()
+		return m, nil
+
+	case msg.Type == tea.KeyTab:
+		// Tab completion - use first completion if available
+		if len(m.pathCompletions) > 0 {
+			m.pathInput.SetValue(m.pathCompletions[0])
+			m.pathInput.SetCursor(len(m.pathCompletions[0]))
+			m.updatePathCompletions()
+		}
+		return m, nil
+
+	case msg.Type == tea.KeyEnter:
+		path := strings.TrimSpace(m.pathInput.Value())
+		if path == "" {
+			m.setError("Path cannot be empty")
+			return m, nil
+		}
+		// Expand ~ to home directory
+		if strings.HasPrefix(path, "~") {
+			homeDir, _ := os.UserHomeDir()
+			path = filepath.Join(homeDir, path[1:])
+		}
+		return m.createSessionAtPath(path)
+	}
+
+	// Ignore ctrl key combinations except for text editing
+	if msg.Type == tea.KeyCtrlN || msg.Type == tea.KeyCtrlP ||
+		msg.Type == tea.KeyCtrlJ || msg.Type == tea.KeyCtrlK ||
+		msg.Type == tea.KeyCtrlH || msg.Type == tea.KeyCtrlL ||
+		msg.Type == tea.KeyCtrlX || msg.Type == tea.KeyCtrlY ||
+		msg.Type == tea.KeyCtrlB || msg.Type == tea.KeyCtrlR ||
+		msg.Type == tea.KeyCtrlG {
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.pathInput, cmd = m.pathInput.Update(msg)
+	m.updatePathCompletions()
+	return m, cmd
+}
+
+// updatePathCompletions updates the list of path completions based on current input
+func (m *Model) updatePathCompletions() {
+	path := m.pathInput.Value()
+	if path == "" {
+		m.pathCompletions = nil
+		return
+	}
+
+	// Expand ~ to home directory for completion
+	expandedPath := path
+	if strings.HasPrefix(path, "~") {
+		homeDir, _ := os.UserHomeDir()
+		expandedPath = filepath.Join(homeDir, path[1:])
+	}
+
+	// Get the directory to scan and the prefix to match
+	dir := filepath.Dir(expandedPath)
+	prefix := filepath.Base(expandedPath)
+
+	// If path ends with /, scan that directory
+	if strings.HasSuffix(path, "/") || strings.HasSuffix(path, string(filepath.Separator)) {
+		dir = expandedPath
+		prefix = ""
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		m.pathCompletions = nil
+		return
+	}
+
+	var completions []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		// Skip hidden directories
+		if strings.HasPrefix(entry.Name(), ".") {
+			continue
+		}
+		// Match prefix (case-insensitive)
+		if prefix != "" && !strings.HasPrefix(strings.ToLower(entry.Name()), strings.ToLower(prefix)) {
+			continue
+		}
+		fullPath := filepath.Join(dir, entry.Name())
+		// Convert back to ~ notation if it was used
+		if strings.HasPrefix(path, "~") {
+			homeDir, _ := os.UserHomeDir()
+			if strings.HasPrefix(fullPath, homeDir) {
+				fullPath = "~" + fullPath[len(homeDir):]
+			}
+		}
+		completions = append(completions, fullPath)
+	}
+
+	m.pathCompletions = completions
+}
+
+// createSessionAtPath creates a folder (if needed) and session at the given path
+func (m *Model) createSessionAtPath(fullPath string) (tea.Model, tea.Cmd) {
+	// Create folder if it doesn't exist
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		if err := os.MkdirAll(fullPath, 0755); err != nil {
+			m.setError("Failed to create folder: %v", err)
+			m.pendingSessionName = ""
+			m.mode = ModeNormal
+			m.pathInput.Blur()
+			return m, nil
+		}
+	}
+
+	// Extract session name from path
+	sessionName := m.extractSessionName(fullPath)
+
+	// Clear pending state
+	m.pendingSessionName = ""
+	m.pathInput.Blur()
+
+	// Check if session already exists - if so, just switch to it
+	if tmux.SessionExists(sessionName) {
+		if err := tmux.SwitchClient(sessionName); err != nil {
+			m.setError("Failed to switch: %v", err)
+			return m, m.loadSessions
+		}
+		return m, tea.Quit
+	}
+
+	// Create the session
+	if err := tmux.CreateSession(sessionName, fullPath); err != nil {
+		m.setError("Error: %v", err)
+		m.mode = ModeNormal
+		return m, nil
+	}
+
+	// Apply layout if configured
+	m.applyLayout(sessionName, fullPath)
+
+	// Switch to the new session
+	if err := tmux.SwitchClient(sessionName); err != nil {
+		m.setError("Created but failed to switch: %v", err)
+		return m, m.loadSessions
+	}
+
+	return m, tea.Quit
+}
+
 func (m *Model) handlePickDirectoryMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	keys := ui.DefaultKeyMap
 
@@ -550,6 +743,8 @@ func (m *Model) handlePickDirectoryMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.projectList.SetFilter("")
 			return m, nil
 		}
+		// Clear pending session name when canceling
+		m.pendingSessionName = ""
 		// Return to bookmarks mode if we came from there
 		if m.returnToBookmarks {
 			m.returnToBookmarks = false
@@ -568,6 +763,9 @@ func (m *Model) handlePickDirectoryMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.Select):
 		if selected, ok := m.projectList.SelectedItem(); ok {
+			if m.pendingSessionName != "" {
+				return m.createSessionWithNewFolder(selected, m.pendingSessionName)
+			}
 			return m.createSessionFromDir(selected)
 		}
 
@@ -989,6 +1187,51 @@ func (m *Model) createSessionFromDir(fullPath string) (tea.Model, tea.Cmd) {
 	return m, tea.Quit
 }
 
+// createSessionWithNewFolder creates a new folder at basePath/sessionName and starts a session there
+func (m *Model) createSessionWithNewFolder(basePath, sessionName string) (tea.Model, tea.Cmd) {
+	fullPath := filepath.Join(basePath, sessionName)
+
+	// Create folder if it doesn't exist
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		if err := os.MkdirAll(fullPath, 0755); err != nil {
+			m.setError("Failed to create folder: %v", err)
+			m.pendingSessionName = ""
+			m.mode = ModeNormal
+			return m, nil
+		}
+	}
+
+	// Clear pending state
+	m.pendingSessionName = ""
+
+	// Check if session already exists - if so, just switch to it
+	if tmux.SessionExists(sessionName) {
+		if err := tmux.SwitchClient(sessionName); err != nil {
+			m.setError("Failed to switch: %v", err)
+			return m, m.loadSessions
+		}
+		return m, tea.Quit
+	}
+
+	// Create the session
+	if err := tmux.CreateSession(sessionName, fullPath); err != nil {
+		m.setError("Error: %v", err)
+		m.mode = ModeNormal
+		return m, nil
+	}
+
+	// Apply layout if configured
+	m.applyLayout(sessionName, fullPath)
+
+	// Switch to the new session
+	if err := tmux.SwitchClient(sessionName); err != nil {
+		m.setError("Created but failed to switch: %v", err)
+		return m, m.loadSessions
+	}
+
+	return m, tea.Quit
+}
+
 // extractSessionName extracts a session name from a full path
 // Uses the last N path components based on ProjectDepth config
 func (m *Model) extractSessionName(fullPath string) string {
@@ -1029,6 +1272,29 @@ func (m *Model) scanProjectDirectories() []string {
 	depth := m.config.ProjectDepth
 
 	// Scan each configured base directory
+	for _, baseDir := range m.config.ProjectDirs {
+		m.walkAtDepth(baseDir, "", depth, &dirs)
+	}
+
+	return dirs
+}
+
+// scanBaseDirectories scans directories at depth-1 (parent directories for projects)
+// Used when creating new project folders - shows where to create, not existing projects
+// Always includes ProjectDirs themselves so users can create new intermediate directories
+func (m *Model) scanBaseDirectories() []string {
+	var dirs []string
+	depth := m.config.ProjectDepth - 1
+
+	// If depth is 1 or less, just return the ProjectDirs themselves
+	if depth <= 0 {
+		return m.config.ProjectDirs
+	}
+
+	// Always include ProjectDirs first (allows creating new org/namespace folders)
+	dirs = append(dirs, m.config.ProjectDirs...)
+
+	// Then add existing directories at depth-1
 	for _, baseDir := range m.config.ProjectDirs {
 		m.walkAtDepth(baseDir, "", depth, &dirs)
 	}
@@ -1486,6 +1752,9 @@ func (m *Model) stateText() string {
 		}
 		return fmt.Sprintf("%d bookmarks", total)
 	case ModePickDirectory:
+		if m.pendingSessionName != "" {
+			return fmt.Sprintf("Select location for: %s", m.pendingSessionName)
+		}
 		total := len(m.projectList.Items())
 		visible := m.projectList.Len()
 		if m.projectList.Filter() != "" {
@@ -1715,7 +1984,69 @@ func (m Model) View() string {
 	if m.mode == ModeBookmarks {
 		return m.viewBookmarks()
 	}
+	if m.mode == ModeCreatePath {
+		return m.viewCreatePath()
+	}
 	return m.viewSessionList()
+}
+
+// viewCreatePath renders the path input view for creating sessions at arbitrary paths
+func (m Model) viewCreatePath() string {
+	var b strings.Builder
+
+	// Fixed header: title bar + prompt + border
+	b.WriteString(ui.RenderTitleBar("HELM", m.mode.String(), m.width))
+	b.WriteString("\n")
+
+	// Path input line
+	b.WriteString(ui.RenderPrompt(m.pathInput.View(), m.width))
+	b.WriteString("\n")
+
+	b.WriteString(ui.RenderBorder(m.borderWidth()))
+	b.WriteString("\n")
+
+	// Content area - show completions
+	contentLines := 0
+
+	if len(m.pathCompletions) > 0 {
+		b.WriteString("  Completions (Tab to complete):\n")
+		contentLines++
+		maxShow := 8
+		if len(m.pathCompletions) < maxShow {
+			maxShow = len(m.pathCompletions)
+		}
+		for i := 0; i < maxShow; i++ {
+			b.WriteString("    " + m.pathCompletions[i] + "\n")
+			contentLines++
+		}
+		if len(m.pathCompletions) > maxShow {
+			b.WriteString(fmt.Sprintf("    ... and %d more\n", len(m.pathCompletions)-maxShow))
+			contentLines++
+		}
+	} else {
+		b.WriteString("  Enter path for new session\n")
+		contentLines++
+		b.WriteString("  (folder will be created if it doesn't exist)\n")
+		contentLines++
+	}
+
+	// Add padding to push footer to bottom
+	headerLines := ui.HeaderOverhead
+	footerLines := ui.FooterOverhead
+	contentH := m.contentHeight()
+	if contentH > 0 {
+		padding := contentH - headerLines - contentLines - footerLines
+		for i := 0; i < padding; i++ {
+			b.WriteString("\n")
+		}
+	}
+
+	// Fixed footer
+	stateText := fmt.Sprintf("Create session: %s", m.pendingSessionName)
+	hints := ui.HelpCreatePath()
+	b.WriteString(ui.RenderFooter(m.message, stateText, hints, m.messageIsError, m.width))
+
+	return ui.AppStyle.Render(b.String())
 }
 
 // viewPickDirectory renders the directory picker view
@@ -1797,7 +2128,9 @@ func (m Model) viewPickDirectory() string {
 	case ModeConfirmRemoveFolder:
 		hints = ui.HelpConfirmRemoveFolder()
 	default:
-		if m.returnToBookmarks {
+		if m.pendingSessionName != "" {
+			hints = ui.HelpPickDirectoryCreate()
+		} else if m.returnToBookmarks {
 			hints = ui.HelpAddBookmark()
 		} else if filter != "" {
 			hints = ui.HelpFiltering()

@@ -166,6 +166,20 @@ func HelpPickDirectory() string {
 		helpItem("Esc", "Back")
 }
 
+// HelpPickDirectoryCreate returns the help text when creating a session from filter
+func HelpPickDirectoryCreate() string {
+	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
+		helpItem("Enter", "Create here") + helpSep() +
+		helpItem("Esc", "Cancel")
+}
+
+// HelpCreatePath returns the help text for path input mode
+func HelpCreatePath() string {
+	return helpItem("Tab", "Complete") + helpSep() +
+		helpItem("Enter", "Create") + helpSep() +
+		helpItem("Esc", "Cancel")
+}
+
 // HelpAddBookmark returns the help text when adding a bookmark from project picker
 func HelpAddBookmark() string {
 	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
