@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -56,4 +57,22 @@ func CloneRepo(ownerRepo, destPath string) error {
 	}
 
 	return nil
+}
+
+// ParseGitURL extracts owner/repo from a git URL (SSH or HTTPS).
+// Returns empty string if the URL cannot be parsed.
+func ParseGitURL(url string) string {
+	// SSH: git@github.com:owner/repo.git
+	sshRe := regexp.MustCompile(`git@[^:]+:(.+?)(?:\.git)?$`)
+	if m := sshRe.FindStringSubmatch(url); len(m) == 2 {
+		return m[1]
+	}
+
+	// HTTPS: https://github.com/owner/repo.git
+	httpsRe := regexp.MustCompile(`https?://[^/]+/(.+?)(?:\.git)?$`)
+	if m := httpsRe.FindStringSubmatch(url); len(m) == 2 {
+		return m[1]
+	}
+
+	return ""
 }

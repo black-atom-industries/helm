@@ -17,7 +17,6 @@ import (
 	"github.com/black-atom-industries/helm/internal/config"
 	"github.com/black-atom-industries/helm/internal/git"
 	"github.com/black-atom-industries/helm/internal/github"
-	"github.com/black-atom-industries/helm/internal/repos"
 	"github.com/black-atom-industries/helm/internal/tmux"
 	"github.com/black-atom-industries/helm/internal/ui"
 )
@@ -1146,10 +1145,10 @@ func (m *Model) fetchAvailableReposCmd() tea.Cmd {
 		}
 
 		// Get already cloned
-		cloned, _ := repos.ListClonedRepos(basePath)
+		cloned, _ := config.ListClonedRepos(basePath)
 
 		// Filter out cloned
-		uncloned := repos.FilterUncloned(available, cloned)
+		uncloned := config.FilterUncloned(available, cloned)
 
 		return cloneReposLoadedMsg{repos: uncloned}
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"gopkg.in/yaml.v3"
 )
@@ -298,4 +299,93 @@ func expandPath(path string) string {
 		return filepath.Join(home, path[1:])
 	}
 	return path
+}
+
+// RepoInfo represents a cloned repository with its location
+type RepoInfo struct {
+	Name string // "owner/repo"
+	Path string // absolute path on disk
+}
+
+// ListClonedRepos returns already-cloned repos in owner/repo format.
+// Scans the base path at depth 2 (owner/repo structure).
+func ListClonedRepos(basePath string) ([]string, error) {
+	var repos []string
+
+	owners, err := os.ReadDir(basePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []string{}, nil
+		}
+		return nil, err
+	}
+
+	for _, owner := range owners {
+		if !owner.IsDir() {
+			continue
+		}
+
+		ownerPath := filepath.Join(basePath, owner.Name())
+		repoEntries, err := os.ReadDir(ownerPath)
+		if err != nil {
+			continue
+		}
+
+		for _, repo := range repoEntries {
+			if !repo.IsDir() {
+				continue
+			}
+
+			gitPath := filepath.Join(ownerPath, repo.Name(), ".git")
+			if _, err := os.Stat(gitPath); err == nil {
+				repos = append(repos, owner.Name()+"/"+repo.Name())
+			}
+		}
+	}
+
+	sort.Strings(repos)
+	return repos, nil
+}
+
+// FilterUncloned returns repos from available that are not in cloned
+func FilterUncloned(available, cloned []string) []string {
+	clonedSet := make(map[string]bool)
+	for _, r := range cloned {
+		clonedSet[r] = true
+	}
+
+	var uncloned []string
+	for _, r := range available {
+		if !clonedSet[r] {
+			uncloned = append(uncloned, r)
+		}
+	}
+
+	return uncloned
+}
+
+// ListAllRepos scans all project directories and returns every cloned repo with its path.
+// Deduplicates by name — first occurrence wins.
+func ListAllRepos(projectDirs []string) ([]RepoInfo, error) {
+	seen := make(map[string]bool)
+	var all []RepoInfo
+
+	for _, dir := range projectDirs {
+		names, err := ListClonedRepos(dir)
+		if err != nil {
+			continue
+		}
+		for _, name := range names {
+			if seen[name] {
+				continue
+			}
+			seen[name] = true
+			all = append(all, RepoInfo{
+				Name: name,
+				Path: filepath.Join(dir, name),
+			})
+		}
+	}
+
+	return all, nil
 }

@@ -11,7 +11,6 @@ import (
 
 	"github.com/black-atom-industries/helm/internal/config"
 	"github.com/black-atom-industries/helm/internal/github"
-	"github.com/black-atom-industries/helm/internal/repos"
 )
 
 // setupResult tracks the outcome of a single clone operation
@@ -55,7 +54,7 @@ func runSetup() error {
 	}
 
 	// Get already cloned repos to skip
-	cloned, _ := repos.ListClonedRepos(cloneDir)
+	cloned, _ := config.ListClonedRepos(cloneDir)
 	clonedSet := make(map[string]bool)
 	for _, r := range cloned {
 		clonedSet[r] = true
@@ -71,7 +70,7 @@ func runSetup() error {
 
 	var wg sync.WaitGroup
 	for _, url := range urls {
-		ownerRepo := parseGitURL(url)
+		ownerRepo := github.ParseGitURL(url)
 		if ownerRepo == "" {
 			mu.Lock()
 			results = append(results, setupResult{repo: url, status: "failed", err: fmt.Errorf("could not parse URL")})
@@ -202,7 +201,7 @@ func expandEntries(entries []config.EnsureClonedEntry) ([]string, map[string]str
 
 		// Track post_clone command by owner/repo
 		if entry.PostClone != "" {
-			ownerRepo := parseGitURL(url)
+			ownerRepo := github.ParseGitURL(url)
 			if ownerRepo != "" {
 				postCloneMap[ownerRepo] = entry.PostClone
 			}
@@ -263,23 +262,6 @@ func extractOrgFromURL(url string) string {
 
 	// HTTPS format: https://github.com/org/*
 	httpsRe := regexp.MustCompile(`https?://[^/]+/([^/]+)/\*`)
-	if m := httpsRe.FindStringSubmatch(url); len(m) == 2 {
-		return m[1]
-	}
-
-	return ""
-}
-
-// parseGitURL extracts owner/repo from a git URL
-func parseGitURL(url string) string {
-	// SSH: git@github.com:owner/repo.git
-	sshRe := regexp.MustCompile(`git@[^:]+:(.+?)(?:\.git)?$`)
-	if m := sshRe.FindStringSubmatch(url); len(m) == 2 {
-		return m[1]
-	}
-
-	// HTTPS: https://github.com/owner/repo.git
-	httpsRe := regexp.MustCompile(`https?://[^/]+/(.+?)(?:\.git)?$`)
 	if m := httpsRe.FindStringSubmatch(url); len(m) == 2 {
 		return m[1]
 	}

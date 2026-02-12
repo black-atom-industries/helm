@@ -55,9 +55,15 @@ func main() {
 				os.Exit(1)
 			}
 			return
+		case "repos":
+			if err := runRepos(os.Args[2:]); err != nil {
+				fmt.Printf("Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
 		default:
 			fmt.Printf("Unknown command: %s\n", os.Args[1])
-			fmt.Println("Usage: helm [init | setup | bookmark <N> | tmux-bindings]")
+			fmt.Println("Usage: helm [init | setup | repos | bookmark <N> | tmux-bindings]")
 			os.Exit(1)
 		}
 	}
