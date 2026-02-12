@@ -117,7 +117,7 @@ type Model struct {
 
 	// Clone repo mode state (uses ScrollList for cursor/scroll/filter)
 	cloneList           *ui.ScrollList[string]
-	cloneBasePath       string // From repos config
+	cloneBasePath       string // From config.ProjectDirs
 	cloneLoading        bool   // True while fetching repos
 	cloneError          string // Error message if fetch/clone fails
 	cloneCloning        bool   // True while cloning
@@ -464,13 +464,12 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.WindowSize()
 
 	case key.Matches(msg, keys.CloneRepo):
-		// Load repos config
-		cfg, err := repos.LoadConfig()
-		if err != nil {
-			m.setError("Failed to load repos config: %v", err)
+		// Use first project directory as clone target
+		if len(m.config.ProjectDirs) == 0 {
+			m.setError("No project_dirs configured")
 			return m, nil
 		}
-		m.cloneBasePath = cfg.ReposBasePath
+		m.cloneBasePath = m.config.ProjectDirs[0]
 		m.mode = ModeCloneRepo
 		m.filter = "" // Clear any active filter
 		m.cloneList.Reset()

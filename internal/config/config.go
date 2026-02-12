@@ -39,6 +39,9 @@ type Config struct {
 
 	// Quick-access session bookmarks (slots 1-9, maps to M-1 through M-9)
 	Bookmarks []Bookmark `yaml:"bookmarks,omitempty"`
+
+	// Repositories to ensure are cloned (used by helm setup)
+	EnsureCloned []EnsureClonedEntry `yaml:"ensure_cloned,omitempty"`
 }
 
 // PopupConfig holds popup dimension settings
@@ -50,6 +53,23 @@ type PopupConfig struct {
 // Bookmark represents a quick-access session bookmark
 type Bookmark struct {
 	Path string `yaml:"path"`
+}
+
+// EnsureClonedEntry represents a repository to ensure is cloned.
+// Supports both string format (just a URL) and object format (url + post_clone).
+type EnsureClonedEntry struct {
+	URL       string `yaml:"url"`
+	PostClone string `yaml:"post_clone,omitempty"`
+}
+
+// UnmarshalYAML allows EnsureClonedEntry to be specified as either a plain string or an object.
+func (e *EnsureClonedEntry) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		e.URL = value.Value
+		return nil
+	}
+	type plain EnsureClonedEntry
+	return value.Decode((*plain)(e))
 }
 
 // DefaultConfig returns configuration with sensible defaults
@@ -232,6 +252,15 @@ func Init() error {
 # Use 'helm tmux-bindings' to generate tmux keybindings
 # Note: Bookmarks are stored separately in ~/.config/helm/bookmarks.yml
 # to preserve comments in this file when bookmarks are modified via the TUI.
+
+# Repositories to ensure are cloned (used by 'helm setup')
+# Supports plain URLs and objects with post_clone hooks.
+# Wildcard patterns (org/*) expand via gh CLI.
+# ensure_cloned:
+#   - git@github.com:user/repo
+#   - url: git@github.com:user/repo2
+#     post_clone: make install
+#   - git@github.com:organization/*
 `
 
 	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
