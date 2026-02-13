@@ -25,10 +25,6 @@ case "$HOOK_TYPE" in
         ;;
     "Stop"|"SubagentStop"|"Notification")
         echo "waiting:$TIMESTAMP" > "$STATUS_FILE"
-        # Play notification sound (macOS)
-        if command -v afplay &>/dev/null; then
-            afplay /System/Library/Sounds/Pop.aiff 2>/dev/null &
-        fi
         ;;
     "SessionEnd")
         # Clean up status file when Claude session ends
