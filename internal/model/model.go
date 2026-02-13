@@ -1277,29 +1277,6 @@ func (m *Model) scanProjectDirectories() []string {
 	return dirs
 }
 
-// scanBaseDirectories scans directories at depth-1 (parent directories for projects)
-// Used when creating new project folders - shows where to create, not existing projects
-// Always includes ProjectDirs themselves so users can create new intermediate directories
-func (m *Model) scanBaseDirectories() []string {
-	var dirs []string
-	depth := m.config.ProjectDepth - 1
-
-	// If depth is 1 or less, just return the ProjectDirs themselves
-	if depth <= 0 {
-		return m.config.ProjectDirs
-	}
-
-	// Always include ProjectDirs first (allows creating new org/namespace folders)
-	dirs = append(dirs, m.config.ProjectDirs...)
-
-	// Then add existing directories at depth-1
-	for _, baseDir := range m.config.ProjectDirs {
-		m.walkAtDepth(baseDir, "", depth, &dirs)
-	}
-
-	return dirs
-}
-
 // walkAtDepth recursively walks directories and collects full paths at the target depth
 func (m *Model) walkAtDepth(baseDir, currentPath string, remainingDepth int, dirs *[]string) {
 	if remainingDepth == 0 {
