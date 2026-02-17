@@ -74,6 +74,42 @@ helm init
 
 Config location: `~/.config/helm/config.yml`
 
+## Repository Management
+
+helm includes CLI subcommands for managing all repos under your configured `project_dirs`.
+
+### Bulk Clone
+
+```sh
+helm setup
+```
+
+Clones all repositories listed in `ensure_cloned` config. Supports wildcards (`org/*`) via `gh` CLI and post-clone hooks.
+
+### Sync Commands
+
+```sh
+helm repos status              # Show sync state of all repos
+helm repos pull                # Fetch and pull (ff-only) clean repos
+helm repos push                # Push all ahead repos (including dirty+ahead)
+helm repos dirty               # Print paths of dirty repos
+helm repos dirty --walk        # Run configured command on each dirty repo
+helm repos rebuild             # Re-run post_clone hooks
+```
+
+All commands support `--json` for machine-readable output.
+
+### Dirty Walkthrough
+
+Configure a command to run on each dirty repo:
+
+```yaml
+# ~/.config/helm/config.yml
+dirty_walkthrough_command: "lazygit -p {}"
+```
+
+Then `helm repos dirty --walk` steps through each dirty repo with lazygit. Use `{}` as the path placeholder — works with any command.
+
 ## Claude Code Status Integration
 
 Display Claude Code status for each session with an animated indicator.

@@ -24,7 +24,10 @@ For quick iteration: `go build -o helm ./cmd/helm/ && cp helm ~/.local/bin/helm`
 ## Architecture
 
 ```
-cmd/helm/main.go          # Entry point, handles `helm init` subcommand
+cmd/helm/
+  main.go                 # Entry point, subcommands (init, setup, bookmark, tmux-bindings, repos)
+  repos.go                # repos subcommand (status, pull, push, dirty, rebuild)
+  setup.go                # setup subcommand (bulk clone from ensure_cloned config)
 internal/
   model/model.go          # Bubbletea Model - main state, Update/View logic
   ui/
@@ -35,8 +38,9 @@ internal/
   config/config.go        # YAML config (~/.config/helm/config.yml)
   tmux/tmux.go            # tmux command wrappers (list, switch, kill)
   claude/status.go        # Claude Code status file parsing
-  git/status.go           # Git status per session (dirty, ahead/behind)
-  repos/config.go         # Repos base path config (~/.config/repos/)
+  git/
+    status.go             # Git status per session (dirty, ahead/behind)
+    repo.go               # Repo sync state (clean/dirty/ahead/behind/diverged)
   github/github.go        # GitHub API for repo listing
 hooks/helm-hook.sh        # Claude Code hook for status updates
 ```
@@ -79,10 +83,11 @@ Navigation uses Ctrl modifiers to reserve letters for filtering:
 Config file: `~/.config/helm/config.yml`
 
 ```yaml
-layout: ide                       # Layout script for new sessions
+layout: ide                            # Layout script for new sessions
 layout_dir: ~/.config/tmux/layouts
-claude_status_enabled: true       # Show CC status indicator
+claude_status_enabled: true            # Show CC status indicator
 cache_dir: ~/.cache/helm
+dirty_walkthrough_command: "lazygit -p {}"  # Command for 'helm repos dirty --walk'
 ```
 
 Environment variables override config: `TMUX_LAYOUT`, `TMUX_LAYOUTS_DIR`, `TMUX_SESSION_PICKER_CLAUDE_STATUS=1`
