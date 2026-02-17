@@ -6,7 +6,7 @@ STATUS_DIR="$HOME/.cache/helm"
 mkdir -p "$STATUS_DIR"
 
 # Read JSON from stdin (required by Claude Code hooks)
-cat > /dev/null
+INPUT=$(cat)
 
 # Get tmux session name
 TMUX_SESSION=$(tmux display-message -p '#{session_name}' 2>/dev/null)
@@ -21,7 +21,13 @@ case "$HOOK_TYPE" in
         echo "new:$TIMESTAMP" > "$STATUS_FILE"
         ;;
     "PreToolUse")
-        echo "working:$TIMESTAMP" > "$STATUS_FILE"
+        # AskUserQuestion means Claude is asking the user something — treat as waiting
+        TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
+        if [[ "$TOOL_NAME" == "AskUserQuestion" ]]; then
+            echo "waiting:$TIMESTAMP" > "$STATUS_FILE"
+        else
+            echo "working:$TIMESTAMP" > "$STATUS_FILE"
+        fi
         ;;
     "Stop"|"SubagentStop"|"Notification")
         echo "waiting:$TIMESTAMP" > "$STATUS_FILE"

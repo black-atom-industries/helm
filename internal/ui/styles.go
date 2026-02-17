@@ -127,6 +127,9 @@ var (
 	ClaudeWaitingUrgentStyle = lipgloss.NewStyle().
 					Foreground(Colors.Fg.ClaudeUrgent)
 
+	ClaudeIdleStyle = lipgloss.NewStyle().
+			Foreground(Colors.Fg.ClaudeIdle)
+
 	// Git status styles
 	GitFilesStyle = lipgloss.NewStyle().
 			Foreground(Colors.Fg.GitFiles)
@@ -283,6 +286,9 @@ var ClaudeSpinnerFrames = []string{"⠤", "⠆", "⠒", "⠰"}
 // ClaudeWaitThreshold is the duration after which "waiting" escalates from ? to !
 const ClaudeWaitThreshold = 5 * time.Minute
 
+// ClaudeIdleThreshold is the duration after which "waiting" escalates from ! to Z
+const ClaudeIdleThreshold = 15 * time.Minute
+
 // FormatClaudeIcon formats the Claude status as a single character icon
 // animationFrame cycles 0-3 for the spinner, waitDuration determines ? vs !
 func FormatClaudeIcon(state string, animationFrame int, waitDuration time.Duration) string {
@@ -295,7 +301,10 @@ func FormatClaudeIcon(state string, animationFrame int, waitDuration time.Durati
 		frame := animationFrame % len(ClaudeSpinnerFrames)
 		return ClaudeWorkingStyle.Render(ClaudeSpinnerFrames[frame])
 	case "waiting":
-		// Escalate from ? to ! after threshold
+		// Time-based progression: ? → ! → Z
+		if waitDuration >= ClaudeIdleThreshold {
+			return ClaudeIdleStyle.Render("Z")
+		}
 		if waitDuration >= ClaudeWaitThreshold {
 			return ClaudeWaitingUrgentStyle.Render("!")
 		}

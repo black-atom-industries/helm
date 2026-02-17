@@ -41,6 +41,13 @@ func TestGetStatus(t *testing.T) {
 			wantTimeSet: true,
 		},
 		{
+			name:        "stale waiting status returns empty",
+			filename:    "test-session.status",
+			content:     "waiting:" + fmt.Sprintf("%d", currentTimestamp-int64(WaitingStaleThreshold.Seconds())-1),
+			wantState:   "",
+			wantTimeSet: false,
+		},
+		{
 			name:        "valid new status",
 			filename:    "test-session.status",
 			content:     "new:" + fmt.Sprintf("%d", currentTimestamp),

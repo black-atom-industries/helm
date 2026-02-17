@@ -55,6 +55,7 @@ type FgColors struct {
 	ClaudeWorking lipgloss.TerminalColor // Spinner
 	ClaudeWaiting lipgloss.TerminalColor // "?" icon
 	ClaudeUrgent  lipgloss.TerminalColor // "!" icon
+	ClaudeIdle    lipgloss.TerminalColor // "Z" icon
 
 	// Git status
 	GitFiles lipgloss.TerminalColor // File count
@@ -93,6 +94,7 @@ var Colors = struct {
 		ClaudeWorking: yellow,
 		ClaudeWaiting: green,
 		ClaudeUrgent:  red,
+		ClaudeIdle:    brightBlack,
 
 		GitFiles: hexGitBlue,
 		GitAdd:   hexGitGreen,

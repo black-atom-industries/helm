@@ -114,8 +114,11 @@ Then read `/tmp/helm_test.png` to visually verify the UI looks correct.
 
 The hook (`hooks/helm-hook.sh`) writes status files to `~/.cache/helm/<session>.status`. The TUI reads these to show animated status indicators per session:
 - `⠤⠆⠒⠰` (spinner) - Claude actively processing
-- `?` - Claude waiting for input
-- `!` - Claude waiting for input > 5 minutes
+- `?` - Claude waiting (0–5 min)
+- `!` - Still waiting (5–15 min)
+- `Z` - Idle (> 15 min)
+
+> **Known limitation:** Claude Code's `Stop` hook has no `stop_reason` field to differentiate "idle/done" from "waiting for input." See [DEV-245](https://linear.app/black-atom-industries/issue/DEV-245) and upstream [anthropics/claude-code#13024](https://github.com/anthropics/claude-code/issues/13024).
 
 ---
 

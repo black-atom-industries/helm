@@ -12,6 +12,10 @@ import (
 // If Claude Code hasn't updated the status file in this time, assume it's not running.
 const StaleThreshold = 2 * time.Minute
 
+// WaitingStaleThreshold is how long before a "waiting" status is considered stale.
+// Safety net — the TUI handles visual progression (? → ! → Z) before this kicks in.
+const WaitingStaleThreshold = 30 * time.Minute
+
 // Status represents Claude Code status for a session
 type Status struct {
 	State     string    // "new", "working", "waiting", or ""
@@ -23,9 +27,8 @@ func (s Status) IsStale() bool {
 	if s.State == "" {
 		return false // No status to be stale
 	}
-	// "waiting" never goes stale - cleanup happens via SessionEnd hook
 	if s.State == "waiting" {
-		return false
+		return time.Since(s.Timestamp) > WaitingStaleThreshold
 	}
 	return time.Since(s.Timestamp) > StaleThreshold
 }
