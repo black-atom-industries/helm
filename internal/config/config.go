@@ -41,6 +41,10 @@ type Config struct {
 	// Quick-access session bookmarks (slots 1-9, maps to M-1 through M-9)
 	Bookmarks []Bookmark `yaml:"bookmarks,omitempty"`
 
+	// Command to run on each dirty repo via 'helm repos dirty --walk'
+	// Use {} as placeholder for the repo path, e.g. "lazygit -p {}"
+	DirtyWalkthroughCommand string `yaml:"dirty_walkthrough_command,omitempty"`
+
 	// Repositories to ensure are cloned (used by helm setup)
 	EnsureCloned []EnsureClonedEntry `yaml:"ensure_cloned,omitempty"`
 }
@@ -253,6 +257,10 @@ func Init() error {
 # Use 'helm tmux-bindings' to generate tmux keybindings
 # Note: Bookmarks are stored separately in ~/.config/helm/bookmarks.yml
 # to preserve comments in this file when bookmarks are modified via the TUI.
+
+# Command to run on each dirty repo via 'helm repos dirty --walk'
+# Use {} as placeholder for the repo path
+# dirty_walkthrough_command: "lazygit -p {}"
 
 # Repositories to ensure are cloned (used by 'helm setup')
 # Supports plain URLs and objects with post_clone hooks.

@@ -37,6 +37,8 @@ func runRepos(args []string) error {
 		return runReposPull(args[1:])
 	case "push":
 		return runReposPush(args[1:])
+	case "dirty":
+		return runReposDirty(args[1:])
 	case "rebuild":
 		return runReposRebuild(args[1:])
 	default:
@@ -52,7 +54,8 @@ func printReposUsage() {
 	fmt.Println("Commands:")
 	fmt.Println("  status [--json]                Show sync state of all repos")
 	fmt.Println("  pull   [--json]                Fetch and pull (ff-only) all clean repos")
-	fmt.Println("  push   [--json]                Push all clean+ahead repos")
+	fmt.Println("  push   [--json]                Push all ahead repos")
+	fmt.Println("  dirty  [--walk]                 Print paths of dirty repos (--walk runs configured command)")
 	fmt.Println("  rebuild [--all | --repos r,r]  Re-run post_clone hooks")
 }
 
@@ -362,7 +365,8 @@ func runReposPush(args []string) error {
 	}
 	var candidates []pushCandidate
 	for i, s := range statuses {
-		if git.RepoState(s.State) == git.StateAhead {
+		st := git.RepoState(s.State)
+		if st == git.StateAhead || st == git.StateDirtyAhead {
 			candidates = append(candidates, pushCandidate{info: repos[i], name: s.Name})
 		}
 	}
@@ -428,6 +432,62 @@ func runReposPush(args []string) error {
 		fmt.Printf("  ✗ %s: %s\n", r.Name, r.Error)
 	}
 	fmt.Printf("\nDone: %d pushed, %d failed\n", len(pushed), len(failed))
+	return nil
+}
+
+// --- dirty ---
+
+func runReposDirty(args []string) error {
+	walk := hasFlag(args, "--walk")
+
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	repos, err := config.ListAllRepos(cfg.ProjectDirs)
+	if err != nil {
+		return fmt.Errorf("failed to list repos: %w", err)
+	}
+
+	statuses := collectRepoStatuses(repos)
+
+	var dirtyPaths []string
+	for i, s := range statuses {
+		st := git.RepoState(s.State)
+		if st == git.StateDirty || st == git.StateDirtyAhead || st == git.StateDirtyBehind {
+			dirtyPaths = append(dirtyPaths, repos[i].Path)
+		}
+	}
+
+	if !walk {
+		for _, p := range dirtyPaths {
+			fmt.Println(p)
+		}
+		return nil
+	}
+
+	// --walk: run configured command on each dirty repo
+	if cfg.DirtyWalkthroughCommand == "" {
+		return fmt.Errorf("no dirty_walkthrough_command configured in %s", config.Path())
+	}
+
+	if len(dirtyPaths) == 0 {
+		fmt.Println("No dirty repos.")
+		return nil
+	}
+
+	for _, p := range dirtyPaths {
+		cmdStr := strings.ReplaceAll(cfg.DirtyWalkthroughCommand, "{}", p)
+		cmd := exec.Command("sh", "-c", cmdStr)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: command failed for %s: %v\n", p, err)
+		}
+	}
+
 	return nil
 }
 
