@@ -138,9 +138,34 @@ func SessionExists(name string) bool {
 	return exec.Command("tmux", "has-session", "-t", name).Run() == nil
 }
 
-// CreateSession creates a new tmux session
+// ClientSize returns the current tmux client's terminal dimensions.
+// Falls back to 200x50 if the query fails (e.g., no attached client).
+func ClientSize() (int, int) {
+	out, err := exec.Command("tmux", "display-message", "-p", "#{client_width} #{client_height}").Output()
+	if err != nil {
+		return 200, 50
+	}
+	parts := strings.SplitN(strings.TrimSpace(string(out)), " ", 2)
+	if len(parts) != 2 {
+		return 200, 50
+	}
+	w, errW := strconv.Atoi(parts[0])
+	h, errH := strconv.Atoi(parts[1])
+	if errW != nil || errH != nil || w <= 0 || h <= 0 {
+		return 200, 50
+	}
+	return w, h
+}
+
+// CreateSession creates a new tmux session.
+// Passes the current client's terminal dimensions so that layout scripts
+// can use percentage-based splits accurately on the detached session.
 func CreateSession(name, dir string) error {
-	return exec.Command("tmux", "new-session", "-d", "-s", name, "-c", dir).Run()
+	w, h := ClientSize()
+	return exec.Command("tmux", "new-session", "-d", "-s", name,
+		"-x", strconv.Itoa(w), "-y", strconv.Itoa(h),
+		"-c", dir,
+	).Run()
 }
 
 // SwitchClient switches the tmux client to a session or window.
