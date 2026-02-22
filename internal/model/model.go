@@ -666,8 +666,8 @@ func (m *Model) updatePathCompletions() {
 		if !entry.IsDir() {
 			continue
 		}
-		// Skip hidden directories
-		if strings.HasPrefix(entry.Name(), ".") {
+		// Skip VCS/internal hidden directories but allow project dirs like .github-private
+		if isInternalHiddenDir(entry.Name()) {
 			continue
 		}
 		// Match prefix (case-insensitive)
@@ -1304,8 +1304,8 @@ func (m *Model) walkAtDepth(baseDir, currentPath string, remainingDepth int, dir
 		if !entry.IsDir() {
 			continue
 		}
-		// Skip hidden directories
-		if strings.HasPrefix(entry.Name(), ".") {
+		// Skip VCS/internal hidden directories but allow project dirs like .github-private
+		if isInternalHiddenDir(entry.Name()) {
 			continue
 		}
 
@@ -1318,6 +1318,17 @@ func (m *Model) walkAtDepth(baseDir, currentPath string, remainingDepth int, dir
 
 		m.walkAtDepth(baseDir, nextPath, remainingDepth-1, dirs)
 	}
+}
+
+// isInternalHiddenDir returns true for VCS and internal metadata directories
+// (e.g. .git, .hg, .svn) but false for project directories that happen to
+// start with a dot (e.g. .github-private).
+func isInternalHiddenDir(name string) bool {
+	switch name {
+	case ".git", ".hg", ".svn", ".DS_Store", ".Trash", ".cache", ".local", ".config":
+		return true
+	}
+	return false
 }
 
 func (m *Model) handleJump(num int) (tea.Model, tea.Cmd) {
