@@ -124,7 +124,7 @@ func darkFg() FgColors {
 		Accent:   tc.Blue,
 		Subtle:   tc.White,
 		Error:    tc.Red,
-		Border:   tc.BrightBlack,
+		Border:   tc.White,
 
 		TitleBar: tc.BrightWhite,
 
@@ -158,7 +158,7 @@ func lightFg() FgColors {
 		Accent:   tc.Blue,
 		Subtle:   tc.BrightBlack,
 		Error:    tc.Red,
-		Border:   tc.BrightBlack,
+		Border:   tc.White,
 
 		TitleBar: tc.White,
 
