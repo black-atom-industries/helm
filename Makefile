@@ -1,4 +1,4 @@
-.PHONY: build install clean test coverage
+.PHONY: build install clean test coverage dev
 
 BINARY_NAME=helm
 INSTALL_DIR=$(HOME)/.local/bin
@@ -8,16 +8,9 @@ build:
 
 install: build
 	mkdir -p $(INSTALL_DIR)
-	rm -f $(INSTALL_DIR)/$(BINARY_NAME)
-	cp $(BINARY_NAME) $(INSTALL_DIR)/$(BINARY_NAME)
-ifeq ($(shell uname),Darwin)
-	xattr -c $(INSTALL_DIR)/$(BINARY_NAME)
-endif
-	@echo "Installed $(BINARY_NAME) to $(INSTALL_DIR)"
-	@# Install Claude Code hook script
-	cp hooks/helm-hook.sh $(INSTALL_DIR)/helm-hook
-	chmod +x $(INSTALL_DIR)/helm-hook
-	@echo "Installed helm-hook to $(INSTALL_DIR)"
+	ln -sf $(CURDIR)/$(BINARY_NAME) $(INSTALL_DIR)/$(BINARY_NAME)
+	ln -sf $(CURDIR)/hooks/helm-hook.sh $(INSTALL_DIR)/helm-hook
+	@echo "Installed $(BINARY_NAME) and helm-hook to $(INSTALL_DIR) (symlinks)"
 
 clean:
 	rm -f $(BINARY_NAME)
@@ -32,6 +25,9 @@ coverage:
 # Development helpers
 run: build
 	./$(BINARY_NAME)
+
+dev:
+	find cmd internal -name '*.go' | entr -r make build
 
 fmt:
 	go fmt ./...
