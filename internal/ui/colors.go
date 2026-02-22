@@ -113,29 +113,6 @@ type BgColors struct {
 	Selected lipgloss.TerminalColor // Selected row background
 }
 
-// Colors is the global color configuration
-// Initialized with dark mode defaults, call InitColors to adapt for light mode
-var Colors = struct {
-	Fg FgColors
-	Bg BgColors
-}{
-	Fg: darkFg(),
-	Bg: darkBg(),
-}
-
-// InitColors sets the color palette based on appearance mode
-// and reinitializes all styles. Must be called before the TUI renders.
-func InitColors(appearance string) {
-	if appearance == "light" {
-		Colors.Fg = lightFg()
-		Colors.Bg = lightBg()
-	} else {
-		Colors.Fg = darkFg()
-		Colors.Bg = darkBg()
-	}
-	initStyles()
-}
-
 // darkFg returns foreground colors for dark terminal backgrounds
 func darkFg() FgColors {
 	tc := termColors
@@ -222,4 +199,27 @@ func lightBg() BgColors {
 		TitleBar: tc.BrightBlack,
 		Selected: tc.White,
 	}
+}
+
+// Colors is the global color configuration
+// Initialized with dark mode defaults, call InitColors to adapt for light mode
+var Colors = struct {
+	Fg FgColors
+	Bg BgColors
+}{
+	Fg: darkFg(),
+	Bg: darkBg(),
+}
+
+// InitColors sets the color palette based on appearance mode
+// and reinitializes all styles. Must be called before the TUI renders.
+func InitColors(appearance string) {
+	if appearance == "light" {
+		Colors.Fg = lightFg()
+		Colors.Bg = lightBg()
+	} else {
+		Colors.Fg = darkFg()
+		Colors.Bg = darkBg()
+	}
+	initStyles()
 }
