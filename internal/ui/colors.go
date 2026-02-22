@@ -73,13 +73,14 @@ var hardCodedColor = struct {
 
 // FgColors defines all foreground (text) colors
 type FgColors struct {
-	Default  lipgloss.TerminalColor // Terminal default text
-	Selected lipgloss.TerminalColor // Selected/highlighted items
-	Muted    lipgloss.TerminalColor // De-emphasized text
-	Accent   lipgloss.TerminalColor // Primary accent
-	Subtle   lipgloss.TerminalColor // Secondary/subtle text
-	Error    lipgloss.TerminalColor // Error text
-	Border   lipgloss.TerminalColor // Border characters
+	Default   lipgloss.TerminalColor // Terminal default text
+	Selected  lipgloss.TerminalColor // Selected/highlighted items
+	Muted     lipgloss.TerminalColor // De-emphasized text
+	Accent    lipgloss.TerminalColor // Primary accent
+	Subtle    lipgloss.TerminalColor // Secondary/subtle text
+	Error     lipgloss.TerminalColor // Error text
+	Border    lipgloss.TerminalColor // Border characters
+	Separator lipgloss.TerminalColor // Horizontal separator lines (dotted)
 
 	// Title bar
 	TitleBar lipgloss.TerminalColor // Text on title bar
@@ -118,13 +119,14 @@ func darkFg() FgColors {
 	tc := termColors
 	hc := hardCodedColor.Dark
 	return FgColors{
-		Default:  lipgloss.NoColor{},
-		Selected: tc.Yellow,
-		Muted:    tc.BrightBlack,
-		Accent:   tc.Blue,
-		Subtle:   tc.White,
-		Error:    tc.Red,
-		Border:   tc.White,
+		Default:   lipgloss.NoColor{},
+		Selected:  tc.Yellow,
+		Muted:     tc.BrightBlack,
+		Accent:    tc.Blue,
+		Subtle:    tc.White,
+		Error:     tc.Red,
+		Border:    tc.BrightBlack,
+		Separator: tc.White,
 
 		TitleBar: tc.BrightWhite,
 
@@ -152,13 +154,14 @@ func lightFg() FgColors {
 	tc := termColors
 	hc := hardCodedColor.Light
 	return FgColors{
-		Default:  lipgloss.NoColor{},
-		Selected: tc.Blue,
-		Muted:    tc.BrightBlack,
-		Accent:   tc.Blue,
-		Subtle:   tc.BrightBlack,
-		Error:    tc.Red,
-		Border:   tc.White,
+		Default:   lipgloss.NoColor{},
+		Selected:  tc.Blue,
+		Muted:     tc.BrightBlack,
+		Accent:    tc.Blue,
+		Subtle:    tc.BrightBlack,
+		Error:     tc.Red,
+		Border:    tc.BrightBlack,
+		Separator: tc.White,
 
 		TitleBar: tc.White,
 

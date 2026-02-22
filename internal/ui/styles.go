@@ -82,7 +82,8 @@ var (
 	FilterStyle lipgloss.Style
 
 	// Border style
-	BorderStyle lipgloss.Style
+	BorderStyle    lipgloss.Style
+	SeparatorStyle lipgloss.Style
 
 	// Statusline style
 	StatuslineStyle lipgloss.Style
@@ -247,6 +248,9 @@ func initStyles() {
 	BorderStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Border)
 
+	SeparatorStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.Separator)
+
 	StatuslineStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Muted).
 		Padding(0, 1)
@@ -283,7 +287,7 @@ func RenderBorder(width int) string {
 
 // RenderDottedBorder returns a subtle dotted horizontal line
 func RenderDottedBorder(width int) string {
-	return BorderStyle.Render(strings.Repeat("·", width))
+	return SeparatorStyle.Render(strings.Repeat("·", width))
 }
 
 // RenderTitleBar renders the inverted title bar with logo on left and view name on right
