@@ -2040,7 +2040,7 @@ func (m Model) viewCreatePath() string {
 			contentLines++
 		}
 		if len(m.pathCompletions) > maxShow {
-			b.WriteString(fmt.Sprintf("    ... and %d more\n", len(m.pathCompletions)-maxShow))
+			fmt.Fprintf(&b, "    ... and %d more\n", len(m.pathCompletions)-maxShow)
 			contentLines++
 		}
 	} else {
@@ -2185,9 +2185,9 @@ func (m Model) viewCloneRepo() string {
 
 	if m.cloneSuccess {
 		// Show success message with session info
-		b.WriteString(fmt.Sprintf("  Cloned: %s\n", m.cloneCloningRepo))
+		fmt.Fprintf(&b, "  Cloned: %s\n", m.cloneCloningRepo)
 		contentLines++
-		b.WriteString(fmt.Sprintf("  Session: %s\n", m.cloneSuccessSession))
+		fmt.Fprintf(&b, "  Session: %s\n", m.cloneSuccessSession)
 		contentLines++
 		b.WriteString("\n")
 		contentLines++
@@ -2197,7 +2197,7 @@ func (m Model) viewCloneRepo() string {
 		b.WriteString("  Fetching available repositories...\n")
 		contentLines++
 	} else if m.cloneCloning {
-		b.WriteString(fmt.Sprintf("  Cloning %s...\n", m.cloneCloningRepo))
+		fmt.Fprintf(&b, "  Cloning %s...\n", m.cloneCloningRepo)
 		contentLines++
 	} else if m.cloneError != "" {
 		b.WriteString(ui.ErrorMessageStyle.Render("  "+m.cloneError) + "\n")
