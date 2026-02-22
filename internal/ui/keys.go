@@ -12,7 +12,8 @@ type KeyMap struct {
 	Kill          key.Binding
 	Create        key.Binding
 	PickDirectory key.Binding
-	CloneRepo     key.Binding
+	OpenRemote    key.Binding
+	DownloadRepo  key.Binding
 	Lazygit       key.Binding
 	Bookmarks     key.Binding
 	AddBookmark   key.Binding
@@ -66,9 +67,13 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("ctrl+p"),
 		key.WithHelp("C-p", "Projects"),
 	),
-	CloneRepo: key.NewBinding(
+	OpenRemote: key.NewBinding(
 		key.WithKeys("ctrl+r"),
-		key.WithHelp("C-r", "Clone repo"),
+		key.WithHelp("C-r", "Remote"),
+	),
+	DownloadRepo: key.NewBinding(
+		key.WithKeys("ctrl+d"),
+		key.WithHelp("C-d", "Download"),
 	),
 	Lazygit: key.NewBinding(
 		key.WithKeys("ctrl+g"),
@@ -126,7 +131,8 @@ func HelpNormal() string {
 		helpItem("C-p", "Projects") + helpSep() +
 		helpItem("C-b", "Bookmarks") + helpSep() +
 		helpItem("C-a", "Bookmark") + helpSep() +
-		helpItem("C-r", "Clone") + helpSep() +
+		helpItem("C-r", "Remote") + helpSep() +
+		helpItem("C-d", "Download") + helpSep() +
 		helpItem("C-g", "Lazygit")
 	return line1 + "\n" + line2
 }

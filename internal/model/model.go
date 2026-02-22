@@ -462,7 +462,7 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Request window size to get proper height for layout
 		return m, tea.WindowSize()
 
-	case key.Matches(msg, keys.CloneRepo):
+	case key.Matches(msg, keys.DownloadRepo):
 		// Use first project directory as clone target
 		if len(m.config.ProjectDirs) == 0 {
 			m.setError("No project_dirs configured")
@@ -567,7 +567,8 @@ func (m *Model) handleCreateMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		msg.Type == tea.KeyCtrlJ || msg.Type == tea.KeyCtrlK ||
 		msg.Type == tea.KeyCtrlH || msg.Type == tea.KeyCtrlL ||
 		msg.Type == tea.KeyCtrlX || msg.Type == tea.KeyCtrlY ||
-		msg.Type == tea.KeyCtrlP {
+		msg.Type == tea.KeyCtrlP || msg.Type == tea.KeyCtrlD ||
+		msg.Type == tea.KeyCtrlR {
 		return m, nil
 	}
 
@@ -615,6 +616,7 @@ func (m *Model) handleCreatePathMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		msg.Type == tea.KeyCtrlH || msg.Type == tea.KeyCtrlL ||
 		msg.Type == tea.KeyCtrlX || msg.Type == tea.KeyCtrlY ||
 		msg.Type == tea.KeyCtrlB || msg.Type == tea.KeyCtrlR ||
+		msg.Type == tea.KeyCtrlD ||
 		msg.Type == tea.KeyCtrlG {
 		return m, nil
 	}
