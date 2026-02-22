@@ -56,18 +56,18 @@ var hardCodedColor = struct {
 	Dark  HardCodedPalette
 }{
 	Light: HardCodedPalette{
-		ClaudeOrange: lipgloss.Color("#d47151"),
-		Blue:         lipgloss.Color("#4997d6"),
-		Green:        lipgloss.Color("#769f57"),
-		Red:          lipgloss.Color("#db6771"),
-		Yellow:       lipgloss.Color("#ae8b46"),
+		ClaudeOrange: lipgloss.Color("#e2663c"),
+		Blue:         lipgloss.Color("#0997ee"),
+		Green:        lipgloss.Color("#67a52a"),
+		Red:          lipgloss.Color("#e35f6d"),
+		Yellow:       lipgloss.Color("#b98700"),
 	},
 	Dark: HardCodedPalette{
-		ClaudeOrange: lipgloss.Color("#f28c6b"),
-		Blue:         lipgloss.Color("#69b2f1"),
-		Green:        lipgloss.Color("#90bb71"),
-		Red:          lipgloss.Color("#f9828a"),
-		Yellow:       lipgloss.Color("#caa661"),
+		ClaudeOrange: lipgloss.Color("#f38b6a"),
+		Blue:         lipgloss.Color("#5cb2fb"),
+		Green:        lipgloss.Color("#89be61"),
+		Red:          lipgloss.Color("#f4868c"),
+		Yellow:       lipgloss.Color("#d5a335"),
 	},
 }
 
