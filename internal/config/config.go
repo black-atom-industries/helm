@@ -9,8 +9,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Appearance represents the terminal color scheme mode
+type Appearance string
+
+const (
+	AppearanceDark  Appearance = "dark"
+	AppearanceLight Appearance = "light"
+)
+
 // Config holds all configuration options for helm
 type Config struct {
+	// Terminal appearance mode ("light" or "dark") - controls color adaptation
+	Appearance Appearance `yaml:"appearance"`
+
 	// Layout script name to apply when creating new sessions
 	Layout string `yaml:"layout"`
 
@@ -81,6 +92,7 @@ func (e *EnsureClonedEntry) UnmarshalYAML(value *yaml.Node) error {
 func DefaultConfig() Config {
 	home := os.Getenv("HOME")
 	return Config{
+		Appearance:          AppearanceDark,
 		Layout:              "",
 		LayoutDir:           filepath.Join(home, ".config", "tmux", "layouts"),
 		ClaudeStatusEnabled: false,
@@ -216,6 +228,11 @@ func Init() error {
 	// Write default config with comments
 	content := `# helm configuration
 # Environment variables override these settings
+
+# Terminal appearance mode ("light" or "dark")
+# Controls color adaptation for borders, selection, and scrollbar
+# Updated automatically by pick-theme
+appearance: dark
 
 # Layout script name to apply when creating new sessions
 # layout: ide

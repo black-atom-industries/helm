@@ -13,6 +13,7 @@ import (
 	"github.com/black-atom-industries/helm/internal/config"
 	"github.com/black-atom-industries/helm/internal/model"
 	"github.com/black-atom-industries/helm/internal/tmux"
+	"github.com/black-atom-industries/helm/internal/ui"
 )
 
 func main() {
@@ -80,6 +81,9 @@ func main() {
 		fmt.Printf("Error loading config: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Initialize colors based on appearance config
+	ui.InitColors(string(cfg.Appearance))
 
 	// Get current session to exclude from list
 	currentSession, err := tmux.CurrentSession()
