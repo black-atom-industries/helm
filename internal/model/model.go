@@ -462,6 +462,9 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Request window size to get proper height for layout
 		return m, tea.WindowSize()
 
+	case key.Matches(msg, keys.OpenRemote):
+		return m.openRemote()
+
 	case key.Matches(msg, keys.DownloadRepo):
 		// Use first project directory as clone target
 		if len(m.config.ProjectDirs) == 0 {
@@ -1484,6 +1487,46 @@ func (m *Model) openLazygit() (tea.Model, tea.Cmd) {
 	_ = exec.Command("tmux", "run-shell", "-b", cmd).Start()
 
 	return m, tea.Quit
+}
+
+func (m *Model) openRemote() (tea.Model, tea.Cmd) {
+	if !m.isCursorValid() {
+		return m, nil
+	}
+
+	item := m.items[m.cursor]
+	if item.Type != ItemTypeSession {
+		item = Item{Type: ItemTypeSession, SessionIndex: item.SessionIndex}
+	}
+
+	session := m.sessions[item.SessionIndex]
+	path, err := git.GetSessionPath(session.Name)
+	if err != nil || path == "" {
+		m.setError("Could not get session path")
+		return m, clearMessageAfter(5 * time.Second)
+	}
+
+	remoteURL, err := git.GetRemoteURL(path)
+	if err != nil {
+		m.setError("No git remote found")
+		return m, clearMessageAfter(5 * time.Second)
+	}
+
+	// Open in browser (macOS)
+	if err := exec.Command("open", remoteURL).Start(); err != nil {
+		m.setError("Failed to open browser: %v", err)
+		return m, clearMessageAfter(5 * time.Second)
+	}
+
+	// Extract org/repo for the message
+	parts := strings.Split(remoteURL, "/")
+	displayName := remoteURL
+	if len(parts) >= 2 {
+		displayName = parts[len(parts)-2] + "/" + parts[len(parts)-1]
+	}
+
+	m.setMessage("Opened: %s", displayName)
+	return m, clearMessageAfter(5 * time.Second)
 }
 
 func (m *Model) confirmKill() (tea.Model, tea.Cmd) {
