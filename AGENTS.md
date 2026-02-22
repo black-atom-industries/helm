@@ -73,7 +73,8 @@ Navigation uses Ctrl modifiers to reserve letters for filtering:
 - `Ctrl+p`: Pick directory (projects)
 - `Ctrl+b`: Bookmarks
 - `Ctrl+x`: Kill (requires confirmation)
-- `Ctrl+r`: Clone repo
+- `Ctrl+r`: Open git remote in browser
+- `Ctrl+d`: Download (clone) repo from GitHub
 - `Ctrl+g`: Lazygit
 - `1-9`: Jump to session (only when no filter active)
 - Type letters: Fuzzy filter
