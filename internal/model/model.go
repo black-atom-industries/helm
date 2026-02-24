@@ -2178,7 +2178,7 @@ func (m Model) viewPickDirectory() string {
 		} else if m.returnToBookmarks {
 			hints = ui.HelpAddBookmark()
 		} else if filter != "" {
-			hints = ui.HelpFiltering()
+			hints = ui.HelpFilteringPickDirectory()
 		} else {
 			hints = ui.HelpPickDirectory()
 		}
@@ -2283,7 +2283,7 @@ func (m Model) viewCloneRepo() string {
 	} else if m.cloneLoading || m.cloneCloning {
 		hints = ui.HelpCloneRepoLoading()
 	} else if cloneFilter != "" {
-		hints = ui.HelpFiltering()
+		hints = ui.HelpFilteringCloneRepo()
 	} else {
 		hints = ui.HelpCloneRepo()
 	}
@@ -2446,7 +2446,7 @@ func (m Model) viewBookmarks() string {
 	// Fixed footer
 	var hints string
 	if filter != "" {
-		hints = ui.HelpFiltering()
+		hints = ui.HelpFilteringBookmarks()
 	} else {
 		hints = ui.HelpBookmarks()
 	}

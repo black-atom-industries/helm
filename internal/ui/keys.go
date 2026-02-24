@@ -137,18 +137,54 @@ func HelpNormal() string {
 	return line1 + "\n" + line2
 }
 
-// HelpFiltering returns the help text when filter is active
+// HelpFiltering returns the help text when filter is active in normal mode
 func HelpFiltering() string {
-	return helpItem("Esc", "Clear") + helpSep() +
+	line1 := helpItem("Esc", "Clear") + helpSep() +
 		helpItem("Enter", "Select") + helpSep() +
-		helpItem("C-c", "Quit")
+		helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
+		helpItem("C-x", "Kill")
+	line2 := helpItem("C-p", "Projects") + helpSep() +
+		helpItem("C-b", "Bookmarks") + helpSep() +
+		helpItem("C-d", "Download") + helpSep() +
+		helpItem("C-r", "Remote") + helpSep() +
+		helpItem("C-g", "Lazygit")
+	return line1 + "\n" + line2
 }
 
-// HelpFilteringNoResults returns the help text when filter has no matches
+// HelpFilteringNoResults returns the help text when filter has no matches in normal mode
 func HelpFilteringNoResults() string {
-	return helpItem("Esc", "Clear") + helpSep() +
+	line1 := helpItem("Esc", "Clear") + helpSep() +
 		helpItem("Enter", "Create") + helpSep() +
-		helpItem("C-c", "Quit")
+		helpItem("C-j/k | ↑↓", "Nav")
+	line2 := helpItem("C-p", "Projects") + helpSep() +
+		helpItem("C-b", "Bookmarks") + helpSep() +
+		helpItem("C-d", "Download")
+	return line1 + "\n" + line2
+}
+
+// HelpFilteringPickDirectory returns the help text when filter is active in pick directory mode
+func HelpFilteringPickDirectory() string {
+	return helpItem("Esc", "Clear") + helpSep() +
+		helpItem("Enter", "Select") + helpSep() +
+		helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
+		helpItem("C-a", "Bookmark") + helpSep() +
+		helpItem("C-x", "Remove")
+}
+
+// HelpFilteringCloneRepo returns the help text when filter is active in clone mode
+func HelpFilteringCloneRepo() string {
+	return helpItem("Esc", "Clear") + helpSep() +
+		helpItem("Enter", "Clone") + helpSep() +
+		helpItem("C-j/k | ↑↓", "Nav")
+}
+
+// HelpFilteringBookmarks returns the help text when filter is active in bookmarks mode
+func HelpFilteringBookmarks() string {
+	return helpItem("Esc", "Clear") + helpSep() +
+		helpItem("Enter", "Open") + helpSep() +
+		helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
+		helpItem("C-p/n", "Move") + helpSep() +
+		helpItem("C-x", "Remove")
 }
 
 // HelpConfirmKill returns the help text for kill confirmation mode
