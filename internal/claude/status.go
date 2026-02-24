@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/black-atom-industries/helm/internal/config"
 )
 
 // StaleThreshold is how long before a "working" status is considered stale.
@@ -36,7 +38,7 @@ func (s Status) IsStale() bool {
 // GetStatus reads the Claude Code status for a session from the given cache directory.
 // Returns empty Status if no status file exists or if status is stale.
 func GetStatus(sessionName string, cacheDir string) Status {
-	statusFile := filepath.Join(cacheDir, sessionName+".status")
+	statusFile := filepath.Join(cacheDir, sessionName+config.StatusFileExt)
 	content, err := os.ReadFile(statusFile)
 	if err != nil {
 		return Status{}
@@ -79,11 +81,11 @@ func CleanupStale(cacheDir string, activeSessions []string) {
 	}
 
 	for _, entry := range entries {
-		if !strings.HasSuffix(entry.Name(), ".status") {
+		if !strings.HasSuffix(entry.Name(), config.StatusFileExt) {
 			continue
 		}
 
-		sessionName := strings.TrimSuffix(entry.Name(), ".status")
+		sessionName := strings.TrimSuffix(entry.Name(), config.StatusFileExt)
 		if !activeSet[sessionName] {
 			_ = os.Remove(filepath.Join(cacheDir, entry.Name()))
 		}

@@ -97,7 +97,7 @@ func DefaultConfig() Config {
 		LayoutDir:           filepath.Join(home, ".config", "tmux", "layouts"),
 		ClaudeStatusEnabled: false,
 		GitStatusEnabled:    false,
-		CacheDir:            filepath.Join(home, ".cache", "helm"),
+		CacheDir:            filepath.Join(home, ".cache", AppDirName),
 		ProjectDirs:         []string{filepath.Join(home, "repos")},
 		ProjectDepth:        2,
 		DefaultSessionDir:   home,
@@ -111,13 +111,13 @@ func DefaultConfig() Config {
 // Path returns the path to the config file
 func Path() string {
 	home := os.Getenv("HOME")
-	return filepath.Join(home, ".config", "helm", "config.yml")
+	return filepath.Join(home, ".config", AppDirName, ConfigFileName)
 }
 
 // BookmarksPath returns the path to the separate bookmarks file
 func BookmarksPath() string {
 	home := os.Getenv("HOME")
-	return filepath.Join(home, ".config", "helm", "bookmarks.yml")
+	return filepath.Join(home, ".config", AppDirName, BookmarksFileName)
 }
 
 // BookmarksFile represents the structure of the bookmarks file
