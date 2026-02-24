@@ -124,6 +124,7 @@ type Model struct {
 	cloneSuccess        bool   // True when clone completed, awaiting confirmation
 	cloneSuccessPath    string // Path of cloned repo (for layout)
 	cloneSuccessSession string // Session name to switch to
+	clonePendingFilter  string // Filter to apply once repos are loaded
 
 	// Bookmarks mode state (uses ScrollList for cursor/scroll/filter)
 	bookmarkList     *ui.ScrollList[config.Bookmark]
@@ -296,6 +297,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case cloneReposLoadedMsg:
 		m.cloneLoading = false
 		m.cloneList.SetItems(msg.repos)
+		if m.clonePendingFilter != "" {
+			m.cloneList.SetFilter(m.clonePendingFilter)
+			m.clonePendingFilter = ""
+		}
 		if len(msg.repos) == 0 {
 			m.cloneError = "All repositories are already cloned!"
 		}
@@ -455,10 +460,14 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.PickDirectory):
 		m.mode = ModePickDirectory
-		m.filter = ""               // Clear any active filter
 		m.returnToBookmarks = false // Coming from normal mode, not bookmarks
 		m.projectList.Reset()
 		m.projectList.SetItems(m.scanProjectDirectories())
+		// Carry over the active filter
+		if m.filter != "" {
+			m.projectList.SetFilter(m.filter)
+			m.filter = ""
+		}
 		// Request window size to get proper height for layout
 		return m, tea.WindowSize()
 
@@ -473,7 +482,8 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.cloneBasePath = m.config.ProjectDirs[0]
 		m.mode = ModeCloneRepo
-		m.filter = "" // Clear any active filter
+		m.clonePendingFilter = m.filter
+		m.filter = ""
 		m.cloneList.Reset()
 		m.cloneList.Clear()
 		m.cloneError = ""
@@ -486,9 +496,13 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.Bookmarks):
 		m.mode = ModeBookmarks
-		m.filter = "" // Clear any active filter
 		m.bookmarkList.Reset()
 		m.bookmarkList.SetItems(m.config.Bookmarks)
+		// Carry over the active filter
+		if m.filter != "" {
+			m.bookmarkList.SetFilter(m.filter)
+			m.filter = ""
+		}
 		return m, tea.WindowSize()
 
 	case key.Matches(msg, keys.AddBookmark):
