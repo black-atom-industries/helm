@@ -2026,7 +2026,7 @@ func (m Model) viewCreatePath() string {
 	var b strings.Builder
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("HELM", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
 	b.WriteString("\n")
 
 	// Path input line
@@ -2085,7 +2085,7 @@ func (m Model) viewPickDirectory() string {
 	var b strings.Builder
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("HELM", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
 	b.WriteString("\n")
 
 	// Prompt line - show filter
@@ -2180,7 +2180,7 @@ func (m Model) viewCloneRepo() string {
 	var b strings.Builder
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("HELM", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
 	b.WriteString("\n")
 
 	// Prompt line - show filter
@@ -2285,7 +2285,7 @@ func (m Model) viewBookmarks() string {
 	filter := m.bookmarkList.Filter()
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("HELM", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
 	b.WriteString("\n")
 	b.WriteString(ui.RenderPrompt(filter, m.width))
 	b.WriteString("\n")
@@ -2446,7 +2446,7 @@ func (m Model) viewSessionList() string {
 	var b strings.Builder
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar("HELM", m.mode.String(), m.width))
+	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
 	b.WriteString("\n")
 
 	// Prompt line - always show filter (input goes in notification line for create mode)
