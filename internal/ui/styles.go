@@ -176,7 +176,7 @@ func initStyles() {
 		Foreground(Colors.Fg.SessionName)
 
 	SessionNameSelectedStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.Selected).
+		Foreground(Colors.Fg.SessionNameSelected).
 		Background(Colors.Bg.Selected).
 		Bold(true)
 
@@ -202,19 +202,24 @@ func initStyles() {
 		Bold(true)
 
 	ClaudeNewStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.Muted)
+		Foreground(Colors.Fg.Muted).
+		Bold(true)
 
 	ClaudeWorkingStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.ClaudeWorking)
+		Foreground(Colors.Fg.ClaudeWorking).
+		Bold(true)
 
 	ClaudeWaitingStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.ClaudeWaiting)
+		Foreground(Colors.Fg.ClaudeWaiting).
+		Bold(true)
 
 	ClaudeWaitingUrgentStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.ClaudeUrgent)
+		Foreground(Colors.Fg.ClaudeUrgent).
+		Bold(true)
 
 	ClaudeIdleStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.ClaudeIdle)
+		Foreground(Colors.Fg.ClaudeIdle).
+		Bold(true)
 
 	GitFilesStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.GitFiles)
@@ -282,7 +287,7 @@ func initStyles() {
 
 // RenderBorder returns a horizontal border line
 func RenderBorder(width int) string {
-	return BorderStyle.Render(strings.Repeat("─", width))
+	return SeparatorStyle.Render(strings.Repeat("─", width))
 }
 
 // RenderDottedBorder returns a subtle dotted horizontal line

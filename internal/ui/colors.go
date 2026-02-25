@@ -86,9 +86,10 @@ type FgColors struct {
 	TitleBar lipgloss.TerminalColor // Text on title bar
 
 	// Table
-	TableHeader lipgloss.TerminalColor // Column headers
-	SessionName lipgloss.TerminalColor // Unselected session names
-	WindowName  lipgloss.TerminalColor // Unselected window names
+	TableHeader         lipgloss.TerminalColor // Column headers
+	SessionName         lipgloss.TerminalColor // Unselected session names
+	SessionNameSelected lipgloss.TerminalColor // Selected session name
+	WindowName          lipgloss.TerminalColor // Unselected window names
 
 	// Claude status
 	ClaudeHeader  lipgloss.TerminalColor // "CC" label
@@ -130,9 +131,10 @@ func darkFg() FgColors {
 
 		TitleBar: tc.BrightWhite,
 
-		TableHeader: lipgloss.NoColor{},
-		SessionName: lipgloss.NoColor{},
-		WindowName:  lipgloss.NoColor{},
+		TableHeader:         lipgloss.NoColor{},
+		SessionName:         lipgloss.NoColor{},
+		SessionNameSelected: tc.Yellow,
+		WindowName:          lipgloss.NoColor{},
 
 		ClaudeHeader:  hc.ClaudeOrange,
 		ClaudeWorking: hc.Yellow,
@@ -161,13 +163,14 @@ func lightFg() FgColors {
 		Subtle:    tc.BrightBlack,
 		Error:     tc.Red,
 		Border:    tc.BrightBlack,
-		Separator: tc.White,
+		Separator: tc.BrightWhite,
 
-		TitleBar: tc.White,
+		TitleBar: tc.Black,
 
-		TableHeader: lipgloss.NoColor{},
-		SessionName: lipgloss.NoColor{},
-		WindowName:  lipgloss.NoColor{},
+		TableHeader:         lipgloss.NoColor{},
+		SessionName:         lipgloss.NoColor{},
+		SessionNameSelected: tc.Blue,
+		WindowName:          lipgloss.NoColor{},
 
 		ClaudeHeader:  hc.ClaudeOrange,
 		ClaudeWorking: hc.Yellow,
@@ -199,8 +202,8 @@ func lightBg() BgColors {
 	tc := termColors
 	return BgColors{
 		Default:  lipgloss.NoColor{},
-		TitleBar: tc.BrightBlack,
-		Selected: tc.White,
+		TitleBar: tc.BrightWhite,
+		Selected: tc.BrightWhite,
 	}
 }
 
