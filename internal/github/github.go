@@ -59,6 +59,26 @@ func CloneRepo(ownerRepo, destPath string) error {
 	return nil
 }
 
+// ResolveOwnerRepo normalizes a repo identifier to owner/repo format.
+// Accepts: "owner/repo", SSH URLs, or HTTPS URLs.
+func ResolveOwnerRepo(input string) (string, error) {
+	// If it looks like a URL, parse it
+	if strings.Contains(input, "@") || strings.Contains(input, "://") {
+		ownerRepo := ParseGitURL(input)
+		if ownerRepo == "" {
+			return "", fmt.Errorf("could not parse repo from URL: %s", input)
+		}
+		return ownerRepo, nil
+	}
+
+	// Must contain a slash for owner/repo format
+	if !strings.Contains(input, "/") {
+		return "", fmt.Errorf("invalid repo format: %s (expected owner/repo)", input)
+	}
+
+	return input, nil
+}
+
 // ParseGitURL extracts owner/repo from a git URL (SSH or HTTPS).
 // Returns empty string if the URL cannot be parsed.
 func ParseGitURL(url string) string {

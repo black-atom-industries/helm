@@ -39,6 +39,8 @@ func runRepos(args []string) error {
 		return runReposPush(args[1:])
 	case "dirty":
 		return runReposDirty(args[1:])
+	case "add":
+		return runReposAdd(args[1:])
 	case "rebuild":
 		return runReposRebuild(args[1:])
 	default:
@@ -55,6 +57,7 @@ func printReposUsage() {
 	fmt.Println("  status [--json]                Show sync state of all repos")
 	fmt.Println("  pull   [--json]                Fetch and pull (ff-only) all clean repos")
 	fmt.Println("  push   [--json]                Push all ahead repos")
+	fmt.Println("  add    <repo>                  Clone a repo into project_dirs (owner/repo or URL)")
 	fmt.Println("  dirty  [--walk]                 Print paths of dirty repos (--walk runs configured command)")
 	fmt.Println("  rebuild [--all | --repos r,r]  Re-run post_clone hooks")
 }
@@ -111,6 +114,47 @@ func collectRepoStatuses(repos []config.RepoInfo) []repoStatus {
 
 	wg.Wait()
 	return results
+}
+
+// --- add ---
+
+func runReposAdd(args []string) error {
+	if len(args) != 1 {
+		fmt.Println("Usage: helm repos add <repo>")
+		fmt.Println("  <repo> can be owner/repo, git@github.com:owner/repo.git, or https://github.com/owner/repo")
+		return nil
+	}
+
+	ownerRepo, err := github.ResolveOwnerRepo(args[0])
+	if err != nil {
+		return err
+	}
+
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	cloneDir, err := resolveCloneDir(cfg.ProjectDirs)
+	if err != nil {
+		return err
+	}
+
+	destPath := filepath.Join(cloneDir, ownerRepo)
+
+	// Check if already cloned
+	if info, err := os.Stat(filepath.Join(destPath, ".git")); err == nil && info.IsDir() {
+		fmt.Printf("  ✓ %s already cloned at %s\n", ownerRepo, destPath)
+		return nil
+	}
+
+	fmt.Printf("  → Cloning %s...\n", ownerRepo)
+	if err := github.CloneRepo(ownerRepo, destPath); err != nil {
+		return fmt.Errorf("failed to clone %s: %w", ownerRepo, err)
+	}
+
+	fmt.Printf("  ✓ %s cloned to %s\n", ownerRepo, destPath)
+	return nil
 }
 
 // --- status ---
