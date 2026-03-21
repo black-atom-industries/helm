@@ -115,7 +115,10 @@ type BgColors struct {
 	Selected lipgloss.TerminalColor // Selected row background
 }
 
-// darkFg returns foreground colors for dark terminal backgrounds
+// *****************************************************************************
+// Dark theme
+// *****************************************************************************
+
 func darkFg() FgColors {
 	tc := termColors
 	hc := hardCodedColor.Dark
@@ -151,7 +154,28 @@ func darkFg() FgColors {
 	}
 }
 
-// lightFg returns foreground colors for light terminal backgrounds
+func darkBg() BgColors {
+	tc := termColors
+	return BgColors{
+		Default:  lipgloss.NoColor{},
+		TitleBar: tc.Black,
+		Selected: tc.Black,
+	}
+}
+
+// *****************************************************************************
+// Light theme
+// *****************************************************************************
+
+func lightBg() BgColors {
+	tc := termColors
+	return BgColors{
+		Default:  lipgloss.NoColor{},
+		TitleBar: tc.BrightWhite,
+		Selected: tc.BrightWhite,
+	}
+}
+
 func lightFg() FgColors {
 	tc := termColors
 	hc := hardCodedColor.Light
@@ -169,7 +193,7 @@ func lightFg() FgColors {
 
 		TableHeader:         lipgloss.NoColor{},
 		SessionName:         lipgloss.NoColor{},
-		SessionNameSelected: tc.Blue,
+		SessionNameSelected: tc.Black,
 		WindowName:          lipgloss.NoColor{},
 
 		ClaudeHeader:  hc.ClaudeOrange,
@@ -184,26 +208,6 @@ func lightFg() FgColors {
 
 		ScrollbarTrack: tc.BrightWhite,
 		ScrollbarThumb: tc.White,
-	}
-}
-
-// darkBg returns background colors for dark terminal backgrounds
-func darkBg() BgColors {
-	tc := termColors
-	return BgColors{
-		Default:  lipgloss.NoColor{},
-		TitleBar: tc.Black,
-		Selected: tc.Black,
-	}
-}
-
-// lightBg returns background colors for light terminal backgrounds
-func lightBg() BgColors {
-	tc := termColors
-	return BgColors{
-		Default:  lipgloss.NoColor{},
-		TitleBar: tc.BrightWhite,
-		Selected: tc.BrightWhite,
 	}
 }
 
