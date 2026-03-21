@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.6.0](https://github.com/black-atom-industries/helm/compare/v0.5.0...v0.6.0) (2026-03-21)
+## [0.6.0](https://github.com/black-atom-industries/helm/compare/v0.5.0...v0.6.0) (2026-02-26)
 
 
 ### Features
@@ -11,7 +11,6 @@
 * add selected session name color and refine theme colors ([d668c7b](https://github.com/black-atom-industries/helm/commit/d668c7b448cca7786d5a1bd6e15558eca761e14c))
 * add separate Separator color token for dotted lines ([06e2a5a](https://github.com/black-atom-industries/helm/commit/06e2a5af8b079eb33b0d64cf3d665b88efd286a5))
 * preserve filter state when switching modes ([f1ef960](https://github.com/black-atom-industries/helm/commit/f1ef96027a46afa05936c58a180c77e33a0e0f32))
-* **repos:** add `helm repos add <repo>` CLI command ([fb34d5c](https://github.com/black-atom-industries/helm/commit/fb34d5cda09859be1d036f14f435c4381a9f17be))
 
 
 ### Bug Fixes
