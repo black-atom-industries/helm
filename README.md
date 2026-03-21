@@ -92,6 +92,7 @@ Clones all repositories listed in `ensure_cloned` config. Supports wildcards (`o
 helm repos status              # Show sync state of all repos
 helm repos pull                # Fetch and pull (ff-only) clean repos
 helm repos push                # Push all ahead repos (including dirty+ahead)
+helm repos add <repo>          # Clone a repo into project_dirs (owner/repo or URL)
 helm repos dirty               # Print paths of dirty repos
 helm repos dirty --walk        # Run configured command on each dirty repo
 helm repos rebuild             # Re-run post_clone hooks
