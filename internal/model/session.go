@@ -822,8 +822,14 @@ func (m Model) viewSessionList() string {
 		selected := i == m.cursor
 		lineIdx := i - m.scrollOffset
 
-		// Scrollbar on the left (styled when selected)
-		if lineIdx < len(scrollbar) {
+		// Scrollbar on the left (skip for pinned self session)
+		if item.IsSelf {
+			if selected {
+				b.WriteString(ui.SpacerStyle("  ", true))
+			} else {
+				b.WriteString("  ")
+			}
+		} else if lineIdx < len(scrollbar) {
 			if selected {
 				b.WriteString(ui.SpacerStyle(scrollbar[lineIdx]+" ", true))
 			} else {
