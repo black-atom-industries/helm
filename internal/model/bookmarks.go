@@ -126,7 +126,7 @@ func (m *Model) addSelectedToBookmarks() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	session := m.sessions[item.SessionIndex]
+	session := m.getSession(item)
 	// Get session path from tmux
 	path, err := git.GetSessionPath(session.Name)
 	if err != nil || path == "" {

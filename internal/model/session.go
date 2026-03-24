@@ -479,7 +479,7 @@ func (m *Model) handleJump(num int) (tea.Model, tea.Cmd) {
 	// Check if we're inside an expanded session - numbers switch to windows
 	if m.cursor >= 0 && m.cursor < len(m.items) {
 		item := m.items[m.cursor]
-		session := &m.sessions[item.SessionIndex]
+		session := m.getSession(item)
 
 		if session.Expanded {
 			// Jump to window number within this session
@@ -496,7 +496,7 @@ func (m *Model) handleJump(num int) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Session labels: 0, 1, 2... map to session indices 0, 1, 2...
+	// Session labels: 0, 1, 2... map to non-self session indices
 	if num >= 0 && num < len(m.sessions) {
 		session := m.sessions[num]
 		if err := tmux.SwitchClient(session.Name); err != nil {
@@ -522,8 +522,11 @@ func (m *Model) expandCurrent() {
 		for i := range m.sessions {
 			m.sessions[i].Expanded = false
 		}
+		if m.selfSession != nil {
+			m.selfSession.Expanded = false
+		}
 
-		session := &m.sessions[item.SessionIndex]
+		session := m.getSession(item)
 		if len(session.Windows) == 0 {
 			// Load windows lazily
 			windows, err := tmux.ListWindows(session.Name)
@@ -537,7 +540,7 @@ func (m *Model) expandCurrent() {
 		m.rebuildItems()
 
 	case ItemTypeWindow:
-		session := &m.sessions[item.SessionIndex]
+		session := m.getSession(item)
 		window := &session.Windows[item.WindowIndex]
 
 		// Collapse other windows in this session first
@@ -572,16 +575,15 @@ func (m *Model) collapseCurrent() {
 	switch item.Type {
 	case ItemTypeSession:
 		// Collapse the session
-		m.sessions[item.SessionIndex].Expanded = false
+		m.getSession(item).Expanded = false
 		m.rebuildItems()
 
 	case ItemTypeWindow:
 		// Collapse parent session, move cursor to session
-		sessionIdx := item.SessionIndex
-		m.sessions[sessionIdx].Expanded = false
-		// Move cursor to the session
+		m.getSession(item).Expanded = false
+		// Move cursor to the parent session
 		for i, it := range m.items {
-			if it.Type == ItemTypeSession && it.SessionIndex == sessionIdx {
+			if it.Type == ItemTypeSession && it.IsSelf == item.IsSelf && it.SessionIndex == item.SessionIndex {
 				m.cursor = i
 				break
 			}
@@ -590,12 +592,11 @@ func (m *Model) collapseCurrent() {
 
 	case ItemTypePane:
 		// Collapse parent window, move cursor to window
-		sessionIdx := item.SessionIndex
 		windowIdx := item.WindowIndex
-		m.sessions[sessionIdx].Windows[windowIdx].Expanded = false
+		m.getSession(item).Windows[windowIdx].Expanded = false
 		// Move cursor to the window
 		for i, it := range m.items {
-			if it.Type == ItemTypeWindow && it.SessionIndex == sessionIdx && it.WindowIndex == windowIdx {
+			if it.Type == ItemTypeWindow && it.IsSelf == item.IsSelf && it.SessionIndex == item.SessionIndex && it.WindowIndex == windowIdx {
 				m.cursor = i
 				break
 			}
@@ -629,7 +630,7 @@ func (m *Model) openLazygit() (tea.Model, tea.Cmd) {
 		item = Item{Type: ItemTypeSession, SessionIndex: item.SessionIndex}
 	}
 
-	session := m.sessions[item.SessionIndex]
+	session := m.getSession(item)
 	path, err := git.GetSessionPath(session.Name)
 	if err != nil || path == "" {
 		m.setError("Could not get session path")
@@ -654,7 +655,7 @@ func (m *Model) openRemote() (tea.Model, tea.Cmd) {
 		item = Item{Type: ItemTypeSession, SessionIndex: item.SessionIndex}
 	}
 
-	session := m.sessions[item.SessionIndex]
+	session := m.getSession(item)
 	path, err := git.GetSessionPath(session.Name)
 	if err != nil || path == "" {
 		m.setError("Could not get session path")
@@ -711,24 +712,35 @@ func (m *Model) killCurrent() (tea.Model, tea.Cmd) {
 	}
 
 	item := m.items[m.cursor]
+	session := m.getSession(item)
 	var err error
+
+	// Killing the self session: switch to the last-used other session first
+	if item.IsSelf && item.Type == ItemTypeSession {
+		if len(m.sessions) > 0 {
+			_ = tmux.SwitchClient(m.sessions[0].Name)
+		}
+		err = tmux.KillSession(session.Name)
+		if err != nil {
+			m.setError("Error: %v", err)
+		}
+		// Helm's tmux session is gone — exit
+		return m, tea.Quit
+	}
 
 	switch item.Type {
 	case ItemTypeSession:
-		session := m.sessions[item.SessionIndex]
 		err = tmux.KillSession(session.Name)
 		if err == nil {
 			m.message = fmt.Sprintf("Killed \"%s\"", session.Name)
 		}
 	case ItemTypeWindow:
-		session := m.sessions[item.SessionIndex]
 		window := session.Windows[item.WindowIndex]
 		err = tmux.KillWindow(session.Name, window.Index)
 		if err == nil {
 			m.message = fmt.Sprintf("Killed window %d", window.Index)
 		}
 	case ItemTypePane:
-		session := m.sessions[item.SessionIndex]
 		window := session.Windows[item.WindowIndex]
 		pane := window.Panes[item.PaneIndex]
 		err = tmux.KillPane(session.Name, window.Index, pane.Index)
@@ -822,7 +834,7 @@ func (m Model) viewSessionList() string {
 
 		switch item.Type {
 		case ItemTypeSession:
-			session := m.sessions[item.SessionIndex]
+			session := m.getSession(item)
 
 			// Build options for this row
 			lastActivity := session.LastActivity
@@ -835,6 +847,7 @@ func (m Model) viewSessionList() string {
 					Expanded:       session.Expanded,
 					LastActivity:   &lastActivity,
 					AnimFrame:      m.animationFrame,
+					IsSelf:         item.IsSelf,
 				},
 			}
 			if status, ok := m.gitStatuses[session.Name]; ok {
@@ -848,21 +861,30 @@ func (m Model) viewSessionList() string {
 			}
 
 			b.WriteString(ui.RenderSessionRow(session.Name, session.LastActivity, layout, opts, m.rowWidth()))
-			sessionNum++
+			if !item.IsSelf {
+				sessionNum++
+			}
 
 		case ItemTypeWindow:
-			session := m.sessions[item.SessionIndex]
+			session := m.getSession(item)
 			window := session.Windows[item.WindowIndex]
 			b.WriteString(ui.RenderWindowRow(window.Index, window.Name, ui.WindowRowOpts{Selected: selected, Expanded: window.Expanded}, m.rowWidth()))
 
 		case ItemTypePane:
-			session := m.sessions[item.SessionIndex]
+			session := m.getSession(item)
 			window := session.Windows[item.WindowIndex]
 			pane := window.Panes[item.PaneIndex]
 			b.WriteString(ui.RenderPaneRow(pane.Index, pane.Command, pane.Active, ui.PaneRowOpts{Selected: selected}, m.rowWidth()))
 		}
 		b.WriteString("\n")
 		contentLines++
+
+		// Separator between pinned self session and regular sessions
+		if item.IsSelf && (i+1 >= endIdx || !m.items[i+1].IsSelf) {
+			b.WriteString(ui.RenderDottedBorder(m.borderWidth()))
+			b.WriteString("\n")
+			contentLines++
+		}
 	}
 
 	// Empty state (only show after sessions have loaded to avoid flash)
@@ -983,6 +1005,10 @@ func (m *Model) sessionMaxVisibleItems() int {
 		overhead := ui.BaseOverhead
 		if m.sessionsLoaded && len(m.items) > 0 {
 			overhead = ui.WithTableHeaderOverhead
+		}
+		// Self session row + separator are pinned, not scrollable
+		if m.selfSession != nil {
+			overhead += ui.SelfSessionOverhead
 		}
 		if available := contentH - overhead; available > 0 {
 			return available

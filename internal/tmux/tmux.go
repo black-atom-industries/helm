@@ -42,6 +42,19 @@ func CurrentSession() (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// GetSessionActivity returns the last activity time for a named session
+func GetSessionActivity(name string) (time.Time, error) {
+	out, err := exec.Command("tmux", "display-message", "-t", name, "-p", "#{session_activity}").Output()
+	if err != nil {
+		return time.Time{}, err
+	}
+	activityUnix, err := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(activityUnix, 0), nil
+}
+
 // ListSessions returns all tmux sessions sorted by activity (most recent first)
 // Excludes the current session and popup sessions
 func ListSessions(excludeCurrent string) ([]Session, error) {

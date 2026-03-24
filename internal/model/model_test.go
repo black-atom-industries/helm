@@ -102,7 +102,14 @@ func TestIsCursorValid(t *testing.T) {
 }
 
 func TestGetTargetName(t *testing.T) {
+	selfSession := &tmux.Session{
+		Name: "self-session",
+		Windows: []tmux.Window{
+			{Index: 1, Name: "editor"},
+		},
+	}
 	m := Model{
+		selfSession: selfSession,
 		sessions: []tmux.Session{
 			{
 				Name: "session1",
@@ -125,6 +132,16 @@ func TestGetTargetName(t *testing.T) {
 		item Item
 		want string
 	}{
+		{
+			name: "self session",
+			item: Item{Type: ItemTypeSession, IsSelf: true},
+			want: "self-session",
+		},
+		{
+			name: "self session window",
+			item: Item{Type: ItemTypeWindow, IsSelf: true, WindowIndex: 0},
+			want: "self-session:1",
+		},
 		{
 			name: "session item",
 			item: Item{Type: ItemTypeSession, SessionIndex: 0},

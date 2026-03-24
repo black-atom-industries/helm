@@ -103,6 +103,12 @@ var (
 
 	// CC header label style
 	CCHeaderStyle lipgloss.Style
+
+	// Self session styles (pinned current session)
+	SelfIndexStyle         lipgloss.Style
+	SelfIndexSelectedStyle lipgloss.Style
+	SelfNameStyle          lipgloss.Style
+	SelfNameSelectedStyle  lipgloss.Style
 )
 
 func init() {
@@ -283,6 +289,24 @@ func initStyles() {
 	CCHeaderStyle = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(Colors.Fg.ClaudeHeader)
+
+	SelfIndexStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.Accent).
+		Width(3)
+
+	SelfIndexSelectedStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.Accent).
+		Background(Colors.Bg.Selected).
+		Bold(true).
+		Width(3)
+
+	SelfNameStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.Muted)
+
+	SelfNameSelectedStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.Accent).
+		Background(Colors.Bg.Selected).
+		Bold(true)
 }
 
 // RenderBorder returns a horizontal border line

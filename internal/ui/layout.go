@@ -21,6 +21,9 @@ const (
 	TableHeaderHeight     = 1
 	TableDottedLineHeight = 1
 
+	// Pinned self session (row + separator)
+	SelfSessionOverhead = 2
+
 	// Computed totals for visible items calculation
 	BaseOverhead            = 8  // HeaderOverhead + FooterOverhead
 	WithTableHeaderOverhead = 10 // BaseOverhead + TableHeaderHeight + TableDottedLineHeight

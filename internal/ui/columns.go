@@ -34,6 +34,7 @@ type RowOpts struct {
 	GitStatusLoading bool           // Show loading indicator for git status
 	ClaudeStatus     *claude.Status // Show claude status if set
 	AnimFrame        int            // Animation frame for claude status
+	IsSelf           bool           // True for the pinned current/self session
 }
 
 // WindowRowOpts contains per-row options for rendering a window
@@ -180,10 +181,35 @@ type SessionRowOpts struct {
 	RowOpts
 }
 
+// RenderSelfIndex renders the self-session marker instead of a number
+func RenderSelfIndex(selected bool) string {
+	if selected {
+		return SelfIndexSelectedStyle.Render(" * ")
+	}
+	return SelfIndexStyle.Render(" * ")
+}
+
+// RenderSelfSessionName renders the self-session name
+func RenderSelfSessionName(name string, width int, selected bool) string {
+	padded := fmt.Sprintf("%-*s", width, name)
+	if selected {
+		return SelfNameSelectedStyle.Render(padded)
+	}
+	return SelfNameStyle.Render(padded)
+}
+
 // RenderSessionRow composes all columns into a complete session row
 func RenderSessionRow(name string, lastActivity time.Time, layout RowLayout, opts SessionRowOpts, width int) string {
+	// Self session uses distinct index marker and name style
+	renderIndex := RenderIndex(opts.Num, opts.Selected)
+	renderName := RenderSessionName(name, layout.NameWidth, opts.Selected)
+	if opts.IsSelf {
+		renderIndex = RenderSelfIndex(opts.Selected)
+		renderName = RenderSelfSessionName(name, layout.NameWidth, opts.Selected)
+	}
+
 	cols := []string{
-		RenderIndex(opts.Num, opts.Selected),
+		renderIndex,
 		SpacerStyle(" ", opts.Selected),
 		// Claude icon (after index, before expand arrow)
 		RenderClaudeIcon(opts.ClaudeStatus, opts.AnimFrame, opts.Selected),
@@ -196,7 +222,7 @@ func RenderSessionRow(name string, lastActivity time.Time, layout RowLayout, opt
 	}
 
 	// Name (always shown)
-	cols = append(cols, RenderSessionName(name, layout.NameWidth, opts.Selected))
+	cols = append(cols, renderName)
 
 	// Time ago (optional)
 	if opts.LastActivity != nil {

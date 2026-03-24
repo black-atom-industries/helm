@@ -71,14 +71,16 @@ const (
 // Item represents a session, window, or pane in the flattened list
 type Item struct {
 	Type         ItemType
-	SessionIndex int // Index in the sessions slice
-	WindowIndex  int // Index in the session's windows slice (for windows and panes)
-	PaneIndex    int // Index in the window's panes slice (for panes only)
+	SessionIndex int  // Index in the sessions slice
+	WindowIndex  int  // Index in the session's windows slice (for windows and panes)
+	PaneIndex    int  // Index in the window's panes slice (for panes only)
+	IsSelf       bool // True if this item belongs to the current/self session
 }
 
 // Model is the main application state
 type Model struct {
 	sessions          []tmux.Session
+	selfSession       *tmux.Session // The current/self session (pinned at top)
 	claudeStatuses    map[string]claude.Status
 	gitStatuses       map[string]git.Status
 	currentSession    string
@@ -205,11 +207,25 @@ func (m Model) loadSessions() tea.Msg {
 	if err != nil {
 		return errMsg{err}
 	}
-	return sessionsMsg{sessions}
+
+	// Fetch self session activity
+	var selfSession *tmux.Session
+	if m.currentSession != "" {
+		activity, err := tmux.GetSessionActivity(m.currentSession)
+		if err == nil {
+			selfSession = &tmux.Session{
+				Name:         m.currentSession,
+				LastActivity: activity,
+			}
+		}
+	}
+
+	return sessionsMsg{sessions: sessions, selfSession: selfSession}
 }
 
 type sessionsMsg struct {
-	sessions []tmux.Session
+	sessions    []tmux.Session
+	selfSession *tmux.Session
 }
 
 type errMsg struct {
@@ -249,6 +265,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case sessionsMsg:
 		m.sessions = msg.sessions
+		m.selfSession = msg.selfSession
 		m.sessionsLoaded = true
 		m.saveSessionCache() // Cache for instant startup next time
 		m.loadClaudeStatuses()
@@ -262,8 +279,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.calculateColumnWidths()
 		m.rebuildItems()
+		// Place cursor on the first regular (non-self) session
+		if m.selfSession != nil {
+			for i, item := range m.items {
+				if !item.IsSelf {
+					m.cursor = i
+					break
+				}
+			}
+			m.updateScrollOffset()
+		}
 		if len(m.items) == 0 {
-			m.message = "No other sessions. Press C-n to create one."
+			m.message = "No sessions. Press C-n to create one."
 		}
 		// Fetch git statuses asynchronously to avoid blocking UI
 		return m, m.fetchGitStatusesCmd()
@@ -400,6 +427,24 @@ func (m *Model) extractDisplayPath(fullPath string) string {
 	return strings.Join(parts[len(parts)-depth:], "/")
 }
 
+// allSessions returns self session + other sessions as a combined slice
+func (m *Model) allSessions() []tmux.Session {
+	var all []tmux.Session
+	if m.selfSession != nil {
+		all = append(all, *m.selfSession)
+	}
+	all = append(all, m.sessions...)
+	return all
+}
+
+// getSession returns the session for a given item (handles self session)
+func (m *Model) getSession(item Item) *tmux.Session {
+	if item.IsSelf {
+		return m.selfSession
+	}
+	return &m.sessions[item.SessionIndex]
+}
+
 // findSessionByName finds a session by its name, returns nil if not found
 func (m *Model) findSessionByName(name string) *tmux.Session {
 	for i := range m.sessions {
@@ -434,6 +479,12 @@ func (m *Model) loadClaudeStatuses() {
 	if !m.config.ClaudeStatusEnabled {
 		return
 	}
+	if m.selfSession != nil {
+		status := claude.GetStatus(m.selfSession.Name, m.config.CacheDir)
+		if status.State != "" {
+			m.claudeStatuses[m.selfSession.Name] = status
+		}
+	}
 	for _, s := range m.sessions {
 		status := claude.GetStatus(s.Name, m.config.CacheDir)
 		if status.State != "" {
@@ -445,26 +496,27 @@ func (m *Model) loadClaudeStatuses() {
 // fetchGitStatusesCmd returns commands that fetch git statuses in parallel
 // Each session's status is fetched independently and updates the UI as soon as ready
 func (m *Model) fetchGitStatusesCmd() tea.Cmd {
-	if !m.config.GitStatusEnabled || len(m.sessions) == 0 {
+	allSessions := m.allSessions()
+	if !m.config.GitStatusEnabled || len(allSessions) == 0 {
 		return nil
 	}
 
 	// Track which sessions we're waiting for
 	m.gitStatusPending = make(map[string]bool)
 	m.gitStatusShowLoading = false
-	for _, s := range m.sessions {
+	for _, s := range allSessions {
 		m.gitStatusPending[s.Name] = true
 	}
 
 	// Create a command for each session - they run in parallel via tea.Batch
-	cmds := make([]tea.Cmd, 0, len(m.sessions)+1)
+	cmds := make([]tea.Cmd, 0, len(allSessions)+1)
 
 	// Add delayed loading indicator (500ms)
 	cmds = append(cmds, tea.Tick(500*time.Millisecond, func(time.Time) tea.Msg {
 		return gitStatusLoadingMsg{}
 	}))
 
-	for _, s := range m.sessions {
+	for _, s := range allSessions {
 		sessionName := s.Name // capture for closure
 		cmds = append(cmds, func() tea.Msg {
 			path, err := git.GetSessionPath(sessionName)
@@ -484,6 +536,11 @@ func (m *Model) fetchGitStatusesCmd() tea.Cmd {
 
 func (m *Model) calculateColumnWidths() {
 	// Don't reset - preserve cached width to prevent layout shift
+	if m.selfSession != nil {
+		if len(m.selfSession.Name) > m.maxNameWidth {
+			m.maxNameWidth = len(m.selfSession.Name)
+		}
+	}
 	for _, s := range m.sessions {
 		if len(s.Name) > m.maxNameWidth {
 			m.maxNameWidth = len(s.Name)
@@ -496,6 +553,9 @@ func (m *Model) stateText() string {
 	switch m.mode {
 	case ModeNormal:
 		total := len(m.sessions)
+		if m.selfSession != nil {
+			total++
+		}
 		visible := len(m.items)
 		if m.filter != "" {
 			return fmt.Sprintf("Showing %d/%d sessions", visible, total)
@@ -557,6 +617,35 @@ func (m *Model) stateText() string {
 func (m *Model) rebuildItems() {
 	m.items = nil
 	filterLower := strings.ToLower(m.filter)
+
+	// Pin self session at top (always visible, not affected by filter)
+	if m.selfSession != nil {
+		m.items = append(m.items, Item{
+			Type:   ItemTypeSession,
+			IsSelf: true,
+		})
+
+		if m.selfSession.Expanded {
+			for j, window := range m.selfSession.Windows {
+				m.items = append(m.items, Item{
+					Type:        ItemTypeWindow,
+					IsSelf:      true,
+					WindowIndex: j,
+				})
+
+				if window.Expanded {
+					for k := range window.Panes {
+						m.items = append(m.items, Item{
+							Type:        ItemTypePane,
+							IsSelf:      true,
+							WindowIndex: j,
+							PaneIndex:   k,
+						})
+					}
+				}
+			}
+		}
+	}
 
 	for i, session := range m.sessions {
 		// Apply fuzzy filter if active
@@ -658,7 +747,7 @@ func (m *Model) isCursorValid() bool {
 
 // getTargetName returns the tmux target name for the given item
 func (m *Model) getTargetName(item Item) string {
-	session := m.sessions[item.SessionIndex]
+	session := m.getSession(item)
 	switch item.Type {
 	case ItemTypeSession:
 		return session.Name
