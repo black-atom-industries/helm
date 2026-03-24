@@ -30,7 +30,9 @@ const (
 	ModeCreate
 	ModePickDirectory
 	ModeConfirmRemoveFolder
+	ModeCloneChoice // Sub-menu: URL or My Repos
 	ModeCloneRepo
+	ModeCloneURL // Text input for arbitrary repo URL
 	ModeBookmarks
 	ModeCreatePath // Path input for creating session at arbitrary path
 )
@@ -44,7 +46,7 @@ func (m Mode) String() string {
 		return "BKMK"
 	case ModePickDirectory:
 		return "PROJ"
-	case ModeCloneRepo:
+	case ModeCloneChoice, ModeCloneRepo, ModeCloneURL:
 		return "CLONE"
 	case ModeCreate:
 		return "NEW"
@@ -114,7 +116,8 @@ type Model struct {
 	// Animation state
 	animationFrame int
 
-	// Clone repo mode state (uses ScrollList for cursor/scroll/filter)
+	// Clone mode state
+	cloneChoiceCursor   int // 0 = Enter URL, 1 = My repos
 	cloneList           *ui.ScrollList[string]
 	cloneBasePath       string // From config.ProjectDirs
 	cloneLoading        bool   // True while fetching repos
@@ -378,8 +381,12 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handlePickDirectoryMode(msg)
 	case ModeConfirmRemoveFolder:
 		return m.handleConfirmRemoveFolderMode(msg)
+	case ModeCloneChoice:
+		return m.handleCloneChoiceMode(msg)
 	case ModeCloneRepo:
 		return m.handleCloneRepoMode(msg)
+	case ModeCloneURL:
+		return m.handleCloneURLMode(msg)
 	case ModeBookmarks:
 		return m.handleBookmarksMode(msg)
 	}
@@ -455,6 +462,7 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Reset input completely
 		m.input.Reset()
 		m.input.SetValue("")
+		m.input.CharLimit = 50
 		m.input.Focus()
 		return m, textinput.Blink
 
@@ -475,21 +483,14 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.openRemote()
 
 	case key.Matches(msg, keys.DownloadRepo):
-		// Use first project directory as clone target
 		if len(m.config.ProjectDirs) == 0 {
 			m.setError("No project_dirs configured")
 			return m, nil
 		}
 		m.cloneBasePath = m.config.ProjectDirs[0]
-		m.mode = ModeCloneRepo
-		m.clonePendingFilter = m.filter
-		m.filter = ""
-		m.cloneList.Reset()
-		m.cloneList.Clear()
-		m.cloneError = ""
-		m.cloneLoading = true
-		m.cloneCloning = false
-		return m, m.fetchAvailableReposCmd()
+		m.cloneChoiceCursor = 0
+		m.mode = ModeCloneChoice
+		return m, nil
 
 	case key.Matches(msg, keys.Lazygit):
 		return m.openLazygit()
@@ -816,6 +817,118 @@ func (m *Model) handlePickDirectoryMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m *Model) handleCloneChoiceMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	keys := ui.DefaultKeyMap
+
+	switch {
+	case key.Matches(msg, keys.Cancel):
+		m.mode = ModeNormal
+		return m, nil
+
+	case key.Matches(msg, keys.Up), key.Matches(msg, keys.Down):
+		m.cloneChoiceCursor = 1 - m.cloneChoiceCursor
+
+	case key.Matches(msg, keys.Select):
+		if m.cloneChoiceCursor == 0 {
+			// Enter URL
+			m.input.Reset()
+			m.input.Placeholder = "e.g. black-atom-industries/helm or git@github.com:black-atom-industries/helm.git"
+			m.input.CharLimit = 256
+			m.input.Width = m.width - 6 // account for padding
+			m.input.Focus()
+			m.cloneError = ""
+			m.mode = ModeCloneURL
+			return m, nil
+		}
+		// My repos — enter existing clone flow
+		m.clonePendingFilter = m.filter
+		m.filter = ""
+		m.cloneList.Reset()
+		m.cloneList.Clear()
+		m.cloneError = ""
+		m.cloneLoading = true
+		m.cloneCloning = false
+		m.mode = ModeCloneRepo
+		return m, m.fetchAvailableReposCmd()
+
+	case key.Matches(msg, keys.Quit):
+		return m, tea.Quit
+	}
+
+	return m, nil
+}
+
+func (m *Model) handleCloneURLMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	keys := ui.DefaultKeyMap
+
+	// Handle confirmation state (reused from clone flow)
+	if m.cloneSuccess {
+		switch {
+		case key.Matches(msg, keys.Select):
+			m.applyLayout(m.cloneSuccessSession, m.cloneSuccessPath)
+			if err := tmux.SwitchClient(m.cloneSuccessSession); err != nil {
+				m.setError("Created but failed to switch: %v", err)
+				m.mode = ModeNormal
+				m.cloneSuccess = false
+				return m, m.loadSessions
+			}
+			return m, tea.Quit
+		case key.Matches(msg, keys.Cancel):
+			m.mode = ModeNormal
+			m.cloneSuccess = false
+			return m, m.loadSessions
+		}
+		return m, nil
+	}
+
+	switch {
+	case key.Matches(msg, keys.Cancel):
+		if m.cloneCloning {
+			m.mode = ModeNormal
+			m.cloneCloning = false
+			m.cloneError = ""
+			return m, nil
+		}
+		if m.cloneError != "" {
+			m.cloneError = ""
+			return m, nil
+		}
+		m.input.Blur()
+		m.mode = ModeCloneChoice
+		return m, nil
+
+	case msg.Type == tea.KeyEnter:
+		value := strings.TrimSpace(m.input.Value())
+		if value == "" {
+			return m, nil
+		}
+		ownerRepo, err := github.ResolveOwnerRepo(value)
+		if err != nil {
+			m.cloneError = err.Error()
+			return m, nil
+		}
+		m.input.Blur()
+		return m.cloneSelectedRepo(ownerRepo)
+
+	case key.Matches(msg, keys.Quit):
+		return m, tea.Quit
+	}
+
+	// Ignore ctrl key combinations — only pass regular typing to input
+	if msg.Type == tea.KeyCtrlN || msg.Type == tea.KeyCtrlO ||
+		msg.Type == tea.KeyCtrlJ || msg.Type == tea.KeyCtrlK ||
+		msg.Type == tea.KeyCtrlH || msg.Type == tea.KeyCtrlL ||
+		msg.Type == tea.KeyCtrlX || msg.Type == tea.KeyCtrlY ||
+		msg.Type == tea.KeyCtrlP || msg.Type == tea.KeyCtrlD ||
+		msg.Type == tea.KeyCtrlR {
+		return m, nil
+	}
+
+	var cmd tea.Cmd
+	m.input, cmd = m.input.Update(msg)
+	return m, cmd
 }
 
 func (m *Model) handleCloneRepoMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -1806,6 +1919,16 @@ func (m *Model) stateText() string {
 			return fmt.Sprintf("Showing %d/%d projects", visible, total)
 		}
 		return fmt.Sprintf("%d projects", total)
+	case ModeCloneChoice:
+		return "Clone repository"
+	case ModeCloneURL:
+		if m.cloneSuccess {
+			return "Clone successful"
+		}
+		if m.cloneCloning {
+			return fmt.Sprintf("Cloning %s...", m.cloneCloningRepo)
+		}
+		return "Enter repo URL"
 	case ModeCloneRepo:
 		if m.cloneSuccess {
 			return "Clone successful"
@@ -2023,8 +2146,14 @@ func (m Model) View() string {
 	if m.mode == ModePickDirectory || m.mode == ModeConfirmRemoveFolder {
 		return m.viewPickDirectory()
 	}
+	if m.mode == ModeCloneChoice {
+		return m.viewCloneChoice()
+	}
 	if m.mode == ModeCloneRepo {
 		return m.viewCloneRepo()
+	}
+	if m.mode == ModeCloneURL {
+		return m.viewCloneURL()
 	}
 	if m.mode == ModeBookmarks {
 		return m.viewBookmarks()
@@ -2190,6 +2319,102 @@ func (m Model) viewPickDirectory() string {
 }
 
 // viewCloneRepo renders the clone repository view
+func (m Model) viewCloneChoice() string {
+	var b strings.Builder
+
+	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
+	b.WriteString("\n")
+	b.WriteString(ui.RenderPrompt("", m.width))
+	b.WriteString("\n")
+	b.WriteString(ui.RenderBorder(m.borderWidth()))
+	b.WriteString("\n")
+
+	options := []string{"Enter URL", "My repos"}
+	contentLines := 0
+
+	for i, opt := range options {
+		if i == m.cloneChoiceCursor {
+			b.WriteString(ui.FilterStyle.Render("  "+opt) + "\n")
+		} else {
+			b.WriteString("  " + opt + "\n")
+		}
+		contentLines++
+	}
+
+	headerLines := ui.HeaderOverhead
+	footerLines := ui.FooterOverhead
+	contentH := m.contentHeight()
+	if contentH > 0 {
+		padding := contentH - headerLines - contentLines - footerLines
+		for i := 0; i < padding; i++ {
+			b.WriteString("\n")
+		}
+	}
+
+	hints := ui.HelpCloneChoice()
+	b.WriteString(ui.RenderFooter(m.message, m.stateText(), hints, m.messageIsError, m.width))
+
+	return ui.AppStyle.Render(b.String())
+}
+
+func (m Model) viewCloneURL() string {
+	var b strings.Builder
+
+	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
+	b.WriteString("\n")
+	b.WriteString(ui.RenderPrompt("", m.width))
+	b.WriteString("\n")
+	b.WriteString(ui.RenderBorder(m.borderWidth()))
+	b.WriteString("\n")
+
+	contentLines := 0
+
+	if m.cloneSuccess {
+		fmt.Fprintf(&b, "  Cloned: %s\n", m.cloneCloningRepo)
+		contentLines++
+		fmt.Fprintf(&b, "  Session: %s\n", m.cloneSuccessSession)
+		contentLines++
+		b.WriteString("\n")
+		contentLines++
+		b.WriteString("  Switch to the new session?\n")
+		contentLines++
+	} else if m.cloneCloning {
+		fmt.Fprintf(&b, "  Cloning %s...\n", m.cloneCloningRepo)
+		contentLines++
+	} else if m.cloneError != "" {
+		b.WriteString(ui.ErrorMessageStyle.Render("  "+m.cloneError) + "\n")
+		contentLines++
+		b.WriteString("  " + m.input.View() + "\n")
+		contentLines++
+	} else {
+		b.WriteString("  " + m.input.View() + "\n")
+		contentLines++
+	}
+
+	headerLines := ui.HeaderOverhead
+	footerLines := ui.FooterOverhead
+	contentH := m.contentHeight()
+	if contentH > 0 {
+		padding := contentH - headerLines - contentLines - footerLines
+		for i := 0; i < padding; i++ {
+			b.WriteString("\n")
+		}
+	}
+
+	var hints string
+	if m.cloneSuccess {
+		hints = ui.HelpCloneSuccess()
+	} else if m.cloneCloning {
+		hints = ui.HelpCloneRepoLoading()
+	} else {
+		hints = ui.HelpCloneURL()
+	}
+
+	b.WriteString(ui.RenderFooter(m.message, m.stateText(), hints, m.messageIsError, m.width))
+
+	return ui.AppStyle.Render(b.String())
+}
+
 func (m Model) viewCloneRepo() string {
 	var b strings.Builder
 

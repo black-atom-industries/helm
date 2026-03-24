@@ -235,6 +235,19 @@ func HelpConfirmRemoveFolder() string {
 		helpItem("Esc", "Cancel")
 }
 
+// HelpCloneChoice returns the help text for clone choice menu
+func HelpCloneChoice() string {
+	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
+		helpItem("Enter", "Select") + helpSep() +
+		helpItem("Esc", "Back")
+}
+
+// HelpCloneURL returns the help text for clone URL input mode
+func HelpCloneURL() string {
+	return helpItem("Enter", "Clone") + helpSep() +
+		helpItem("Esc", "Back")
+}
+
 // HelpCloneRepo returns the help text for clone repo mode
 func HelpCloneRepo() string {
 	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
