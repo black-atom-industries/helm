@@ -1,8 +1,8 @@
 # helm
 
-> Take the helm of your workspaces.
+> Take the helm of your tmux workspaces.
 
-A TUI for quickly switching between tmux sessions, creating new ones, and managing your workspace. Built with [Bubbletea](https://github.com/charmbracelet/bubbletea) for a fast, responsive interface.
+A TUI for managing tmux sessions — quick switching, fuzzy filtering, and workspace organization. Built with [Bubbletea](https://github.com/charmbracelet/bubbletea).
 
 Part of the [Black Atom Industries](https://github.com/black-atom-industries) cockpit - pairs with [radar.nvim](https://github.com/black-atom-industries/radar.nvim) for file navigation.
 
@@ -48,21 +48,21 @@ Reload your tmux configuration: `tmux source-file ~/.tmux.conf`
 
 ## Keybindings
 
-| Key | Action |
-|-----|--------|
-| Type letters | Fuzzy filter sessions |
-| `Ctrl+j/k` or `↓`/`↑` | Navigate up/down |
-| `Ctrl+h/l` or `←`/`→` | Collapse/Expand session windows |
-| `1`-`9` | Jump to session (when no filter active) |
-| `Enter` | Switch to selected session/window |
-| `Ctrl+x` | Kill with confirmation |
-| `Ctrl+n` | Create new session |
-| `Ctrl+p` | Project picker |
-| `Ctrl+b` | Bookmarks |
-| `Ctrl+a` | Add/remove bookmark |
-| `Ctrl+r` | Clone repo from GitHub |
-| `Ctrl+g` | Open lazygit |
-| `q`/`Esc` | Quit |
+| Key                   | Action                                  |
+| --------------------- | --------------------------------------- |
+| Type letters          | Fuzzy filter sessions                   |
+| `Ctrl+j/k` or `↓`/`↑` | Navigate up/down                        |
+| `Ctrl+h/l` or `←`/`→` | Collapse/Expand session windows         |
+| `1`-`9`               | Jump to session (when no filter active) |
+| `Enter`               | Switch to selected session/window       |
+| `Ctrl+x`              | Kill with confirmation                  |
+| `Ctrl+n`              | Create new session                      |
+| `Ctrl+p`              | Project picker                          |
+| `Ctrl+b`              | Bookmarks                               |
+| `Ctrl+a`              | Add/remove bookmark                     |
+| `Ctrl+r`              | Clone repo from GitHub                  |
+| `Ctrl+g`              | Open lazygit                            |
+| `q`/`Esc`             | Quit                                    |
 
 ## Configuration
 
@@ -129,11 +129,53 @@ Display Claude Code status for each session with an animated indicator.
    ```json
    {
      "hooks": {
-       "SessionStart": [{ "hooks": [{ "type": "command", "command": "~/.local/bin/helm-hook.sh SessionStart" }] }],
-       "PreToolUse": [{ "hooks": [{ "type": "command", "command": "~/.local/bin/helm-hook.sh PreToolUse" }] }],
-       "Stop": [{ "hooks": [{ "type": "command", "command": "~/.local/bin/helm-hook.sh Stop" }] }],
-       "Notification": [{ "hooks": [{ "type": "command", "command": "~/.local/bin/helm-hook.sh Notification" }] }],
-       "SessionEnd": [{ "hooks": [{ "type": "command", "command": "~/.local/bin/helm-hook.sh SessionEnd" }] }]
+       "SessionStart": [
+         {
+           "hooks": [
+             {
+               "type": "command",
+               "command": "~/.local/bin/helm-hook.sh SessionStart"
+             }
+           ]
+         }
+       ],
+       "PreToolUse": [
+         {
+           "hooks": [
+             {
+               "type": "command",
+               "command": "~/.local/bin/helm-hook.sh PreToolUse"
+             }
+           ]
+         }
+       ],
+       "Stop": [
+         {
+           "hooks": [
+             { "type": "command", "command": "~/.local/bin/helm-hook.sh Stop" }
+           ]
+         }
+       ],
+       "Notification": [
+         {
+           "hooks": [
+             {
+               "type": "command",
+               "command": "~/.local/bin/helm-hook.sh Notification"
+             }
+           ]
+         }
+       ],
+       "SessionEnd": [
+         {
+           "hooks": [
+             {
+               "type": "command",
+               "command": "~/.local/bin/helm-hook.sh SessionEnd"
+             }
+           ]
+         }
+       ]
      }
    }
    ```
@@ -147,6 +189,7 @@ Display Claude Code status for each session with an animated indicator.
 ### Display
 
 Sessions show Claude status as a single animated character:
+
 - `⠤⠆⠒⠰` (spinner) - Claude actively processing
 - `?` - Claude waiting for input
 - `!` - Claude waiting for input > 5 minutes (needs attention)

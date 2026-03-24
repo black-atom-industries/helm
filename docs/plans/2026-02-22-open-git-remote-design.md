@@ -6,10 +6,10 @@ Add `Ctrl+r` binding to open the GitHub remote URL for the selected session in t
 
 ## Keybinding Changes
 
-| Binding  | Before       | After        |
-| -------- | ------------ | ------------ |
-| `Ctrl+r` | Clone repo   | Remote (new) |
-| `Ctrl+d` | (unused)     | Download     |
+| Binding  | Before     | After        |
+| -------- | ---------- | ------------ |
+| `Ctrl+r` | Clone repo | Remote (new) |
+| `Ctrl+d` | (unused)   | Download     |
 
 Help line: `C-n New · C-p Projects · C-b Bookmarks · C-a Bookmark · C-r Remote · C-d Download · C-g Lazygit`
 

@@ -48,6 +48,7 @@ hooks/helm-hook.sh        # Claude Code hook for status updates
 ### Bubbletea Model Flow
 
 The model (`internal/model/model.go`) has seven modes:
+
 - **ModeNormal**: Session list with fuzzy filtering
 - **ModeBookmarks**: Bookmarked repos (local dirs without active sessions)
 - **ModePickDirectory**: Directory picker for new sessions
@@ -57,6 +58,7 @@ The model (`internal/model/model.go`) has seven modes:
 - **ModeConfirmRemoveFolder**: Folder removal confirmation
 
 Key state:
+
 - `sessions []tmux.Session` - Raw session data
 - `items []Item` - Flattened view (sessions + expanded windows)
 - `filter string` - Current filter text
@@ -67,6 +69,7 @@ Key state:
 ### Key Bindings
 
 Navigation uses Ctrl modifiers to reserve letters for filtering:
+
 - `Ctrl+j/k` or arrows: Navigate
 - `Ctrl+h/l` or arrows: Collapse/Expand sessions
 - `Ctrl+n`: Create new session
@@ -84,11 +87,11 @@ Navigation uses Ctrl modifiers to reserve letters for filtering:
 Config file: `~/.config/helm/config.yml`
 
 ```yaml
-layout: ide                            # Layout script for new sessions
+layout: ide # Layout script for new sessions
 layout_dir: ~/.config/tmux/layouts
-claude_status_enabled: true            # Show CC status indicator
+claude_status_enabled: true # Show CC status indicator
 cache_dir: ~/.cache/helm
-dirty_walkthrough_command: "lazygit -p {}"  # Command for 'helm repos dirty --walk'
+dirty_walkthrough_command: "lazygit -p {}" # Command for 'helm repos dirty --walk'
 ```
 
 Environment variables override config: `TMUX_LAYOUT`, `TMUX_LAYOUTS_DIR`, `TMUX_SESSION_PICKER_CLAUDE_STATUS=1`
@@ -96,6 +99,7 @@ Environment variables override config: `TMUX_LAYOUT`, `TMUX_LAYOUTS_DIR`, `TMUX_
 ## Testing
 
 Must test inside tmux:
+
 ```bash
 tmux display-popup -w50% -h35% -B -E "./helm"
 ```
@@ -103,6 +107,7 @@ tmux display-popup -w50% -h35% -B -E "./helm"
 ### Automated Visual Testing
 
 To test UI changes and capture a screenshot for visual verification:
+
 ```bash
 tmux display-popup -w50% -h35% -B -E "~/.local/bin/helm" &
 sleep 0.8
@@ -114,6 +119,7 @@ Then read `/tmp/helm_test.png` to visually verify the UI looks correct.
 ## Claude Status Integration
 
 The hook (`hooks/helm-hook.sh`) writes status files to `~/.cache/helm/<session>.status`. The TUI reads these to show animated status indicators per session:
+
 - `⠤⠆⠒⠰` (spinner) - Claude actively processing
 - `?` - Claude waiting (0–5 min)
 - `!` - Still waiting (5–15 min)
@@ -128,6 +134,7 @@ The hook (`hooks/helm-hook.sh`) writes status files to `~/.cache/helm/<session>.
 Issues are tracked in [Linear](https://linear.app/black-atom-industries) under the Development team with the `helm` label.
 
 Use the Linear MCP to query and manage issues directly from Claude Code:
+
 - `mcp__linear__list_issues` - Query issues
 - `mcp__linear__create_issue` - Create new issues
 - `mcp__linear__update_issue` - Update status, labels, etc.

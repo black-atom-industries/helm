@@ -31,6 +31,8 @@ dev:
 
 fmt:
 	go fmt ./...
+	# Format all markdown files
+	prettier --write '**/*.md'
 
 lint:
 	golangci-lint run
