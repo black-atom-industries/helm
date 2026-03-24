@@ -356,7 +356,7 @@ func RenderFooter(notification, state, hints string, isError bool, width int) st
 	var b strings.Builder
 
 	// Border
-	b.WriteString(RenderDottedBorder(innerWidth))
+	b.WriteString(RenderBorder(innerWidth))
 	b.WriteString("\n")
 
 	// Notification line (always 1 line, even if empty)

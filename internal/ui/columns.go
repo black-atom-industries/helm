@@ -184,9 +184,9 @@ type SessionRowOpts struct {
 // RenderSelfIndex renders the self-session marker instead of a number
 func RenderSelfIndex(selected bool) string {
 	if selected {
-		return SelfIndexSelectedStyle.Render(" * ")
+		return SelfIndexSelectedStyle.Render("*")
 	}
-	return SelfIndexStyle.Render(" * ")
+	return SelfIndexStyle.Render("*")
 }
 
 // RenderSelfSessionName renders the self-session name
