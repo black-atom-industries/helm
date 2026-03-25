@@ -270,7 +270,7 @@ func (m Model) viewBookmarks() string {
 		contentH := m.contentHeight()
 		maxItems := ui.DefaultVisibleItems
 		if contentH > 0 {
-			if available := contentH - ui.WithTableHeaderOverhead; available > 0 {
+			if available := contentH - 8; available > 0 { // header(3) + footer(3) + tableHeader(1) + dottedLine(1)
 				maxItems = available
 			}
 		}

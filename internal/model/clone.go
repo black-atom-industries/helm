@@ -275,7 +275,7 @@ func (m *Model) fetchAvailableReposCmd() tea.Cmd {
 func (m *Model) cloneMaxVisibleItems() int {
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		if available := contentH - ui.BaseOverhead; available > 0 {
+		if available := contentH - 6; available > 0 { // header(3) + footer(3)
 			return available
 		}
 	}
