@@ -15,13 +15,13 @@ type Action struct {
 
 // SessionActions are the actions shown in ModeNormal (session list)
 var SessionActions = []Action{
-	{Label: "NEW", Keybind: "C-n"},
-	{Label: "PROJECTS", Keybind: "C-p"},
 	{Label: "BOOKMARKS", Keybind: "C-b"},
-	{Label: "KILL", Keybind: "C-x", Warning: true},
-	{Label: "REMOTE", Keybind: "C-r"},
+	{Label: "PROJECTS", Keybind: "C-p"},
 	{Label: "DOWNLOAD", Keybind: "C-d"},
+	{Label: "NEW", Keybind: "C-n"},
 	{Label: "LAZYGIT", Keybind: "C-g"},
+	{Label: "REMOTE", Keybind: "C-r"},
+	{Label: "KILL", Keybind: "C-x", Warning: true},
 }
 
 // BookmarkActions are the actions shown in ModeBookmarks
