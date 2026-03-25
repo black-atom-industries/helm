@@ -251,7 +251,7 @@ func (m Model) viewBookmarks() string {
 	header.WriteString(ui.RenderPrompt(filter, m.width))
 	header.WriteString("\n")
 	header.WriteString(ui.RenderBorder(m.borderWidth()))
-	b.WriteString("\n")
+	header.WriteString("\n")
 
 	// Content area
 
