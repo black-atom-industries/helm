@@ -922,22 +922,11 @@ func (m Model) viewSessionList() string {
 	header := b.String()
 	listContent := listBuilder.String()
 
-	var hints string
-	var notification string
-	switch m.mode {
-	case ModeNormal:
-		notification = m.message
-		if notification == "" {
-			notification = m.statusLine()
-		}
-		hints = "Type filter · C-j/k ↕ Nav · C-h/l ↔ Expand · Enter Switch"
-	case ModeConfirmKill:
-		notification = m.message
-		hints = "C-x Confirm · Esc Cancel"
-	case ModeCreate:
-		notification = "New session: " + m.input.View()
-		hints = "Enter Create · Esc Cancel"
+	notification := m.message
+	if notification == "" {
+		notification = m.statusLine()
 	}
+	hints := ui.UniversalHints
 
 	return m.renderWithSidebar(header, listContent, ui.SessionActions, notification, hints, m.messageIsError)
 }
@@ -990,12 +979,11 @@ func (m Model) viewCreatePath() string {
 		}
 	}
 
-	hints := ui.HelpCreatePath()
 	notification := m.message
 	if notification == "" {
 		notification = fmt.Sprintf("Create session: %s", m.pendingSessionName)
 	}
-	return m.renderWithSidebar(header.String(), b.String(), ui.CreateActions, notification, hints, m.messageIsError)
+	return m.renderWithSidebar(header.String(), b.String(), ui.CreateActions, notification, ui.UniversalHints, m.messageIsError)
 }
 
 // sessionMaxVisibleItems returns the actual number of session items that can be shown

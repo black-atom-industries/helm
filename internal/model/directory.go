@@ -214,24 +214,7 @@ func (m Model) viewPickDirectory() string {
 		}
 	}
 
-	// Fixed footer: notification + state + hints
-	var hints string
-	switch m.mode {
-	case ModeConfirmRemoveFolder:
-		hints = ui.HelpConfirmRemoveFolder()
-	default:
-		if m.pendingSessionName != "" {
-			hints = ui.HelpPickDirectoryCreate()
-		} else if m.returnToBookmarks {
-			hints = ui.HelpAddBookmark()
-		} else if filter != "" {
-			hints = ui.HelpFilteringPickDirectory()
-		} else {
-			hints = ui.HelpPickDirectory()
-		}
-	}
-
-	return m.renderWithSidebar(header.String(), b.String(), ui.ProjectActions, m.message, hints, m.messageIsError)
+	return m.renderWithSidebar(header.String(), b.String(), ui.ProjectActions, m.message, ui.UniversalHints, m.messageIsError)
 }
 
 // projectMaxVisibleItems returns the actual number of items that can be shown

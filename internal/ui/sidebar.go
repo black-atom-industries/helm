@@ -15,6 +15,8 @@ type Action struct {
 
 // SessionActions are the actions shown in ModeNormal (session list)
 var SessionActions = []Action{
+	{Label: "SWITCH", Keybind: "Enter"},
+	{Label: "EXPAND", Keybind: "C-h/l"},
 	{Label: "BOOKMARKS", Keybind: "C-b"},
 	{Label: "PROJECTS", Keybind: "C-p"},
 	{Label: "DOWNLOAD", Keybind: "C-d"},
@@ -27,11 +29,11 @@ var SessionActions = []Action{
 // BookmarkActions are the actions shown in ModeBookmarks
 var BookmarkActions = []Action{
 	{Label: "OPEN", Keybind: "Enter"},
+	{Label: "EXPAND", Keybind: "C-h/l"},
 	{Label: "ADD", Keybind: "C-a"},
 	{Label: "MOVE UP", Keybind: "C-p"},
 	{Label: "MOVE DOWN", Keybind: "C-n"},
 	{Label: "REMOVE", Keybind: "C-x", Warning: true},
-	{Label: "BACK", Keybind: "Esc"},
 }
 
 // ProjectActions are the actions shown in ModePickDirectory
@@ -39,20 +41,20 @@ var ProjectActions = []Action{
 	{Label: "SELECT", Keybind: "Enter"},
 	{Label: "BOOKMARK", Keybind: "C-a"},
 	{Label: "REMOVE", Keybind: "C-x", Warning: true},
-	{Label: "BACK", Keybind: "Esc"},
 }
 
 // CloneActions are the actions shown in ModeCloneRepo/ModeCloneChoice/ModeCloneURL
 var CloneActions = []Action{
 	{Label: "CLONE", Keybind: "Enter"},
-	{Label: "BACK", Keybind: "Esc"},
 }
 
 // CreateActions are the actions shown in ModeCreate/ModeCreatePath
 var CreateActions = []Action{
 	{Label: "CREATE", Keybind: "Enter"},
-	{Label: "BACK", Keybind: "Esc"},
 }
+
+// UniversalHints is the footer hint line shown in all modes
+const UniversalHints = "C-j/k ↕ Nav · Type filter · Esc Back"
 
 // ButtonInnerWidth is the character width of button content
 const ButtonInnerWidth = 12 // fits "BOOKMARKS" + centering padding

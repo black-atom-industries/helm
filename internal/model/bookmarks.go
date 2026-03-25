@@ -305,7 +305,7 @@ func (m Model) viewBookmarks() string {
 		})
 		b.WriteString(header)
 		b.WriteString("\n")
-		b.WriteString(ui.RenderDottedBorder(m.borderWidth()))
+		b.WriteString(ui.RenderDottedBorder(m.sessionListWidth()))
 		b.WriteString("\n")
 		contentLines += 2
 
@@ -389,6 +389,6 @@ func (m Model) viewBookmarks() string {
 		}
 	}
 
-	hints := "C-j/k Nav · Enter Open · C-a Add · C-x Remove · Esc Back"
+	hints := ui.UniversalHints
 	return m.renderWithSidebar(header.String(), b.String(), ui.BookmarkActions, m.message, hints, m.messageIsError)
 }

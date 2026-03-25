@@ -315,8 +315,7 @@ func (m Model) viewCloneChoice() string {
 		}
 	}
 
-	hints := ui.HelpCloneChoice()
-	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, hints, m.messageIsError)
+	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, ui.UniversalHints, m.messageIsError)
 }
 
 func (m Model) viewCloneURL() string {
@@ -364,16 +363,7 @@ func (m Model) viewCloneURL() string {
 		}
 	}
 
-	var hints string
-	if m.cloneSuccess {
-		hints = ui.HelpCloneSuccess()
-	} else if m.cloneCloning {
-		hints = ui.HelpCloneRepoLoading()
-	} else {
-		hints = ui.HelpCloneURL()
-	}
-
-	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, hints, m.messageIsError)
+	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, ui.UniversalHints, m.messageIsError)
 }
 
 func (m Model) viewCloneRepo() string {
@@ -462,16 +452,5 @@ func (m Model) viewCloneRepo() string {
 	}
 
 	// Fixed footer: notification + state + hints
-	var hints string
-	if m.cloneSuccess {
-		hints = ui.HelpCloneSuccess()
-	} else if m.cloneLoading || m.cloneCloning {
-		hints = ui.HelpCloneRepoLoading()
-	} else if cloneFilter != "" {
-		hints = ui.HelpFilteringCloneRepo()
-	} else {
-		hints = ui.HelpCloneRepo()
-	}
-
-	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, hints, m.messageIsError)
+	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, ui.UniversalHints, m.messageIsError)
 }
