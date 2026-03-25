@@ -783,7 +783,6 @@ func (m Model) viewSessionList() string {
 
 	// --- Build session list content ---
 	var listBuilder strings.Builder
-	contentLines := 0
 	listWidth := m.sessionListWidth()
 
 	// Table header row (only show when sessions are loaded)
@@ -798,7 +797,6 @@ func (m Model) viewSessionList() string {
 		listBuilder.WriteString("\n")
 		listBuilder.WriteString(ui.RenderDottedBorder(listWidth))
 		listBuilder.WriteString("\n")
-		contentLines += 2
 	}
 
 	// Session list (only visible items)
@@ -885,13 +883,11 @@ func (m Model) viewSessionList() string {
 			listBuilder.WriteString(ui.RenderPaneRow(pane.Index, pane.Command, pane.Active, ui.PaneRowOpts{Selected: selected}, m.rowWidth()))
 		}
 		listBuilder.WriteString("\n")
-		contentLines++
 
 		// Separator between pinned self session and regular sessions
 		if item.IsSelf && (i+1 >= endIdx || !m.items[i+1].IsSelf) {
 			listBuilder.WriteString(ui.RenderDottedBorder(listWidth))
 			listBuilder.WriteString("\n")
-			contentLines++
 		}
 	}
 
@@ -902,31 +898,25 @@ func (m Model) viewSessionList() string {
 		} else {
 			listBuilder.WriteString("  No other sessions available\n")
 		}
-		contentLines++
-	}
-
-	// Pad session list to fill available height (push footer to bottom)
-	// Header: 3 lines (title + prompt + border)
-	// Footer: 3 lines (border + notification + hints)
-	headerLines := ui.HeaderOverhead
-	footerLines := 3 // border + notification + single-line hints
-	contentH := m.contentHeight()
-	if contentH > 0 {
-		padding := contentH - headerLines - contentLines - footerLines
-		for i := 0; i < padding; i++ {
-			listBuilder.WriteString("\n")
-		}
 	}
 
 	// --- Compose with sidebar and footer via shared helper ---
+	// Padding is handled by renderWithSidebar
 	header := b.String()
 	listContent := listBuilder.String()
 
+	// Mode-specific sidebar actions and notification
+	var actions []ui.Action
 	var notification string
 	switch m.mode {
 	case ModeCreate:
+		actions = ui.CreateActions
 		notification = "New session: " + m.input.View()
+	case ModeConfirmKill:
+		actions = ui.ConfirmKillActions
+		notification = m.message
 	default:
+		actions = ui.SessionActions
 		notification = m.message
 		if notification == "" {
 			notification = m.statusLine()
@@ -934,7 +924,7 @@ func (m Model) viewSessionList() string {
 	}
 	hints := ui.UniversalHints
 
-	return m.renderWithSidebar(header, listContent, ui.SessionActions, notification, hints, m.messageIsError)
+	return m.renderWithSidebar(header, listContent, actions, notification, hints, m.messageIsError)
 }
 
 // viewCreatePath renders the path input view for creating sessions at arbitrary paths
@@ -950,40 +940,24 @@ func (m Model) viewCreatePath() string {
 	header.WriteString("\n")
 
 	// Content area - show completions
-	contentLines := 0
-
 	if len(m.pathCompletions) > 0 {
 		b.WriteString("  Completions (Tab to complete):\n")
-		contentLines++
 		maxShow := 8
 		if len(m.pathCompletions) < maxShow {
 			maxShow = len(m.pathCompletions)
 		}
 		for i := 0; i < maxShow; i++ {
 			b.WriteString("    " + m.pathCompletions[i] + "\n")
-			contentLines++
 		}
 		if len(m.pathCompletions) > maxShow {
 			fmt.Fprintf(&b, "    ... and %d more\n", len(m.pathCompletions)-maxShow)
-			contentLines++
 		}
 	} else {
 		b.WriteString("  Enter path for new session\n")
-		contentLines++
 		b.WriteString("  (folder will be created if it doesn't exist)\n")
-		contentLines++
 	}
 
-	// Add padding to push footer to bottom
-	headerLines := ui.HeaderOverhead
-	footerLines := 3 // border + notification + hints
-	contentH := m.contentHeight()
-	if contentH > 0 {
-		padding := contentH - headerLines - contentLines - footerLines
-		for i := 0; i < padding; i++ {
-			b.WriteString("\n")
-		}
-	}
+	// Padding is handled by renderWithSidebar
 
 	notification := m.message
 	if notification == "" {

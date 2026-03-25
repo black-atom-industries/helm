@@ -171,7 +171,6 @@ func (m Model) viewPickDirectory() string {
 	// Get scrollbar characters for each line
 	scrollbar := ui.ScrollbarChars(totalItems, maxItems, scrollOffset, len(visibleItems))
 
-	contentLines := 0
 	for i, fullPath := range visibleItems {
 		displayPath := m.extractDisplayPath(fullPath)
 		selected := m.projectList.IsSelected(scrollOffset + i)
@@ -188,7 +187,6 @@ func (m Model) viewPickDirectory() string {
 			b.WriteString(displayPath)
 		}
 		b.WriteString("\n")
-		contentLines++
 	}
 
 	// Empty state
@@ -198,22 +196,9 @@ func (m Model) viewPickDirectory() string {
 		} else {
 			b.WriteString("  No directories found\n")
 		}
-		contentLines++
 	}
 
-	// Add padding to push footer to bottom
-	// Fixed header: 3 lines (title + prompt + border)
-	// Fixed footer: 5 lines (border + notification + state + hints(2))
-	headerLines := ui.HeaderOverhead
-	footerLines := 3 // border + notification + hints
-	contentH := m.contentHeight()
-	if contentH > 0 {
-		padding := contentH - headerLines - contentLines - footerLines
-		for i := 0; i < padding; i++ {
-			b.WriteString("\n")
-		}
-	}
-
+	// Padding is handled by renderWithSidebar
 	return m.renderWithSidebar(header.String(), b.String(), ui.ProjectActions, m.message, ui.UniversalHints, m.messageIsError)
 }
 

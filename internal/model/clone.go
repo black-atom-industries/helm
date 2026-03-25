@@ -294,7 +294,6 @@ func (m Model) viewCloneChoice() string {
 	header.WriteString("\n")
 
 	options := []string{"Enter URL", "My repos"}
-	contentLines := 0
 
 	for i, opt := range options {
 		if i == m.cloneChoiceCursor {
@@ -302,19 +301,9 @@ func (m Model) viewCloneChoice() string {
 		} else {
 			b.WriteString("  " + opt + "\n")
 		}
-		contentLines++
 	}
 
-	headerLines := ui.HeaderOverhead
-	footerLines := 3
-	contentH := m.contentHeight()
-	if contentH > 0 {
-		padding := contentH - headerLines - contentLines - footerLines
-		for i := 0; i < padding; i++ {
-			b.WriteString("\n")
-		}
-	}
-
+	// Padding is handled by renderWithSidebar
 	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, ui.UniversalHints, m.messageIsError)
 }
 
@@ -329,40 +318,21 @@ func (m Model) viewCloneURL() string {
 	header.WriteString(ui.RenderBorder(m.borderWidth()))
 	header.WriteString("\n")
 
-	contentLines := 0
-
 	if m.cloneSuccess {
 		fmt.Fprintf(&b, "  Cloned: %s\n", m.cloneCloningRepo)
-		contentLines++
 		fmt.Fprintf(&b, "  Session: %s\n", m.cloneSuccessSession)
-		contentLines++
 		b.WriteString("\n")
-		contentLines++
 		b.WriteString("  Switch to the new session?\n")
-		contentLines++
 	} else if m.cloneCloning {
 		fmt.Fprintf(&b, "  Cloning %s...\n", m.cloneCloningRepo)
-		contentLines++
 	} else if m.cloneError != "" {
 		b.WriteString(ui.ErrorMessageStyle.Render("  "+m.cloneError) + "\n")
-		contentLines++
 		b.WriteString("  " + m.input.View() + "\n")
-		contentLines++
 	} else {
 		b.WriteString("  " + m.input.View() + "\n")
-		contentLines++
 	}
 
-	headerLines := ui.HeaderOverhead
-	footerLines := 3 // border + notification + hints
-	contentH := m.contentHeight()
-	if contentH > 0 {
-		padding := contentH - headerLines - contentLines - footerLines
-		for i := 0; i < padding; i++ {
-			b.WriteString("\n")
-		}
-	}
-
+	// Padding is handled by renderWithSidebar
 	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, ui.UniversalHints, m.messageIsError)
 }
 
@@ -381,34 +351,23 @@ func (m Model) viewCloneRepo() string {
 	header.WriteString("\n")
 
 	// Content area
-	contentLines := 0
-
 	if m.cloneSuccess {
-		// Show success message with session info
 		fmt.Fprintf(&b, "  Cloned: %s\n", m.cloneCloningRepo)
-		contentLines++
 		fmt.Fprintf(&b, "  Session: %s\n", m.cloneSuccessSession)
-		contentLines++
 		b.WriteString("\n")
-		contentLines++
 		b.WriteString("  Switch to the new session?\n")
-		contentLines++
 	} else if m.cloneLoading {
 		b.WriteString("  Fetching available repositories...\n")
-		contentLines++
 	} else if m.cloneCloning {
 		fmt.Fprintf(&b, "  Cloning %s...\n", m.cloneCloningRepo)
-		contentLines++
 	} else if m.cloneError != "" {
 		b.WriteString(ui.ErrorMessageStyle.Render("  "+m.cloneError) + "\n")
-		contentLines++
 	} else if m.cloneList.Len() == 0 {
 		if cloneFilter != "" {
 			b.WriteString("  No repositories matching filter\n")
 		} else {
 			b.WriteString("  No repositories available to clone\n")
 		}
-		contentLines++
 	} else {
 		// Repository list - calculate max visible items
 		maxItems := m.cloneMaxVisibleItems()
@@ -434,23 +393,9 @@ func (m Model) viewCloneRepo() string {
 				b.WriteString(repo)
 			}
 			b.WriteString("\n")
-			contentLines++
 		}
 	}
 
-	// Add padding to push footer to bottom
-	// Fixed header: 3 lines (title + prompt + border)
-	// Fixed footer: 5 lines (border + notification + state + hints(2))
-	headerLines := ui.HeaderOverhead
-	footerLines := 3 // border + notification + hints
-	contentH := m.contentHeight()
-	if contentH > 0 {
-		padding := contentH - headerLines - contentLines - footerLines
-		for i := 0; i < padding; i++ {
-			b.WriteString("\n")
-		}
-	}
-
-	// Fixed footer: notification + state + hints
+	// Padding is handled by renderWithSidebar
 	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, ui.UniversalHints, m.messageIsError)
 }
