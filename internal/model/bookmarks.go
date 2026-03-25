@@ -241,15 +241,16 @@ func (m *Model) removeBookmark() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) viewBookmarks() string {
+	var header strings.Builder
 	var b strings.Builder
 	filter := m.bookmarkList.Filter()
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
-	b.WriteString("\n")
-	b.WriteString(ui.RenderPrompt(filter, m.width))
-	b.WriteString("\n")
-	b.WriteString(ui.RenderBorder(m.borderWidth()))
+	header.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
+	header.WriteString("\n")
+	header.WriteString(ui.RenderPrompt(filter, m.width))
+	header.WriteString("\n")
+	header.WriteString(ui.RenderBorder(m.borderWidth()))
 	b.WriteString("\n")
 
 	// Content area
@@ -388,8 +389,6 @@ func (m Model) viewBookmarks() string {
 		}
 	}
 
-	// Simplified footer
-	b.WriteString(ui.RenderSimpleFooter(m.message, "C-j/k Nav · Enter Open · C-a Add · C-x Remove · Esc Back", m.messageIsError, m.width))
-
-	return ui.AppStyle.Render(b.String())
+	hints := "C-j/k Nav · Enter Open · C-a Add · C-x Remove · Esc Back"
+	return m.renderWithSidebar(header.String(), b.String(), ui.BookmarkActions, m.message, hints, m.messageIsError)
 }

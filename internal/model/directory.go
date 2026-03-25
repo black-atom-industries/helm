@@ -143,19 +143,19 @@ func (m *Model) removeFolder() (tea.Model, tea.Cmd) {
 
 // viewPickDirectory renders the directory picker view
 func (m Model) viewPickDirectory() string {
+	var header strings.Builder
 	var b strings.Builder
 
 	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
-	b.WriteString("\n")
+	header.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
+	header.WriteString("\n")
 
-	// Prompt line - show filter
 	filter := m.projectList.Filter()
-	b.WriteString(ui.RenderPrompt(filter, m.width))
-	b.WriteString("\n")
+	header.WriteString(ui.RenderPrompt(filter, m.width))
+	header.WriteString("\n")
 
-	b.WriteString(ui.RenderBorder(m.borderWidth()))
-	b.WriteString("\n")
+	header.WriteString(ui.RenderBorder(m.borderWidth()))
+	header.WriteString("\n")
 
 	// Use shared helper for consistent visible item calculation
 	maxItems := m.projectMaxVisibleItems()
@@ -231,9 +231,7 @@ func (m Model) viewPickDirectory() string {
 		}
 	}
 
-	b.WriteString(ui.RenderSimpleFooter(m.message, hints, m.messageIsError, m.width))
-
-	return ui.AppStyle.Render(b.String())
+	return m.renderWithSidebar(header.String(), b.String(), ui.ProjectActions, m.message, hints, m.messageIsError)
 }
 
 // projectMaxVisibleItems returns the actual number of items that can be shown

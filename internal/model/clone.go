@@ -283,14 +283,15 @@ func (m *Model) cloneMaxVisibleItems() int {
 }
 
 func (m Model) viewCloneChoice() string {
+	var header strings.Builder
 	var b strings.Builder
 
-	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
-	b.WriteString("\n")
-	b.WriteString(ui.RenderPrompt("", m.width))
-	b.WriteString("\n")
-	b.WriteString(ui.RenderBorder(m.borderWidth()))
-	b.WriteString("\n")
+	header.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
+	header.WriteString("\n")
+	header.WriteString(ui.RenderPrompt("", m.width))
+	header.WriteString("\n")
+	header.WriteString(ui.RenderBorder(m.borderWidth()))
+	header.WriteString("\n")
 
 	options := []string{"Enter URL", "My repos"}
 	contentLines := 0
@@ -305,7 +306,7 @@ func (m Model) viewCloneChoice() string {
 	}
 
 	headerLines := ui.HeaderOverhead
-	footerLines := 3 // border + notification + hints
+	footerLines := 3
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		padding := contentH - headerLines - contentLines - footerLines
@@ -315,20 +316,19 @@ func (m Model) viewCloneChoice() string {
 	}
 
 	hints := ui.HelpCloneChoice()
-	b.WriteString(ui.RenderSimpleFooter(m.message, hints, m.messageIsError, m.width))
-
-	return ui.AppStyle.Render(b.String())
+	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, hints, m.messageIsError)
 }
 
 func (m Model) viewCloneURL() string {
+	var header strings.Builder
 	var b strings.Builder
 
-	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
-	b.WriteString("\n")
-	b.WriteString(ui.RenderPrompt("", m.width))
-	b.WriteString("\n")
-	b.WriteString(ui.RenderBorder(m.borderWidth()))
-	b.WriteString("\n")
+	header.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
+	header.WriteString("\n")
+	header.WriteString(ui.RenderPrompt("", m.width))
+	header.WriteString("\n")
+	header.WriteString(ui.RenderBorder(m.borderWidth()))
+	header.WriteString("\n")
 
 	contentLines := 0
 
@@ -373,25 +373,22 @@ func (m Model) viewCloneURL() string {
 		hints = ui.HelpCloneURL()
 	}
 
-	b.WriteString(ui.RenderSimpleFooter(m.message, hints, m.messageIsError, m.width))
-
-	return ui.AppStyle.Render(b.String())
+	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, hints, m.messageIsError)
 }
 
 func (m Model) viewCloneRepo() string {
+	var header strings.Builder
 	var b strings.Builder
 
-	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
-	b.WriteString("\n")
+	header.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
+	header.WriteString("\n")
 
-	// Prompt line - show filter
 	cloneFilter := m.cloneList.Filter()
-	b.WriteString(ui.RenderPrompt(cloneFilter, m.width))
-	b.WriteString("\n")
+	header.WriteString(ui.RenderPrompt(cloneFilter, m.width))
+	header.WriteString("\n")
 
-	b.WriteString(ui.RenderBorder(m.borderWidth()))
-	b.WriteString("\n")
+	header.WriteString(ui.RenderBorder(m.borderWidth()))
+	header.WriteString("\n")
 
 	// Content area
 	contentLines := 0
@@ -476,7 +473,5 @@ func (m Model) viewCloneRepo() string {
 		hints = ui.HelpCloneRepo()
 	}
 
-	b.WriteString(ui.RenderSimpleFooter(m.message, hints, m.messageIsError, m.width))
-
-	return ui.AppStyle.Render(b.String())
+	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, hints, m.messageIsError)
 }

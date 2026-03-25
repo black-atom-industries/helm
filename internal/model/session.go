@@ -944,18 +944,15 @@ func (m Model) viewSessionList() string {
 
 // viewCreatePath renders the path input view for creating sessions at arbitrary paths
 func (m Model) viewCreatePath() string {
+	var header strings.Builder
 	var b strings.Builder
 
-	// Fixed header: title bar + prompt + border
-	b.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
-	b.WriteString("\n")
-
-	// Path input line
-	b.WriteString(ui.RenderPrompt(m.pathInput.View(), m.width))
-	b.WriteString("\n")
-
-	b.WriteString(ui.RenderBorder(m.borderWidth()))
-	b.WriteString("\n")
+	header.WriteString(ui.RenderTitleBar(config.AppName, m.mode.String(), m.width))
+	header.WriteString("\n")
+	header.WriteString(ui.RenderPrompt(m.pathInput.View(), m.width))
+	header.WriteString("\n")
+	header.WriteString(ui.RenderBorder(m.borderWidth()))
+	header.WriteString("\n")
 
 	// Content area - show completions
 	contentLines := 0
@@ -993,15 +990,12 @@ func (m Model) viewCreatePath() string {
 		}
 	}
 
-	// Simplified footer
 	hints := ui.HelpCreatePath()
 	notification := m.message
 	if notification == "" {
 		notification = fmt.Sprintf("Create session: %s", m.pendingSessionName)
 	}
-	b.WriteString(ui.RenderSimpleFooter(notification, hints, m.messageIsError, m.width))
-
-	return ui.AppStyle.Render(b.String())
+	return m.renderWithSidebar(header.String(), b.String(), ui.CreateActions, notification, hints, m.messageIsError)
 }
 
 // sessionMaxVisibleItems returns the actual number of session items that can be shown
