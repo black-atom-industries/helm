@@ -143,7 +143,22 @@ type Model struct {
 }
 
 // New creates a new Model
-func New(currentSession string, cfg config.Config) Model {
+// ParseInitialView maps a CLI flag value to a Mode.
+// Returns ModeNormal for empty or unrecognized values.
+func ParseInitialView(view string) Mode {
+	switch strings.ToLower(view) {
+	case "bookmarks":
+		return ModeBookmarks
+	case "projects":
+		return ModePickDirectory
+	case "clone":
+		return ModeCloneChoice
+	default:
+		return ModeNormal
+	}
+}
+
+func New(currentSession string, cfg config.Config, initialView string) Model {
 	ti := textinput.New()
 	ti.Prompt = "" // We handle the prompt in RenderPrompt
 	ti.CharLimit = 50
@@ -173,6 +188,7 @@ func New(currentSession string, cfg config.Config) Model {
 
 	m := Model{
 		currentSession:   currentSession,
+		mode:             ParseInitialView(initialView),
 		input:            ti,
 		pathInput:        pathInput,
 		config:           cfg,

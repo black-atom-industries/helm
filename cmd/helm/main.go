@@ -23,9 +23,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Parse flags from args
+	var initialView string
+	args := os.Args[1:]
+	var remaining []string
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--initial-view" && i+1 < len(args) {
+			initialView = args[i+1]
+			i++ // skip value
+		} else {
+			remaining = append(remaining, args[i])
+		}
+	}
+
 	// Handle subcommands
-	if len(os.Args) > 1 {
-		switch os.Args[1] {
+	if len(remaining) > 0 {
+		switch remaining[0] {
 		case "init":
 			if err := config.Init(); err != nil {
 				fmt.Printf("Error: %v\n", err)
@@ -34,12 +47,12 @@ func main() {
 			fmt.Printf("Created config file at %s\n", config.Path())
 			return
 		case "bookmark":
-			if len(os.Args) < 3 {
+			if len(remaining) < 2 {
 				fmt.Println("Usage: helm bookmark <N>")
 				fmt.Println("Opens bookmark at slot N (0-9)")
 				os.Exit(1)
 			}
-			if err := runBookmark(os.Args[2]); err != nil {
+			if err := runBookmark(remaining[1]); err != nil {
 				fmt.Printf("Error: %v\n", err)
 				os.Exit(1)
 			}
@@ -57,14 +70,14 @@ func main() {
 			}
 			return
 		case "repos":
-			if err := runRepos(os.Args[2:]); err != nil {
+			if err := runRepos(remaining[1:]); err != nil {
 				fmt.Printf("Error: %v\n", err)
 				os.Exit(1)
 			}
 			return
 		default:
-			fmt.Printf("Unknown command: %s\n", os.Args[1])
-			fmt.Println("Usage: helm [init | setup | repos | bookmark <N> | tmux-bindings]")
+			fmt.Printf("Unknown command: %s\n", remaining[0])
+			fmt.Println("Usage: helm [--initial-view <mode>] [init | setup | repos | bookmark <N> | tmux-bindings]")
 			os.Exit(1)
 		}
 	}
@@ -93,7 +106,7 @@ func main() {
 	}
 
 	// Initialize and run the TUI
-	m := model.New(currentSession, cfg)
+	m := model.New(currentSession, cfg, initialView)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {

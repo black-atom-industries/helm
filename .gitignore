@@ -3,3 +3,6 @@
 # bv (beads viewer) local config and caches
 .bv/
 .visual-companion/
+
+# Visual test screenshots
+.screenshots/

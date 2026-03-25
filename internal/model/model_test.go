@@ -200,7 +200,7 @@ func TestSetError(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	cfg := config.DefaultConfig()
-	m := New("current-session", cfg)
+	m := New("current-session", cfg, "")
 
 	if m.currentSession != "current-session" {
 		t.Errorf("currentSession = %q, want %q", m.currentSession, "current-session")
