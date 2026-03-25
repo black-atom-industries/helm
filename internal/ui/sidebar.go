@@ -53,6 +53,12 @@ var CreateActions = []Action{
 	{Label: "CREATE", Keybind: "Enter"},
 }
 
+// ConfirmKillActions are the actions shown in ModeConfirmKill
+var ConfirmKillActions = []Action{
+	{Label: "CONFIRM", Keybind: "C-x", Warning: true},
+	{Label: "CANCEL", Keybind: "Esc"},
+}
+
 // UniversalHints is the footer hint line shown in all modes
 const UniversalHints = "C-j/k ↕ Nav · Type filter · Esc Back"
 
