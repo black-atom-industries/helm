@@ -131,6 +131,7 @@ func initStyles() {
 	AppStyle = lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(Colors.Fg.Border).
+		Background(lipgloss.Color("#1a1520")).
 		Padding(0, 1)
 
 	HeaderStyle = lipgloss.NewStyle().

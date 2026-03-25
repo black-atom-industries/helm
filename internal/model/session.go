@@ -922,9 +922,15 @@ func (m Model) viewSessionList() string {
 	header := b.String()
 	listContent := listBuilder.String()
 
-	notification := m.message
-	if notification == "" {
-		notification = m.statusLine()
+	var notification string
+	switch m.mode {
+	case ModeCreate:
+		notification = "New session: " + m.input.View()
+	default:
+		notification = m.message
+		if notification == "" {
+			notification = m.statusLine()
+		}
 	}
 	hints := ui.UniversalHints
 

@@ -254,7 +254,6 @@ func (m Model) viewBookmarks() string {
 	b.WriteString("\n")
 
 	// Content area
-	contentLines := 0
 
 	if m.bookmarkList.Len() == 0 {
 		if filter != "" {
@@ -262,9 +261,9 @@ func (m Model) viewBookmarks() string {
 		} else {
 			b.WriteString("  No bookmarks configured\n")
 			b.WriteString("  Press C-a to add a bookmark\n")
-			contentLines++
+			// line count tracked by renderWithSidebar
 		}
-		contentLines++
+		// line count tracked by renderWithSidebar
 	} else {
 		// Calculate max visible items (includes table header)
 		contentH := m.contentHeight()
@@ -307,7 +306,7 @@ func (m Model) viewBookmarks() string {
 		b.WriteString("\n")
 		b.WriteString(ui.RenderDottedBorder(m.sessionListWidth()))
 		b.WriteString("\n")
-		contentLines += 2
+		// line count tracked by renderWithSidebar
 
 		scrollbar := ui.ScrollbarChars(m.bookmarkList.Len(), m.bookmarkList.Height(), scrollOffset, len(visibleBookmarks))
 
@@ -354,14 +353,14 @@ func (m Model) viewBookmarks() string {
 				}
 				b.WriteString(ui.RenderSessionRow(sessionName, session.LastActivity, layout, opts, m.rowWidth()))
 				b.WriteString("\n")
-				contentLines++
+				// line count tracked by renderWithSidebar
 
 				// Show windows if expanded
 				if expanded {
 					for _, window := range session.Windows {
 						b.WriteString(ui.RenderWindowRow(window.Index, window.Name, ui.WindowRowOpts{Selected: false}, m.rowWidth()))
 						b.WriteString("\n")
-						contentLines++
+						// line count tracked by renderWithSidebar
 					}
 				}
 			} else {
@@ -373,22 +372,12 @@ func (m Model) viewBookmarks() string {
 				}
 				b.WriteString(ui.RenderBookmarkRow(sessionName, layout, opts, m.rowWidth()))
 				b.WriteString("\n")
-				contentLines++
+				// line count tracked by renderWithSidebar
 			}
 		}
 	}
 
-	// Padding to push footer to bottom
-	headerLines := ui.HeaderOverhead
-	footerLines := 3 // border + notification + hints
-	contentH := m.contentHeight()
-	if contentH > 0 {
-		padding := contentH - headerLines - contentLines - footerLines
-		for i := 0; i < padding; i++ {
-			b.WriteString("\n")
-		}
-	}
-
+	// Padding is handled by renderWithSidebar
 	hints := ui.UniversalHints
 	return m.renderWithSidebar(header.String(), b.String(), ui.BookmarkActions, m.message, hints, m.messageIsError)
 }

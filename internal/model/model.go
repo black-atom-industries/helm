@@ -786,17 +786,23 @@ func (m *Model) renderWithSidebar(header, listContent string, actions []ui.Actio
 		}
 
 		for i := 0; i < maxLines; i++ {
-			// Left: session list line, forced to exact width
+			// Left: session list line, forced to exact visual width
 			left := ""
 			if i < len(listLines) {
 				left = listLines[i]
 			}
-			left = lipgloss.NewStyle().Width(listW).Render(left)
+			leftVisWidth := lipgloss.Width(left)
+			if leftVisWidth < listW {
+				left += strings.Repeat(" ", listW-leftVisWidth)
+			} else if leftVisWidth > listW {
+				// Truncate lines wider than list width to prevent sidebar shift
+				left = lipgloss.NewStyle().MaxWidth(listW).Render(left)
+			}
 
 			// Gap
 			gap := strings.Repeat(" ", ui.SidebarGap)
 
-			// Right: sidebar line (already has correct width from section box)
+			// Right: sidebar line
 			right := ""
 			if i < len(sidebarLines) {
 				right = sidebarLines[i]
@@ -808,10 +814,23 @@ func (m *Model) renderWithSidebar(header, listContent string, actions []ui.Actio
 		b.WriteString(listContent)
 	}
 
-	// Simplified footer
+	// Count content lines so far (header + joined list/sidebar)
+	content := b.String()
+	contentLineCount := strings.Count(content, "\n")
+
+	// Pad to push footer to bottom: target = contentHeight - footer lines (3)
+	targetContentLines := m.contentHeight() - 3
+	if targetContentLines > contentLineCount {
+		padding := targetContentLines - contentLineCount
+		for i := 0; i < padding; i++ {
+			b.WriteString("\n")
+		}
+	}
+
+	// Footer at the very bottom
 	b.WriteString(ui.RenderSimpleFooter(notification, hints, isError, m.width))
 
-	return ui.AppStyle.Render(b.String())
+	return ui.AppStyle.Height(m.contentHeight()).Render(b.String())
 }
 
 // fuzzyMatch checks if the pattern matches the text (case-insensitive, substring match)
