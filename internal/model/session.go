@@ -781,8 +781,10 @@ func (m Model) viewSessionList() string {
 		GitStatusWidth: m.maxGitStatusWidth,
 	}
 
-	// Track content lines for padding calculation
+	// --- Build session list content ---
+	var listBuilder strings.Builder
 	contentLines := 0
+	listWidth := m.sessionListWidth()
 
 	// Table header row (only show when sessions are loaded)
 	if m.sessionsLoaded && len(m.items) > 0 {
@@ -792,10 +794,10 @@ func (m Model) viewSessionList() string {
 			ShowGit:        m.maxGitStatusWidth > 0,
 			NameLabel:      "SESS",
 		})
-		b.WriteString(header)
-		b.WriteString("\n")
-		b.WriteString(ui.RenderDottedBorder(m.borderWidth()))
-		b.WriteString("\n")
+		listBuilder.WriteString(header)
+		listBuilder.WriteString("\n")
+		listBuilder.WriteString(ui.RenderDottedBorder(listWidth))
+		listBuilder.WriteString("\n")
 		contentLines += 2
 	}
 
@@ -825,16 +827,16 @@ func (m Model) viewSessionList() string {
 		// Scrollbar on the left (skip for pinned self session)
 		if item.IsSelf {
 			if selected {
-				b.WriteString(ui.SpacerStyle("  ", true))
+				listBuilder.WriteString(ui.SpacerStyle("  ", true))
 			} else {
-				b.WriteString("  ")
+				listBuilder.WriteString("  ")
 			}
 		} else if lineIdx < len(scrollbar) {
 			if selected {
-				b.WriteString(ui.SpacerStyle(scrollbar[lineIdx]+" ", true))
+				listBuilder.WriteString(ui.SpacerStyle(scrollbar[lineIdx]+" ", true))
 			} else {
-				b.WriteString(scrollbar[lineIdx])
-				b.WriteString(" ")
+				listBuilder.WriteString(scrollbar[lineIdx])
+				listBuilder.WriteString(" ")
 			}
 		}
 
@@ -866,7 +868,7 @@ func (m Model) viewSessionList() string {
 				opts.ClaudeStatus = &status
 			}
 
-			b.WriteString(ui.RenderSessionRow(session.Name, session.LastActivity, layout, opts, m.rowWidth()))
+			listBuilder.WriteString(ui.RenderSessionRow(session.Name, session.LastActivity, layout, opts, m.rowWidth()))
 			if !item.IsSelf {
 				sessionNum++
 			}
@@ -874,21 +876,21 @@ func (m Model) viewSessionList() string {
 		case ItemTypeWindow:
 			session := m.getSession(item)
 			window := session.Windows[item.WindowIndex]
-			b.WriteString(ui.RenderWindowRow(window.Index, window.Name, ui.WindowRowOpts{Selected: selected, Expanded: window.Expanded}, m.rowWidth()))
+			listBuilder.WriteString(ui.RenderWindowRow(window.Index, window.Name, ui.WindowRowOpts{Selected: selected, Expanded: window.Expanded}, m.rowWidth()))
 
 		case ItemTypePane:
 			session := m.getSession(item)
 			window := session.Windows[item.WindowIndex]
 			pane := window.Panes[item.PaneIndex]
-			b.WriteString(ui.RenderPaneRow(pane.Index, pane.Command, pane.Active, ui.PaneRowOpts{Selected: selected}, m.rowWidth()))
+			listBuilder.WriteString(ui.RenderPaneRow(pane.Index, pane.Command, pane.Active, ui.PaneRowOpts{Selected: selected}, m.rowWidth()))
 		}
-		b.WriteString("\n")
+		listBuilder.WriteString("\n")
 		contentLines++
 
 		// Separator between pinned self session and regular sessions
 		if item.IsSelf && (i+1 >= endIdx || !m.items[i+1].IsSelf) {
-			b.WriteString(ui.RenderDottedBorder(m.borderWidth()))
-			b.WriteString("\n")
+			listBuilder.WriteString(ui.RenderDottedBorder(listWidth))
+			listBuilder.WriteString("\n")
 			contentLines++
 		}
 	}
@@ -896,52 +898,48 @@ func (m Model) viewSessionList() string {
 	// Empty state (only show after sessions have loaded to avoid flash)
 	if len(m.items) == 0 && m.sessionsLoaded {
 		if m.filter != "" {
-			b.WriteString("  No sessions matching filter\n")
+			listBuilder.WriteString("  No sessions matching filter\n")
 		} else {
-			b.WriteString("  No other sessions available\n")
+			listBuilder.WriteString("  No other sessions available\n")
 		}
 		contentLines++
 	}
 
-	// Add padding to push footer to bottom
-	// Fixed header: 3 lines (title + prompt + border)
-	// Fixed footer: 5 lines (border + notification + state + hints(2))
+	// Pad session list to fill available height (push footer to bottom)
+	// Header: 3 lines (title + prompt + border)
+	// Footer: 3 lines (border + notification + hints)
 	headerLines := ui.HeaderOverhead
-	footerLines := ui.FooterOverhead
+	footerLines := 3 // border + notification + single-line hints
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		padding := contentH - headerLines - contentLines - footerLines
 		for i := 0; i < padding; i++ {
-			b.WriteString("\n")
+			listBuilder.WriteString("\n")
 		}
 	}
 
-	// Fixed footer: notification + state + hints
+	// --- Compose with sidebar and footer via shared helper ---
+	header := b.String()
+	listContent := listBuilder.String()
+
 	var hints string
 	var notification string
 	switch m.mode {
 	case ModeNormal:
 		notification = m.message
-		if m.filter != "" {
-			if len(m.items) == 0 {
-				hints = ui.HelpFilteringNoResults()
-			} else {
-				hints = ui.HelpFiltering()
-			}
-		} else {
-			hints = ui.HelpNormal()
+		if notification == "" {
+			notification = m.statusLine()
 		}
+		hints = "Type filter · C-j/k ↕ Nav · C-h/l ↔ Expand · Enter Switch"
 	case ModeConfirmKill:
 		notification = m.message
-		hints = ui.HelpConfirmKill()
+		hints = "C-x Confirm · Esc Cancel"
 	case ModeCreate:
 		notification = "New session: " + m.input.View()
-		hints = ui.HelpCreate()
+		hints = "Enter Create · Esc Cancel"
 	}
 
-	b.WriteString(ui.RenderFooter(notification, m.stateText(), hints, m.messageIsError, m.width))
-
-	return ui.AppStyle.Render(b.String())
+	return m.renderWithSidebar(header, listContent, ui.SessionActions, notification, hints, m.messageIsError)
 }
 
 // viewCreatePath renders the path input view for creating sessions at arbitrary paths
@@ -986,7 +984,7 @@ func (m Model) viewCreatePath() string {
 
 	// Add padding to push footer to bottom
 	headerLines := ui.HeaderOverhead
-	footerLines := ui.FooterOverhead
+	footerLines := 3 // border + notification + hints
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		padding := contentH - headerLines - contentLines - footerLines
@@ -995,10 +993,13 @@ func (m Model) viewCreatePath() string {
 		}
 	}
 
-	// Fixed footer
-	stateText := fmt.Sprintf("Create session: %s", m.pendingSessionName)
+	// Simplified footer
 	hints := ui.HelpCreatePath()
-	b.WriteString(ui.RenderFooter(m.message, stateText, hints, m.messageIsError, m.width))
+	notification := m.message
+	if notification == "" {
+		notification = fmt.Sprintf("Create session: %s", m.pendingSessionName)
+	}
+	b.WriteString(ui.RenderSimpleFooter(notification, hints, m.messageIsError, m.width))
 
 	return ui.AppStyle.Render(b.String())
 }
@@ -1008,9 +1009,12 @@ func (m Model) viewCreatePath() string {
 func (m *Model) sessionMaxVisibleItems() int {
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		overhead := ui.BaseOverhead
+		// Header: 3 (title + prompt + border)
+		// Footer: 3 (border + notification + hints)
+		// Total base: 6
+		overhead := 6
 		if m.sessionsLoaded && len(m.items) > 0 {
-			overhead = ui.WithTableHeaderOverhead
+			overhead += ui.TableHeaderHeight + ui.TableDottedLineHeight // +2 = 8
 		}
 		// Self session row + separator are pinned, not scrollable
 		if m.selfSession != nil {

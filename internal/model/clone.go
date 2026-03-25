@@ -305,7 +305,7 @@ func (m Model) viewCloneChoice() string {
 	}
 
 	headerLines := ui.HeaderOverhead
-	footerLines := ui.FooterOverhead
+	footerLines := 3 // border + notification + hints
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		padding := contentH - headerLines - contentLines - footerLines
@@ -315,7 +315,7 @@ func (m Model) viewCloneChoice() string {
 	}
 
 	hints := ui.HelpCloneChoice()
-	b.WriteString(ui.RenderFooter(m.message, m.stateText(), hints, m.messageIsError, m.width))
+	b.WriteString(ui.RenderSimpleFooter(m.message, hints, m.messageIsError, m.width))
 
 	return ui.AppStyle.Render(b.String())
 }
@@ -355,7 +355,7 @@ func (m Model) viewCloneURL() string {
 	}
 
 	headerLines := ui.HeaderOverhead
-	footerLines := ui.FooterOverhead
+	footerLines := 3 // border + notification + hints
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		padding := contentH - headerLines - contentLines - footerLines
@@ -373,7 +373,7 @@ func (m Model) viewCloneURL() string {
 		hints = ui.HelpCloneURL()
 	}
 
-	b.WriteString(ui.RenderFooter(m.message, m.stateText(), hints, m.messageIsError, m.width))
+	b.WriteString(ui.RenderSimpleFooter(m.message, hints, m.messageIsError, m.width))
 
 	return ui.AppStyle.Render(b.String())
 }
@@ -455,7 +455,7 @@ func (m Model) viewCloneRepo() string {
 	// Fixed header: 3 lines (title + prompt + border)
 	// Fixed footer: 5 lines (border + notification + state + hints(2))
 	headerLines := ui.HeaderOverhead
-	footerLines := ui.FooterOverhead
+	footerLines := 3 // border + notification + hints
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		padding := contentH - headerLines - contentLines - footerLines
@@ -476,7 +476,7 @@ func (m Model) viewCloneRepo() string {
 		hints = ui.HelpCloneRepo()
 	}
 
-	b.WriteString(ui.RenderFooter(m.message, m.stateText(), hints, m.messageIsError, m.width))
+	b.WriteString(ui.RenderSimpleFooter(m.message, hints, m.messageIsError, m.width))
 
 	return ui.AppStyle.Render(b.String())
 }

@@ -48,6 +48,9 @@ type HardCodedPalette struct {
 	Green        lipgloss.Color
 	Red          lipgloss.Color
 	Yellow       lipgloss.Color
+	SelectedBg   lipgloss.Color // Accent background for selected rows
+	ButtonAccent lipgloss.Color // Button accent background
+	ButtonWarn   lipgloss.Color // Button warning/danger background
 }
 
 // Hex colors (terminal-independent)
@@ -61,6 +64,9 @@ var hardCodedColor = struct {
 		Green:        lipgloss.Color("#67a52a"),
 		Red:          lipgloss.Color("#e35f6d"),
 		Yellow:       lipgloss.Color("#b98700"),
+		SelectedBg:   lipgloss.Color("#f0d8c0"),
+		ButtonAccent: lipgloss.Color("#e2663c"),
+		ButtonWarn:   lipgloss.Color("#e35f6d"),
 	},
 	Dark: HardCodedPalette{
 		ClaudeOrange: lipgloss.Color("#f38b6a"),
@@ -68,6 +74,9 @@ var hardCodedColor = struct {
 		Green:        lipgloss.Color("#89be61"),
 		Red:          lipgloss.Color("#f4868c"),
 		Yellow:       lipgloss.Color("#d5a335"),
+		SelectedBg:   lipgloss.Color("#5c3a1e"),
+		ButtonAccent: lipgloss.Color("#c07040"),
+		ButtonWarn:   lipgloss.Color("#b03030"),
 	},
 }
 
@@ -106,13 +115,22 @@ type FgColors struct {
 	// Scrollbar
 	ScrollbarTrack lipgloss.TerminalColor // Track (subtle background line)
 	ScrollbarThumb lipgloss.TerminalColor // Thumb (visible position indicator)
+
+	// Section box
+	SectionLabel lipgloss.TerminalColor // Section header label text
+
+	// Sidebar buttons
+	ButtonLabel   lipgloss.TerminalColor // Button label text (on accent bg)
+	ButtonKeybind lipgloss.TerminalColor // Button keybind hint (on accent bg)
 }
 
 // BgColors defines all background colors
 type BgColors struct {
-	Default  lipgloss.TerminalColor // Terminal default (none)
-	TitleBar lipgloss.TerminalColor // Title bar background
-	Selected lipgloss.TerminalColor // Selected row background
+	Default      lipgloss.TerminalColor // Terminal default (none)
+	TitleBar     lipgloss.TerminalColor // Title bar background
+	Selected     lipgloss.TerminalColor // Selected row background (accent)
+	ButtonAccent lipgloss.TerminalColor // Action button background
+	ButtonWarn   lipgloss.TerminalColor // Warning/danger button background
 }
 
 // *****************************************************************************
@@ -124,7 +142,7 @@ func darkFg() FgColors {
 	hc := hardCodedColor.Dark
 	return FgColors{
 		Default:   lipgloss.NoColor{},
-		Selected:  tc.Yellow,
+		Selected:  tc.BrightWhite,
 		Muted:     tc.BrightBlack,
 		Accent:    tc.Blue,
 		Subtle:    tc.White,
@@ -136,7 +154,7 @@ func darkFg() FgColors {
 
 		TableHeader:         lipgloss.NoColor{},
 		SessionName:         lipgloss.NoColor{},
-		SessionNameSelected: tc.Yellow,
+		SessionNameSelected: tc.BrightWhite,
 		WindowName:          lipgloss.NoColor{},
 
 		ClaudeHeader:  hc.ClaudeOrange,
@@ -151,15 +169,22 @@ func darkFg() FgColors {
 
 		ScrollbarTrack: tc.BrightBlack,
 		ScrollbarThumb: tc.White,
+
+		SectionLabel: hc.ClaudeOrange,
+
+		ButtonLabel:   tc.BrightWhite,
+		ButtonKeybind: tc.White,
 	}
 }
 
 func darkBg() BgColors {
-	tc := termColors
+	hc := hardCodedColor.Dark
 	return BgColors{
-		Default:  lipgloss.NoColor{},
-		TitleBar: tc.Black,
-		Selected: tc.Black,
+		Default:      lipgloss.NoColor{},
+		TitleBar:     termColors.Black,
+		Selected:     hc.SelectedBg,
+		ButtonAccent: hc.ButtonAccent,
+		ButtonWarn:   hc.ButtonWarn,
 	}
 }
 
@@ -168,11 +193,13 @@ func darkBg() BgColors {
 // *****************************************************************************
 
 func lightBg() BgColors {
-	tc := termColors
+	hc := hardCodedColor.Light
 	return BgColors{
-		Default:  lipgloss.NoColor{},
-		TitleBar: tc.BrightWhite,
-		Selected: tc.BrightWhite,
+		Default:      lipgloss.NoColor{},
+		TitleBar:     termColors.BrightWhite,
+		Selected:     hc.SelectedBg,
+		ButtonAccent: hc.ButtonAccent,
+		ButtonWarn:   hc.ButtonWarn,
 	}
 }
 
@@ -181,7 +208,7 @@ func lightFg() FgColors {
 	hc := hardCodedColor.Light
 	return FgColors{
 		Default:   lipgloss.NoColor{},
-		Selected:  tc.Blue,
+		Selected:  tc.Black,
 		Muted:     tc.BrightBlack,
 		Accent:    tc.Blue,
 		Subtle:    tc.BrightBlack,
@@ -208,6 +235,11 @@ func lightFg() FgColors {
 
 		ScrollbarTrack: tc.BrightWhite,
 		ScrollbarThumb: tc.White,
+
+		SectionLabel: hc.ClaudeOrange,
+
+		ButtonLabel:   tc.BrightWhite,
+		ButtonKeybind: tc.White,
 	}
 }
 

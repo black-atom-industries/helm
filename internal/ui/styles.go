@@ -109,6 +109,16 @@ var (
 	SelfIndexSelectedStyle lipgloss.Style
 	SelfNameStyle          lipgloss.Style
 	SelfNameSelectedStyle  lipgloss.Style
+
+	// Section box styles
+	SectionLabelStyle  lipgloss.Style
+	SectionBorderStyle lipgloss.Style
+
+	// Sidebar button styles
+	ButtonStyle        lipgloss.Style
+	ButtonKeybindStyle lipgloss.Style
+	ButtonWarningStyle lipgloss.Style
+	ButtonWarnKbStyle  lipgloss.Style
 )
 
 func init() {
@@ -307,6 +317,31 @@ func initStyles() {
 		Foreground(Colors.Fg.Accent).
 		Background(Colors.Bg.Selected).
 		Bold(true)
+
+	SectionLabelStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.SectionLabel).
+		Bold(true)
+
+	SectionBorderStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.Border)
+
+	ButtonStyle = lipgloss.NewStyle().
+		Background(Colors.Bg.ButtonAccent).
+		Foreground(Colors.Fg.ButtonLabel).
+		Bold(true)
+
+	ButtonKeybindStyle = lipgloss.NewStyle().
+		Background(Colors.Bg.ButtonAccent).
+		Foreground(Colors.Fg.ButtonKeybind)
+
+	ButtonWarningStyle = lipgloss.NewStyle().
+		Background(Colors.Bg.ButtonWarn).
+		Foreground(Colors.Fg.ButtonLabel).
+		Bold(true)
+
+	ButtonWarnKbStyle = lipgloss.NewStyle().
+		Background(Colors.Bg.ButtonWarn).
+		Foreground(Colors.Fg.ButtonKeybind)
 }
 
 // RenderBorder returns a horizontal border line
@@ -348,6 +383,7 @@ func RenderPrompt(filter string, width int) string {
 }
 
 // RenderFooter renders the 3-line footer (notification, state, hints)
+// Deprecated: Use RenderSimpleFooter for new views.
 func RenderFooter(notification, state, hints string, isError bool, width int) string {
 	innerWidth := width - AppBorderOverheadX
 	if innerWidth < 10 {
@@ -380,6 +416,34 @@ func RenderFooter(notification, state, hints string, isError bool, width int) st
 	b.WriteString("\n")
 
 	// Hints line
+	b.WriteString(FooterStyle.Width(innerWidth).Render(hints))
+
+	return b.String()
+}
+
+// RenderSimpleFooter renders a 3-line footer: border + notification + single-line hints.
+// Used by views with sidebar (where state/actions are in the sidebar instead).
+func RenderSimpleFooter(notification, hints string, isError bool, width int) string {
+	innerWidth := width - AppBorderOverheadX
+	if innerWidth < 10 {
+		innerWidth = 40
+	}
+	var b strings.Builder
+
+	b.WriteString(RenderBorder(innerWidth))
+	b.WriteString("\n")
+
+	if notification != "" {
+		if isError {
+			b.WriteString(ErrorMessageStyle.Width(innerWidth).Render(notification))
+		} else {
+			b.WriteString(MessageStyle.Width(innerWidth).Render(notification))
+		}
+	} else {
+		b.WriteString(strings.Repeat(" ", innerWidth))
+	}
+	b.WriteString("\n")
+
 	b.WriteString(FooterStyle.Width(innerWidth).Render(hints))
 
 	return b.String()

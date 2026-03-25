@@ -378,9 +378,8 @@ func (m Model) viewBookmarks() string {
 	}
 
 	// Padding to push footer to bottom
-	// Fixed header: 3 lines, Fixed footer: 5 lines (border + notification + state + hints(2))
 	headerLines := ui.HeaderOverhead
-	footerLines := ui.FooterOverhead
+	footerLines := 3 // border + notification + hints
 	contentH := m.contentHeight()
 	if contentH > 0 {
 		padding := contentH - headerLines - contentLines - footerLines
@@ -389,14 +388,8 @@ func (m Model) viewBookmarks() string {
 		}
 	}
 
-	// Fixed footer
-	var hints string
-	if filter != "" {
-		hints = ui.HelpFilteringBookmarks()
-	} else {
-		hints = ui.HelpBookmarks()
-	}
-	b.WriteString(ui.RenderFooter(m.message, m.stateText(), hints, m.messageIsError, m.width))
+	// Simplified footer
+	b.WriteString(ui.RenderSimpleFooter(m.message, "C-j/k Nav · Enter Open · C-a Add · C-x Remove · Esc Back", m.messageIsError, m.width))
 
 	return ui.AppStyle.Render(b.String())
 }

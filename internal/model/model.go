@@ -11,6 +11,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/black-atom-industries/helm/internal/claude"
 	"github.com/black-atom-industries/helm/internal/config"
@@ -548,7 +549,11 @@ func (m *Model) calculateColumnWidths() {
 	}
 }
 
-// stateText returns the state line text based on current mode and context
+// stateText returns the state line text based on current mode and context.
+// Now only used by the STATUS sidebar section — no longer in footer.
+// Kept for potential future use.
+//
+//nolint:unused
 func (m *Model) stateText() string {
 	switch m.mode {
 	case ModeNormal:
@@ -729,9 +734,84 @@ func (m *Model) borderWidth() int {
 	return m.contentWidth()
 }
 
-// rowWidth returns the width available for row content (accounts for scrollbar column)
+// sidebarWidth returns the total width consumed by the sidebar (box + gap), or 0 if window is too narrow
+func (m *Model) sidebarWidth() int {
+	if m.contentWidth() < 40 {
+		return 0 // Skip sidebar in very narrow windows
+	}
+	return ui.SidebarTotalWidth()
+}
+
+// sessionListWidth returns the width available for the session list (content minus sidebar)
+func (m *Model) sessionListWidth() int {
+	return m.contentWidth() - m.sidebarWidth()
+}
+
+// rowWidth returns the width available for row content (accounts for scrollbar column and sidebar)
 func (m *Model) rowWidth() int {
-	return m.contentWidth() - ui.ScrollbarColumnWidth
+	return m.sessionListWidth() - ui.ScrollbarColumnWidth
+}
+
+// statusLine returns a compact status string for the footer
+func (m *Model) statusLine() string {
+	total := len(m.sessions)
+	if m.selfSession != nil {
+		total++
+	}
+	return fmt.Sprintf("%d sessions", total)
+}
+
+// renderWithSidebar joins list content with the sidebar and appends a simplified footer.
+// listContent is the session/bookmark/project list string.
+// actions is the mode-specific action set for the sidebar.
+// notification is the message to show in the footer.
+// hints is a single-line keybind hint string.
+// isError indicates notification is an error.
+func (m *Model) renderWithSidebar(header, listContent string, actions []ui.Action, notification, hints string, isError bool) string {
+	var b strings.Builder
+
+	// Header (full width)
+	b.WriteString(header)
+
+	// Join list + sidebar line-by-line for exact width control
+	if m.sidebarWidth() > 0 {
+		sidebarStr := ui.RenderSidebar(actions, 0)
+		listLines := strings.Split(strings.TrimRight(listContent, "\n"), "\n")
+		sidebarLines := strings.Split(strings.TrimRight(sidebarStr, "\n"), "\n")
+
+		listW := m.sessionListWidth()
+		maxLines := len(listLines)
+		if len(sidebarLines) > maxLines {
+			maxLines = len(sidebarLines)
+		}
+
+		for i := 0; i < maxLines; i++ {
+			// Left: session list line, forced to exact width
+			left := ""
+			if i < len(listLines) {
+				left = listLines[i]
+			}
+			left = lipgloss.NewStyle().Width(listW).Render(left)
+
+			// Gap
+			gap := strings.Repeat(" ", ui.SidebarGap)
+
+			// Right: sidebar line (already has correct width from section box)
+			right := ""
+			if i < len(sidebarLines) {
+				right = sidebarLines[i]
+			}
+
+			b.WriteString(left + gap + right + "\n")
+		}
+	} else {
+		b.WriteString(listContent)
+	}
+
+	// Simplified footer
+	b.WriteString(ui.RenderSimpleFooter(notification, hints, isError, m.width))
+
+	return ui.AppStyle.Render(b.String())
 }
 
 // fuzzyMatch checks if the pattern matches the text (case-insensitive, substring match)
