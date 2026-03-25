@@ -40,13 +40,13 @@ const (
 func (m Mode) String() string {
 	switch m {
 	case ModeNormal:
-		return "SESS"
+		return "SESSIONS"
 	case ModeBookmarks:
-		return "BKMK"
+		return "BOOKMARKS"
 	case ModePickDirectory:
-		return "PROJ"
+		return "PROJECTS"
 	case ModeCloneChoice, ModeCloneRepo, ModeCloneURL:
-		return "CLONE"
+		return "DOWNLOADS"
 	case ModeCreate:
 		return "NEW"
 	case ModeCreatePath:
@@ -54,9 +54,9 @@ func (m Mode) String() string {
 	case ModeConfirmKill:
 		return "KILL"
 	case ModeConfirmRemoveFolder:
-		return "DEL"
+		return "REMOVE"
 	default:
-		return "SESS"
+		return "SESSIONS"
 	}
 }
 
