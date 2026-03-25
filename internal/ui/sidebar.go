@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -17,50 +16,61 @@ type Action struct {
 // SessionActions are the actions shown in ModeNormal (session list)
 var SessionActions = []Action{
 	{Label: "NEW", Keybind: "C-n"},
-	{Label: "PRJ", Keybind: "C-p"},
-	{Label: "BKM", Keybind: "C-b"},
-	{Label: "KIL", Keybind: "C-x", Warning: true},
-	{Label: "RMT", Keybind: "C-r"},
-	{Label: "DWL", Keybind: "C-d"},
-	{Label: "GIT", Keybind: "C-g"},
+	{Label: "PROJECTS", Keybind: "C-p"},
+	{Label: "BOOKMARKS", Keybind: "C-b"},
+	{Label: "KILL", Keybind: "C-x", Warning: true},
+	{Label: "REMOTE", Keybind: "C-r"},
+	{Label: "DOWNLOAD", Keybind: "C-d"},
+	{Label: "LAZYGIT", Keybind: "C-g"},
 }
 
 // BookmarkActions are the actions shown in ModeBookmarks
 var BookmarkActions = []Action{
-	{Label: "OPN", Keybind: "Ent"},
+	{Label: "OPEN", Keybind: "Enter"},
 	{Label: "ADD", Keybind: "C-a"},
-	{Label: "MV↑", Keybind: "C-p"},
-	{Label: "MV↓", Keybind: "C-n"},
-	{Label: "RMV", Keybind: "C-x", Warning: true},
-	{Label: "BCK", Keybind: "Esc"},
+	{Label: "MOVE UP", Keybind: "C-p"},
+	{Label: "MOVE DOWN", Keybind: "C-n"},
+	{Label: "REMOVE", Keybind: "C-x", Warning: true},
+	{Label: "BACK", Keybind: "Esc"},
 }
 
 // ProjectActions are the actions shown in ModePickDirectory
 var ProjectActions = []Action{
-	{Label: "SEL", Keybind: "Ent"},
-	{Label: "BKM", Keybind: "C-a"},
-	{Label: "RMV", Keybind: "C-x", Warning: true},
-	{Label: "BCK", Keybind: "Esc"},
+	{Label: "SELECT", Keybind: "Enter"},
+	{Label: "BOOKMARK", Keybind: "C-a"},
+	{Label: "REMOVE", Keybind: "C-x", Warning: true},
+	{Label: "BACK", Keybind: "Esc"},
 }
 
 // CloneActions are the actions shown in ModeCloneRepo/ModeCloneChoice/ModeCloneURL
 var CloneActions = []Action{
-	{Label: "CLN", Keybind: "Ent"},
-	{Label: "BCK", Keybind: "Esc"},
+	{Label: "CLONE", Keybind: "Enter"},
+	{Label: "BACK", Keybind: "Esc"},
 }
 
 // CreateActions are the actions shown in ModeCreate/ModeCreatePath
 var CreateActions = []Action{
-	{Label: "CRT", Keybind: "Ent"},
-	{Label: "BCK", Keybind: "Esc"},
+	{Label: "CREATE", Keybind: "Enter"},
+	{Label: "BACK", Keybind: "Esc"},
 }
 
-// ButtonInnerWidth is the character width of button content (padded label/keybind)
-const ButtonInnerWidth = 7 // " NEW  " or " C-n  " — generous padding
+// ButtonInnerWidth is the character width of button content
+const ButtonInnerWidth = 12 // fits "BOOKMARKS" + centering padding
+
+// centerText centers text within the given width, padding with spaces
+func centerText(text string, width int) string {
+	if len(text) >= width {
+		return text[:width]
+	}
+	totalPad := width - len(text)
+	left := totalPad / 2
+	right := totalPad - left
+	return strings.Repeat(" ", left) + text + strings.Repeat(" ", right)
+}
 
 // RenderButton renders a 2-line action button with color-filled background.
-// Line 1: 3-char ALL CAPS label (padded)
-// Line 2: Keybind hint in dimmer color (padded)
+// Line 1: ALL CAPS label (centered)
+// Line 2: Keybind hint in dimmer color (centered)
 func RenderButton(action Action, width int) string {
 	labelStyle := ButtonStyle
 	kbStyle := ButtonKeybindStyle
@@ -69,8 +79,9 @@ func RenderButton(action Action, width int) string {
 		kbStyle = ButtonWarnKbStyle
 	}
 
-	label := fmt.Sprintf(" %-*s", width-1, action.Label)
-	kb := fmt.Sprintf(" %-*s", width-1, action.Keybind)
+	// Center the label and keybind within the button width
+	label := centerText(action.Label, width)
+	kb := centerText(action.Keybind, width)
 
 	return labelStyle.Render(label) + "\n" + kbStyle.Render(kb)
 }
@@ -97,11 +108,15 @@ func RenderSidebar(actions []Action, height int) string {
 	boxWidth := SidebarBoxWidth()
 
 	// Build button column — each line gets " " prefix for left padding inside box
+	// Blank line between each button for vertical breathing room
 	var lines []string
-	for _, action := range actions {
+	for i, action := range actions {
 		btn := RenderButton(action, ButtonInnerWidth)
 		for _, line := range strings.Split(btn, "\n") {
 			lines = append(lines, " "+line)
+		}
+		if i < len(actions)-1 {
+			lines = append(lines, "") // gap between buttons
 		}
 	}
 
