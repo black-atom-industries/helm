@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.8.0](https://github.com/black-atom-industries/helm/compare/v0.7.0...v0.8.0) (2026-03-25)
+
+
+### Features
+
+* **cli:** add --initial-view flag and visual test tooling ([08b0ed2](https://github.com/black-atom-industries/helm/commit/08b0ed2b50632452b22c94f43b95cd8a48bc1996))
+* **clone:** add choice menu to C-d with URL input for arbitrary repos ([f4197d3](https://github.com/black-atom-industries/helm/commit/f4197d3cd7a6d106145cc9fdeb63eba809fbb75e))
+* initialize OpenSpec with 10 behavioral specs ([5115fd0](https://github.com/black-atom-industries/helm/commit/5115fd0a06f0277aac1edadec644dede740c0467))
+* pin current session at top of session list ([7844884](https://github.com/black-atom-industries/helm/commit/78448841b76c7c97cbffd9c71b6523eb201dee59))
+* **ui:** add sidebar with action buttons and simplified footer ([50a2c66](https://github.com/black-atom-industries/helm/commit/50a2c6656e94a9d1a610ecd1eb3757822ad82cb2))
+* **ui:** expand mode labels to full ALL CAPS descriptions ([a447749](https://github.com/black-atom-industries/helm/commit/a4477498529cf7d228c7cbd6f79c36b8aad4e265))
+* **ui:** reorder sidebar action buttons ([f36b8bc](https://github.com/black-atom-industries/helm/commit/f36b8bcf7d7435ff16a6af2a43c27f261e1a5c9c))
+* **ui:** show sidebar in all view modes and reorder buttons ([f3dad92](https://github.com/black-atom-industries/helm/commit/f3dad92b7970526bbc8937caf3f0545997c82205))
+* **ui:** use full ALL CAPS labels with centered text in sidebar buttons ([0860282](https://github.com/black-atom-industries/helm/commit/08602828a7192c1d5c1e5470a35bba4369e4addd))
+
+
+### Bug Fixes
+
+* **ui:** align self-session index marker and use solid footer border ([8297d49](https://github.com/black-atom-industries/helm/commit/8297d495b3b8018226d7efb94a97cffa6190c908))
+* **ui:** correct layout overhead for new 3-line footer ([69e892d](https://github.com/black-atom-industries/helm/commit/69e892d3c99838f3774f11f09bc8d6275256d981))
+* **ui:** hide scrollbar for pinned self-session row ([45ae3a5](https://github.com/black-atom-industries/helm/commit/45ae3a5043b9fc84941967efb19db85f5d828c02))
+* **ui:** restore ModeCreate input, fix footer padding, cap list width ([ce601a0](https://github.com/black-atom-industries/helm/commit/ce601a0bba53f2dad72e09fa51f728cfa56fcaa1))
+* **ui:** restore sidebar box borders in bookmarks mode ([b089aa5](https://github.com/black-atom-industries/helm/commit/b089aa5f1e33a9f637c446a10214a5947fc9c9b3))
+* **ui:** show mode-specific sidebar actions for kill and create ([710c352](https://github.com/black-atom-industries/helm/commit/710c3528a3ec0935a19afad41f94ed1acadd2425))
+
+
+### Documentation
+
+* add repos add command to README ([62497cd](https://github.com/black-atom-industries/helm/commit/62497cdd4fd65e39b5844f4360b026713aa68291))
+* remove open git remote design document ([7a4b4df](https://github.com/black-atom-industries/helm/commit/7a4b4df004577368e8c889fda91e6782783557fa))
+
 ## [0.7.0](https://github.com/black-atom-industries/helm/compare/v0.6.0...v0.7.0) (2026-03-21)
 
 ### Features
