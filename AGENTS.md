@@ -125,19 +125,19 @@ The hook (`hooks/helm-hook.sh`) writes status files to `~/.cache/helm/<session>.
 - `!` - Still waiting (5–15 min)
 - `Z` - Idle (> 15 min)
 
-> **Known limitation:** Claude Code's `Stop` hook has no `stop_reason` field to differentiate "idle/done" from "waiting for input." See [DEV-245](https://linear.app/black-atom-industries/issue/DEV-245) and upstream [anthropics/claude-code#13024](https://github.com/anthropics/claude-code/issues/13024).
+> **Known limitation:** Claude Code's `Stop` hook has no `stop_reason` field to differentiate "idle/done" from "waiting for input." See upstream [anthropics/claude-code#13024](https://github.com/anthropics/claude-code/issues/13024).
 
 ---
 
 ## Project Tracking
 
-Issues are tracked in [Linear](https://linear.app/black-atom-industries) under the Development team with the `helm` label.
+Issues are tracked in [GitHub Issues](https://github.com/black-atom-industries/helm/issues) with the `helm` label.
 
-Use the Linear MCP to query and manage issues directly from Claude Code:
+Use the `gh` CLI to query and manage issues directly from Claude Code:
 
-- `mcp__linear__list_issues` - Query issues
-- `mcp__linear__create_issue` - Create new issues
-- `mcp__linear__update_issue` - Update status, labels, etc.
+- `gh issue list` - Query issues
+- `gh issue create` - Create new issues
+- `gh issue edit` - Update status, labels, etc.
 
 ---
 
