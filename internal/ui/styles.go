@@ -264,6 +264,7 @@ func initStyles() {
 
 	FilterStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Selected).
+		Background(Colors.Bg.Selected).
 		Bold(true)
 
 	BorderStyle = lipgloss.NewStyle().
