@@ -198,6 +198,14 @@ func New(currentSession string, cfg config.Config, initialView string) Model {
 		bookmarkExpanded: make(map[string]bool),
 	}
 
+	// Populate data for non-default initial views
+	switch m.mode {
+	case ModePickDirectory:
+		m.projectList.SetItems(m.scanProjectDirectories())
+	case ModeBookmarks:
+		m.bookmarkList.SetItems(cfg.Bookmarks)
+	}
+
 	// Load cached sessions for instant startup
 	if cached := m.loadSessionCache(); cached != nil {
 		m.sessions = cached
