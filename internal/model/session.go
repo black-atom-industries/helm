@@ -637,10 +637,13 @@ func (m *Model) openLazygit() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Schedule lazygit popup to open after helm closes, then reopen helm with same dimensions
+	// Schedule lazygit popup to open after helm closes, then reopen helm with same dimensions.
+	// Use Run (not Start) so we wait for the tmux CLI to finish submitting the command to the
+	// tmux server — otherwise tea.Quit exits helm before the submit completes, killing the CLI
+	// mid-write and silently dropping the popup. The `-b` flag detaches the actual workload.
 	cmd := fmt.Sprintf("sleep 0.1 && tmux display-popup -w%s -h%s -d '%s' -E lazygit; tmux display-popup -w%d -h%d -B -E helm",
 		m.config.LazygitPopup.Width, m.config.LazygitPopup.Height, path, m.width, m.height)
-	_ = exec.Command("tmux", "run-shell", "-b", cmd).Start()
+	_ = exec.Command("tmux", "run-shell", "-b", cmd).Run()
 
 	return m, tea.Quit
 }
