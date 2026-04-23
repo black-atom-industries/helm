@@ -481,7 +481,7 @@ func (m *Model) findSessionByName(name string) *tmux.Session {
 }
 
 func (m *Model) applyLayout(sessionName, workingDir string) {
-	if m.config.Layout == "" {
+	if !m.config.EnableLayouts || m.config.Layout == "" {
 		return
 	}
 

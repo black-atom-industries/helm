@@ -141,7 +141,7 @@ func runBookmark(slotStr string) error {
 		}
 
 		// Apply layout if configured
-		if cfg.Layout != "" && cfg.LayoutDir != "" {
+		if cfg.EnableLayouts && cfg.Layout != "" && cfg.LayoutDir != "" {
 			layoutPath := filepath.Join(cfg.LayoutDir, cfg.Layout+".sh")
 			if _, err := os.Stat(layoutPath); err == nil {
 				cmd := exec.Command(layoutPath, sessionName, bookmark.Path)

@@ -28,6 +28,9 @@ type Config struct {
 	// Directory containing layout scripts
 	LayoutDir string `yaml:"layout_dir"`
 
+	// Enable layout scripts feature (when disabled, layouts won't be auto-applied)
+	EnableLayouts bool `yaml:"enable_layouts"`
+
 	// Enable Claude Code status integration
 	ClaudeStatusEnabled bool `yaml:"claude_status_enabled"`
 
@@ -95,6 +98,7 @@ func DefaultConfig() Config {
 		Appearance:          AppearanceDark,
 		Layout:              "",
 		LayoutDir:           filepath.Join(home, ".config", "tmux", "layouts"),
+		EnableLayouts:       false,
 		ClaudeStatusEnabled: false,
 		GitStatusEnabled:    false,
 		CacheDir:            filepath.Join(home, ".cache", AppDirName),
@@ -239,6 +243,9 @@ appearance: dark
 
 # Directory containing layout scripts
 # layout_dir: ~/.config/tmux/layouts
+
+# Enable layout scripts feature (when disabled, layouts won't be auto-applied)
+# enable_layouts: false
 
 # Enable Claude Code status integration
 # claude_status_enabled: false
