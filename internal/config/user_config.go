@@ -229,71 +229,11 @@ func Init() error {
 		return fmt.Errorf("config file already exists at %s", configPath)
 	}
 
-	// Write default config with comments
-	content := `# helm configuration
-# Environment variables override these settings
-
-# Terminal appearance mode ("light" or "dark")
-# Controls color adaptation for borders, selection, and scrollbar
-# Updated automatically by pick-theme
+	// Write minimal config — schema descriptions provide documentation
+	content := `# yaml-language-server: $schema=https://raw.githubusercontent.com/black-atom-industries/helm/main/schema.json
 appearance: dark
-
-# Layout script name to apply when creating new sessions
-# layout: ide
-
-# Directory containing layout scripts
-# layout_dir: ~/.config/tmux/layouts
-
-# Enable layout scripts feature (when disabled, layouts won't be auto-applied)
-# enable_layouts: false
-
-# Enable Claude Code status integration
-# claude_status_enabled: false
-
-# Enable git status indicator (shows dirty/ahead/behind for repos)
-# git_status_enabled: false
-
-# Directory for status cache files
-# cache_dir: ~/.cache/helm
-
-# Base directories for project picker (C-p)
-# Supports multiple paths - all will be scanned
-# project_dirs:
-#   - ~/repos
-# Example with multiple paths:
-# project_dirs:
-#   - ~/repos
-#   - ~/work
-#   - ~/personal
-
-# Scan depth for project directories (2 = owner/repo structure)
-# project_depth: 2
-
-# Default directory for new sessions created with C-n
-# default_session_dir: ~
-
-# Lazygit popup dimensions (C-g)
-# lazygit_popup:
-#   width: 90%
-#   height: 90%
-
-# Quick-access session bookmarks (slots 1-9, maps to M-1 through M-9)
-# Use 'helm tmux-bindings' to generate tmux keybindings
-# Note: Bookmarks are stored separately in ~/.config/black-atom/helm/bookmarks.yml
-# to preserve comments in this file when bookmarks are modified via the TUI.
-
-# Command to run on each dirty repo via 'helm repos dirty --walk'
-# Use {} as placeholder for the repo path
-# dirty_walkthrough_command: "lazygit -p {}"
-
-# Repositories to ensure are cloned (used by 'helm setup')
-# Supports plain URLs and objects with post_clone hooks.
-# Wildcard patterns (org/*) expand via gh CLI.
-# ensure_cloned:
-#   - git@github.com:user/repo
-#   - url: git@github.com:user/repo2
-#     post_clone: make install
-#   - git@github.com:organization/*
+project_dirs:
+  - ~/repos
 `
 
 	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {

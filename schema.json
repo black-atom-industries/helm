@@ -1,0 +1,129 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/black-atom-industries/helm/main/schema.json",
+  "title": "Helm Configuration",
+  "description": "Configuration schema for helm - tmux session manager TUI",
+  "type": "object",
+  "properties": {
+    "appearance": {
+      "type": "string",
+      "enum": ["dark", "light"],
+      "description": "Terminal appearance mode - controls color adaptation for borders, selection, and scrollbar. Updated automatically by pick-theme.",
+      "default": "dark"
+    },
+    "layout": {
+      "type": "string",
+      "description": "Layout script name to apply when creating new sessions",
+      "default": ""
+    },
+    "layout_dir": {
+      "type": "string",
+      "description": "Directory containing layout scripts",
+      "default": "~/.config/tmux/layouts"
+    },
+    "enable_layouts": {
+      "type": "boolean",
+      "description": "Enable layout scripts feature (when disabled, layouts won't be auto-applied)",
+      "default": false
+    },
+    "claude_status_enabled": {
+      "type": "boolean",
+      "description": "Enable Claude Code status integration",
+      "default": false
+    },
+    "git_status_enabled": {
+      "type": "boolean",
+      "description": "Enable git status indicator (shows dirty/ahead/behind for repos)",
+      "default": false
+    },
+    "cache_dir": {
+      "type": "string",
+      "description": "Directory for status cache files",
+      "default": "~/.cache/helm"
+    },
+    "project_dirs": {
+      "type": "array",
+      "description": "Base directories for project picker (Ctrl+p). Supports multiple paths - all will be scanned.",
+      "items": {
+        "type": "string"
+      },
+      "default": ["~/repos"]
+    },
+    "project_depth": {
+      "type": "integer",
+      "description": "Scan depth for project directories (2 = owner/repo structure)",
+      "minimum": 1,
+      "default": 2
+    },
+    "default_session_dir": {
+      "type": "string",
+      "description": "Default directory for new sessions created with Ctrl+n",
+      "default": "~"
+    },
+    "lazygit_popup": {
+      "type": "object",
+      "description": "Lazygit popup dimensions (Ctrl+g)",
+      "properties": {
+        "width": {
+          "type": "string",
+          "description": "Popup width (percentage or cells)",
+          "default": "90%"
+        },
+        "height": {
+          "type": "string",
+          "description": "Popup height (percentage or cells)",
+          "default": "90%"
+        }
+      },
+      "additionalProperties": false
+    },
+    "bookmarks": {
+      "type": "array",
+      "description": "Quick-access session bookmarks (slots 1-9, maps to M-1 through M-9). Use 'helm tmux-bindings' to generate tmux keybindings. Note: Bookmarks are stored separately in ~/.config/black-atom/helm/bookmarks.yml.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Absolute or home-relative path to the project directory"
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      }
+    },
+    "dirty_walkthrough_command": {
+      "type": "string",
+      "description": "Command to run on each dirty repo via 'helm repos dirty --walk'. Use `{}` as placeholder for the repo path, e.g. `lazygit -p {}`",
+      "default": ""
+    },
+    "ensure_cloned": {
+      "type": "array",
+      "description": "Repositories to ensure are cloned (used by 'helm setup'). Supports plain URLs and objects with post_clone hooks. Wildcard patterns (org/*) expand via gh CLI.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "description": "Git repository URL to clone"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "Git repository URL to clone"
+              },
+              "post_clone": {
+                "type": "string",
+                "description": "Shell command to run after cloning"
+              }
+            },
+            "required": ["url"],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}
