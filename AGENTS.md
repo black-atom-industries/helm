@@ -35,7 +35,7 @@ internal/
     styles.go             # Lipgloss colors and styles
     columns.go            # Row rendering (sessions, windows, bookmarks)
     scrolllist.go         # Generic scrollable list with filtering
-  config/config.go        # YAML config (~/.config/helm/config.yml)
+  config/config.go        # YAML config (~/.config/black-atom/helm/config.yml)
   tmux/tmux.go            # tmux command wrappers (list, switch, kill)
   claude/status.go        # Claude Code status file parsing
   git/
@@ -84,7 +84,7 @@ Navigation uses Ctrl modifiers to reserve letters for filtering:
 
 ## Configuration
 
-Config file: `~/.config/helm/config.yml`
+Config file: `~/.config/black-atom/helm/config.yml`
 
 ```yaml
 layout: ide # Layout script for new sessions

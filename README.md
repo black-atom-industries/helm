@@ -72,7 +72,7 @@ Initialize config file:
 helm init
 ```
 
-Config location: `~/.config/helm/config.yml`
+Config location: `~/.config/black-atom/helm/config.yml`
 
 ## Repository Management
 
@@ -105,7 +105,7 @@ All commands support `--json` for machine-readable output.
 Configure a command to run on each dirty repo:
 
 ```yaml
-# ~/.config/helm/config.yml
+# ~/.config/black-atom/helm/config.yml
 dirty_walkthrough_command: "lazygit -p {}"
 ```
 
@@ -180,7 +180,7 @@ Display Claude Code status for each session with an animated indicator.
    }
    ```
 
-3. Enable in config (`~/.config/helm/config.yml`):
+3. Enable in config (`~/.config/black-atom/helm/config.yml`):
 
    ```yaml
    claude_status_enabled: true

@@ -115,13 +115,13 @@ func DefaultConfig() Config {
 // Path returns the path to the config file
 func Path() string {
 	home := os.Getenv("HOME")
-	return filepath.Join(home, ".config", AppDirName, ConfigFileName)
+	return filepath.Join(home, ".config", ConfigDirName(), ConfigFileName)
 }
 
 // BookmarksPath returns the path to the separate bookmarks file
 func BookmarksPath() string {
 	home := os.Getenv("HOME")
-	return filepath.Join(home, ".config", AppDirName, BookmarksFileName)
+	return filepath.Join(home, ".config", ConfigDirName(), BookmarksFileName)
 }
 
 // BookmarksFile represents the structure of the bookmarks file
@@ -279,7 +279,7 @@ appearance: dark
 
 # Quick-access session bookmarks (slots 1-9, maps to M-1 through M-9)
 # Use 'helm tmux-bindings' to generate tmux keybindings
-# Note: Bookmarks are stored separately in ~/.config/helm/bookmarks.yml
+# Note: Bookmarks are stored separately in ~/.config/black-atom/helm/bookmarks.yml
 # to preserve comments in this file when bookmarks are modified via the TUI.
 
 # Command to run on each dirty repo via 'helm repos dirty --walk'
