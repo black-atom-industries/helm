@@ -168,10 +168,15 @@ func New(currentSession string, cfg config.Config, initialView string) Model {
 	pathInput.Prompt = ""
 	pathInput.CharLimit = 256
 
-	// Create project list with filter function that matches on directory basename
+	// Create project list with filter function that matches on display path
 	projectList := ui.NewScrollList(func(fullPath string, filter string) bool {
-		name := filepath.Base(fullPath)
-		return strings.Contains(strings.ToLower(name), filter)
+		parts := strings.Split(fullPath, string(filepath.Separator))
+		depth := cfg.ProjectDepth
+		if depth > len(parts) {
+			depth = len(parts)
+		}
+		displayPath := strings.Join(parts[len(parts)-depth:], "/")
+		return strings.Contains(strings.ToLower(displayPath), filter)
 	})
 
 	// Create clone list with filter function that matches on repo name
