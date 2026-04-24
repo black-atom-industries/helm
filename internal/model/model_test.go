@@ -7,67 +7,6 @@ import (
 	"github.com/black-atom-industries/helm/internal/tmux"
 )
 
-func TestFuzzyMatch(t *testing.T) {
-	tests := []struct {
-		name    string
-		text    string
-		pattern string
-		want    bool
-	}{
-		{
-			name:    "exact match",
-			text:    "hello",
-			pattern: "hello",
-			want:    true,
-		},
-		{
-			name:    "case insensitive",
-			text:    "Hello",
-			pattern: "hello",
-			want:    true,
-		},
-		{
-			name:    "substring match",
-			text:    "hello-world",
-			pattern: "world",
-			want:    true,
-		},
-		{
-			name:    "no match",
-			text:    "hello",
-			pattern: "xyz",
-			want:    false,
-		},
-		{
-			name:    "empty pattern matches all",
-			text:    "hello",
-			pattern: "",
-			want:    true,
-		},
-		{
-			name:    "empty text with pattern",
-			text:    "",
-			pattern: "hello",
-			want:    false,
-		},
-		{
-			name:    "both empty",
-			text:    "",
-			pattern: "",
-			want:    true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := fuzzyMatch(tt.text, tt.pattern)
-			if got != tt.want {
-				t.Errorf("fuzzyMatch(%q, %q) = %v, want %v", tt.text, tt.pattern, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestIsCursorValid(t *testing.T) {
 	m := Model{
 		items: []Item{

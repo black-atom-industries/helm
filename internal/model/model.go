@@ -16,6 +16,7 @@ import (
 	"github.com/black-atom-industries/helm/internal/claude"
 	"github.com/black-atom-industries/helm/internal/config"
 	"github.com/black-atom-industries/helm/internal/git"
+	"github.com/black-atom-industries/helm/internal/lib/fuzzy"
 	"github.com/black-atom-industries/helm/internal/tmux"
 	"github.com/black-atom-industries/helm/internal/ui"
 )
@@ -176,19 +177,18 @@ func New(currentSession string, cfg config.Config, initialView string) Model {
 			depth = len(parts)
 		}
 		displayPath := strings.Join(parts[len(parts)-depth:], "/")
-		return strings.Contains(strings.ToLower(displayPath), filter)
+		return fuzzy.Match(displayPath, filter)
 	})
 
 	// Create clone list with filter function that matches on repo name
 	cloneList := ui.NewScrollList(func(repo string, filter string) bool {
-		return strings.Contains(strings.ToLower(repo), filter)
+		return fuzzy.Match(repo, filter)
 	})
 
 	// Create bookmark list with filter function that matches on path basename
 	bookmarkList := ui.NewScrollList(func(b config.Bookmark, filter string) bool {
 		name := filepath.Base(b.Path)
-		return strings.Contains(strings.ToLower(name), filter) ||
-			strings.Contains(strings.ToLower(b.Path), filter)
+		return fuzzy.Match(name, filter) || fuzzy.Match(b.Path, filter)
 	})
 
 	m := Model{
@@ -683,7 +683,7 @@ func (m *Model) rebuildItems() {
 
 	for i, session := range m.sessions {
 		// Apply fuzzy filter if active
-		if m.filter != "" && !fuzzyMatch(session.Name, filterLower) {
+		if m.filter != "" && !fuzzy.Match(session.Name, filterLower) {
 			continue
 		}
 
@@ -860,12 +860,6 @@ func (m *Model) renderWithSidebar(header, listContent string, actions []ui.Actio
 	b.WriteString(ui.RenderSimpleFooter(notification, hints, isError, m.width))
 
 	return ui.AppStyle.Height(m.contentHeight()).Render(b.String())
-}
-
-// fuzzyMatch checks if the pattern matches the text (case-insensitive, substring match)
-func fuzzyMatch(text, pattern string) bool {
-	textLower := strings.ToLower(text)
-	return strings.Contains(textLower, pattern)
 }
 
 // isCursorValid returns true if cursor points to a valid item
