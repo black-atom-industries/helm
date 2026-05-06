@@ -51,6 +51,7 @@ type HardCodedPalette struct {
 	SelectedBg   lipgloss.Color // Accent background for selected rows
 	ButtonAccent lipgloss.Color // Button accent background
 	ButtonWarn   lipgloss.Color // Button warning/danger background
+	ButtonLabel  lipgloss.Color // Button label text
 }
 
 // Hex colors (terminal-independent)
@@ -66,7 +67,8 @@ var hardCodedColor = struct {
 		Yellow:       lipgloss.Color("#b98700"),
 		SelectedBg:   lipgloss.Color("#f0d8c0"),
 		ButtonAccent: lipgloss.Color("#e2663c"),
-		ButtonWarn:   lipgloss.Color("#e35f6d"),
+		ButtonWarn:   lipgloss.Color("#f05442"),
+		ButtonLabel:  lipgloss.Color("#f9f3e5"),
 	},
 	Dark: HardCodedPalette{
 		ClaudeOrange: lipgloss.Color("#f38b6a"),
@@ -75,8 +77,9 @@ var hardCodedColor = struct {
 		Red:          lipgloss.Color("#f4868c"),
 		Yellow:       lipgloss.Color("#d5a335"),
 		SelectedBg:   lipgloss.Color("#5c3a1e"),
-		ButtonAccent: lipgloss.Color("#c07040"),
-		ButtonWarn:   lipgloss.Color("#b03030"),
+		ButtonAccent: lipgloss.Color("#df7f44"),
+		ButtonWarn:   lipgloss.Color("#e74947"),
+		ButtonLabel:  lipgloss.Color("#f9f3e5"),
 	},
 }
 
@@ -167,7 +170,7 @@ func darkFg() FgColors {
 		ScrollbarTrack: tc.BrightBlack,
 		ScrollbarThumb: tc.White,
 
-		ButtonLabel:   tc.BrightWhite,
+		ButtonLabel:   hc.ButtonLabel,
 		ButtonKeybind: tc.White,
 	}
 }
@@ -231,7 +234,7 @@ func lightFg() FgColors {
 		ScrollbarTrack: tc.BrightWhite,
 		ScrollbarThumb: tc.White,
 
-		ButtonLabel:   tc.BrightWhite,
+		ButtonLabel:   hc.ButtonLabel,
 		ButtonKeybind: tc.White,
 	}
 }

@@ -322,7 +322,7 @@ func initStyles() {
 
 	ButtonKeybindStyle = lipgloss.NewStyle().
 		Background(Colors.Bg.ButtonAccent).
-		Foreground(Colors.Fg.ButtonKeybind)
+		Foreground(Colors.Fg.ButtonLabel)
 
 	ButtonWarningStyle = lipgloss.NewStyle().
 		Background(Colors.Bg.ButtonWarn).
@@ -331,7 +331,7 @@ func initStyles() {
 
 	ButtonWarnKbStyle = lipgloss.NewStyle().
 		Background(Colors.Bg.ButtonWarn).
-		Foreground(Colors.Fg.ButtonKeybind)
+		Foreground(Colors.Fg.ButtonLabel)
 }
 
 // RenderBorder returns a horizontal border line
