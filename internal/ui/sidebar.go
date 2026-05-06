@@ -2,6 +2,8 @@ package ui
 
 import (
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Action defines a sidebar action button
@@ -76,58 +78,72 @@ func centerText(text string, width int) string {
 	return strings.Repeat(" ", left) + text + strings.Repeat(" ", right)
 }
 
-// RenderButton renders a 2-line action button with color-filled background.
-// Line 1: ALL CAPS label (centered)
-// Line 2: Keybind hint in dimmer color (centered)
-func RenderButton(action Action, width int) string {
-	labelStyle := ButtonStyle
-	kbStyle := ButtonKeybindStyle
+// RenderButtonLabel returns the styled label line for a single button.
+func RenderButtonLabel(action Action, width int) string {
+	style := ButtonStyle
 	if action.Warning {
-		labelStyle = ButtonWarningStyle
-		kbStyle = ButtonWarnKbStyle
+		style = ButtonWarningStyle
+	}
+	return style.Render(centerText(action.Label, width))
+}
+
+// RenderButtonKeybind returns the styled keybind line for a single button.
+func RenderButtonKeybind(action Action, width int) string {
+	style := ButtonKeybindStyle
+	if action.Warning {
+		style = ButtonWarnKbStyle
+	}
+	return style.Render(centerText(action.Keybind, width))
+}
+
+
+
+// renderButtonRow renders one row of buttons side-by-side with 1-space gaps,
+// left-aligned, padded/truncated to exact width. Returns exactly 2 lines.
+func renderButtonRow(actions []Action, width int) string {
+	if len(actions) == 0 {
+		padding := strings.Repeat(" ", width)
+		return padding + "\n" + padding
 	}
 
-	// Center the label and keybind within the button width
-	label := centerText(action.Label, width)
-	kb := centerText(action.Keybind, width)
-
-	return labelStyle.Render(label) + "\n" + kbStyle.Render(kb)
-}
-
-// RenderButtonColumn renders buttons in a single vertical column.
-// Each button is 2 lines (label + keybind), separated by a blank line.
-func RenderButtonColumn(actions []Action, colWidth int) string {
-	var rows []string
-	for _, action := range actions {
-		rows = append(rows, RenderButton(action, colWidth))
+	// Build label row and keybind row
+	var labelParts []string
+	var kbParts []string
+	for _, a := range actions {
+		labelParts = append(labelParts, RenderButtonLabel(a, ButtonInnerWidth))
+		kbParts = append(kbParts, RenderButtonKeybind(a, ButtonInnerWidth))
 	}
-	return strings.Join(rows, "\n\n")
-}
+	labelRow := strings.Join(labelParts, " ")
+	kbRow := strings.Join(kbParts, " ")
 
-// SidebarBoxWidth returns the total width of the sidebar section box.
-// Single column: left border + left pad + button + right pad + right border
-func SidebarBoxWidth() int {
-	return ButtonInnerWidth + 4 // │ + " " + button(7) + " " + │
-}
-
-// RenderSidebar renders the sidebar: just the ACTIONS section box.
-// Status info is now in the footer instead.
-func RenderSidebar(actions []Action, height int) string {
-	boxWidth := SidebarBoxWidth()
-
-	// Build button column — each line gets " " prefix for left padding inside box
-	// Blank line between each button for vertical breathing room
-	var lines []string
-	for i, action := range actions {
-		btn := RenderButton(action, ButtonInnerWidth)
-		for _, line := range strings.Split(btn, "\n") {
-			lines = append(lines, " "+line)
-		}
-		if i < len(actions)-1 {
-			lines = append(lines, "") // gap between buttons
-		}
+	// Pad or truncate each row to exact width
+	labelVisWidth := lipgloss.Width(labelRow)
+	if labelVisWidth < width {
+		labelRow += strings.Repeat(" ", width-labelVisWidth)
+	} else if labelVisWidth > width {
+		labelRow = lipgloss.NewStyle().MaxWidth(width).Render(labelRow)
 	}
 
-	content := strings.Join(lines, "\n")
-	return RenderSectionBox("ACTIONS", content, boxWidth, SectionBoxOpts{})
+	kbVisWidth := lipgloss.Width(kbRow)
+	if kbVisWidth < width {
+		kbRow += strings.Repeat(" ", width-kbVisWidth)
+	} else if kbVisWidth > width {
+		kbRow = lipgloss.NewStyle().MaxWidth(width).Render(kbRow)
+	}
+
+	return labelRow + "\n" + kbRow
 }
+
+// RenderButtonBar renders the full action bar as two rows of buttons.
+// Row 1 gets up to 5 actions, row 2 gets the rest.
+// Always returns exactly 5 lines (ActionBarHeight).
+func RenderButtonBar(actions []Action, width int) string {
+	split := 5
+	if len(actions) < split {
+		split = len(actions)
+	}
+	row1 := renderButtonRow(actions[:split], width)
+	row2 := renderButtonRow(actions[split:], width)
+	return row1 + "\n\n" + row2
+}
+

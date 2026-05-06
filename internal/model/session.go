@@ -976,8 +976,9 @@ func (m *Model) sessionMaxVisibleItems() int {
 	if contentH > 0 {
 		// Header: 3 (title + prompt + border)
 		// Footer: 3 (border + notification + hints)
-		// Total base: 6
-		overhead := 6
+		// Action bar: 5 (2 rows × 2 lines + 1 gap)
+		// Total base: 11
+		overhead := 6 + ui.ActionBarHeight
 		if m.sessionsLoaded && len(m.items) > 0 {
 			overhead += ui.TableHeaderHeight + ui.TableDottedLineHeight // +2 = 8
 		}

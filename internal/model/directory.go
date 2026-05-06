@@ -207,7 +207,7 @@ func (m Model) viewPickDirectory() string {
 func (m *Model) projectMaxVisibleItems() int {
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		if available := contentH - 6; available > 0 { // header(3) + footer(3)
+		if available := contentH - 6 - ui.ActionBarHeight; available > 0 { // header(3) + footer(3) + actionBar(5)
 			return available
 		}
 	}

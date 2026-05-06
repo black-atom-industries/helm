@@ -11,7 +11,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/black-atom-industries/helm/internal/claude"
 	"github.com/black-atom-industries/helm/internal/config"
@@ -763,22 +762,21 @@ func (m *Model) borderWidth() int {
 	return m.contentWidth()
 }
 
-// sidebarWidth returns the total width consumed by the sidebar (box + gap), or 0 if window is too narrow
+// sidebarWidth returns the total width consumed by the sidebar.
+// Now always 0 — actions moved to bottom bar.
 func (m *Model) sidebarWidth() int {
-	if m.contentWidth() < 40 {
-		return 0 // Skip sidebar in very narrow windows
-	}
-	return ui.SidebarTotalWidth()
+	return 0
 }
 
-// sessionListWidth returns the width available for the session list (content minus sidebar)
+// sessionListWidth returns the width available for the session list.
+// Now equivalent to contentWidth — actions moved to bottom bar.
 func (m *Model) sessionListWidth() int {
-	return m.contentWidth() - m.sidebarWidth()
+	return m.contentWidth()
 }
 
-// rowWidth returns the width available for row content (accounts for scrollbar column and sidebar)
+// rowWidth returns the width available for row content (accounts for scrollbar column).
 func (m *Model) rowWidth() int {
-	return m.sessionListWidth() - ui.ScrollbarColumnWidth
+	return m.contentWidth() - ui.ScrollbarColumnWidth
 }
 
 // statusLine returns a compact status string for the footer
@@ -790,9 +788,9 @@ func (m *Model) statusLine() string {
 	return fmt.Sprintf("%d sessions", total)
 }
 
-// renderWithSidebar joins list content with the sidebar and appends a simplified footer.
+// renderWithSidebar composes list content with a bottom action bar and simplified footer.
 // listContent is the session/bookmark/project list string.
-// actions is the mode-specific action set for the sidebar.
+// actions is the mode-specific action set for the bottom bar.
 // notification is the message to show in the footer.
 // hints is a single-line keybind hint string.
 // isError indicates notification is an error.
@@ -802,59 +800,29 @@ func (m *Model) renderWithSidebar(header, listContent string, actions []ui.Actio
 	// Header (full width)
 	b.WriteString(header)
 
-	// Join list + sidebar line-by-line for exact width control
-	if m.sidebarWidth() > 0 {
-		sidebarStr := ui.RenderSidebar(actions, 0)
-		listLines := strings.Split(strings.TrimRight(listContent, "\n"), "\n")
-		sidebarLines := strings.Split(strings.TrimRight(sidebarStr, "\n"), "\n")
+	// List content (full width — no sidebar)
+	b.WriteString(listContent)
 
-		listW := m.sessionListWidth()
-		maxLines := len(listLines)
-		if len(sidebarLines) > maxLines {
-			maxLines = len(sidebarLines)
-		}
-
-		for i := 0; i < maxLines; i++ {
-			// Left: session list line, forced to exact visual width
-			left := ""
-			if i < len(listLines) {
-				left = listLines[i]
-			}
-			leftVisWidth := lipgloss.Width(left)
-			if leftVisWidth < listW {
-				left += strings.Repeat(" ", listW-leftVisWidth)
-			} else if leftVisWidth > listW {
-				// Truncate lines wider than list width to prevent sidebar shift
-				left = lipgloss.NewStyle().MaxWidth(listW).Render(left)
-			}
-
-			// Gap
-			gap := strings.Repeat(" ", ui.SidebarGap)
-
-			// Right: sidebar line
-			right := ""
-			if i < len(sidebarLines) {
-				right = sidebarLines[i]
-			}
-
-			b.WriteString(left + gap + right + "\n")
-		}
-	} else {
-		b.WriteString(listContent)
-	}
-
-	// Count content lines so far (header + joined list/sidebar)
+	// Count content lines so far (header + list)
 	content := b.String()
 	contentLineCount := strings.Count(content, "\n")
 
-	// Pad to push footer to bottom: target = contentHeight - footer lines (3)
-	targetContentLines := m.contentHeight() - 3
+	// Pad to push footer to bottom: target = contentHeight - dotted line - action bar - footer lines
+	targetContentLines := m.contentHeight() - ui.ActionBarHeight - 5
 	if targetContentLines > contentLineCount {
 		padding := targetContentLines - contentLineCount
 		for i := 0; i < padding; i++ {
 			b.WriteString("\n")
 		}
 	}
+
+	// Dotted separator above action bar
+	b.WriteString(ui.RenderDottedBorder(m.contentWidth()))
+	b.WriteString("\n")
+
+	// Bottom action bar (2 rows of buttons)
+	b.WriteString(ui.RenderButtonBar(actions, m.contentWidth()))
+	b.WriteString("\n")
 
 	// Footer at the very bottom
 	b.WriteString(ui.RenderSimpleFooter(notification, hints, isError, m.width))

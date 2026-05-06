@@ -116,9 +116,6 @@ type FgColors struct {
 	ScrollbarTrack lipgloss.TerminalColor // Track (subtle background line)
 	ScrollbarThumb lipgloss.TerminalColor // Thumb (visible position indicator)
 
-	// Section box
-	SectionLabel lipgloss.TerminalColor // Section header label text
-
 	// Sidebar buttons
 	ButtonLabel   lipgloss.TerminalColor // Button label text (on accent bg)
 	ButtonKeybind lipgloss.TerminalColor // Button keybind hint (on accent bg)
@@ -169,8 +166,6 @@ func darkFg() FgColors {
 
 		ScrollbarTrack: tc.BrightBlack,
 		ScrollbarThumb: tc.White,
-
-		SectionLabel: hc.ClaudeOrange,
 
 		ButtonLabel:   tc.BrightWhite,
 		ButtonKeybind: tc.White,
@@ -235,8 +230,6 @@ func lightFg() FgColors {
 
 		ScrollbarTrack: tc.BrightWhite,
 		ScrollbarThumb: tc.White,
-
-		SectionLabel: hc.ClaudeOrange,
 
 		ButtonLabel:   tc.BrightWhite,
 		ButtonKeybind: tc.White,

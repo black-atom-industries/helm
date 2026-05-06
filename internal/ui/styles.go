@@ -110,10 +110,6 @@ var (
 	SelfNameStyle          lipgloss.Style
 	SelfNameSelectedStyle  lipgloss.Style
 
-	// Section box styles
-	SectionLabelStyle  lipgloss.Style
-	SectionBorderStyle lipgloss.Style
-
 	// Sidebar button styles
 	ButtonStyle        lipgloss.Style
 	ButtonKeybindStyle lipgloss.Style
@@ -318,13 +314,6 @@ func initStyles() {
 		Foreground(Colors.Fg.Accent).
 		Background(Colors.Bg.Selected).
 		Bold(true)
-
-	SectionLabelStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.SectionLabel).
-		Bold(true)
-
-	SectionBorderStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.Border)
 
 	ButtonStyle = lipgloss.NewStyle().
 		Background(Colors.Bg.ButtonAccent).
