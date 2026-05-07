@@ -11,11 +11,10 @@ func Match(text, pattern string) bool {
 		return true
 	}
 
-	textRunes := []rune(strings.ToLower(text))
 	patternRunes := []rune(pattern)
 	patternIdx := 0
 
-	for _, tr := range textRunes {
+	for _, tr := range strings.ToLower(text) {
 		if patternIdx >= len(patternRunes) {
 			break
 		}
