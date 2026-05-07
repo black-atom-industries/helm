@@ -96,8 +96,6 @@ func RenderButtonKeybind(action Action, width int) string {
 	return style.Render(centerText(action.Keybind, width))
 }
 
-
-
 // renderButtonRow renders one row of buttons side-by-side with 1-space gaps,
 // left-aligned, padded/truncated to exact width. Returns exactly 2 lines.
 func renderButtonRow(actions []Action, width int) string {
@@ -146,4 +144,3 @@ func RenderButtonBar(actions []Action, width int) string {
 	row2 := renderButtonRow(actions[split:], width)
 	return row1 + "\n\n" + row2
 }
-

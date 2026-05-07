@@ -221,20 +221,20 @@ Display Pi agent status for each session with an animated indicator.
 
 Or via environment variable:
 
-   ```sh
-   export TMUX_SESSION_PICKER_PI_STATUS=1
-   ```
+```sh
+export TMUX_SESSION_PICKER_PI_STATUS=1
+```
 
 ### Extension Events
 
 The extension subscribes to these Pi events:
 
-| Event | Hook | Status |
-|-------|------|--------|
-| `session_start` | `start` | New |
-| `agent_start` | `working` | Processing |
-| `agent_end` | `waiting` | Idle |
-| `session_shutdown` | `end` | Cleanup |
+| Event              | Hook      | Status     |
+| ------------------ | --------- | ---------- |
+| `session_start`    | `start`   | New        |
+| `agent_start`      | `working` | Processing |
+| `agent_end`        | `waiting` | Idle       |
+| `session_shutdown` | `end`     | Cleanup    |
 
 ### Display
 

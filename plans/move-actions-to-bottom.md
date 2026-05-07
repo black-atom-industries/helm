@@ -8,17 +8,18 @@ The **ACTIONS sidebar** currently renders as a tall vertical column on the right
 
 ## Scope Assessment
 
-| Aspect | Assessment |
-|--------|------------|
-| Scope | Medium — multi-file layout refactor, no data model changes |
-| Risk | Low — purely presentational; all view functions use a single shared helper |
-| Breaking changes | None for users; internal API changes are localized |
+| Aspect           | Assessment                                                                 |
+| ---------------- | -------------------------------------------------------------------------- |
+| Scope            | Medium — multi-file layout refactor, no data model changes                 |
+| Risk             | Low — purely presentational; all view functions use a single shared helper |
+| Breaking changes | None for users; internal API changes are localized                         |
 
 ## Approach
 
 Replace the right-side sidebar with a bottom action bar rendered by the existing shared helper `renderWithSidebar`. The helper is already called by every view (sessions, bookmarks, projects, clones, create, confirm-kill). Changing only the helper and the `*MaxVisibleItems()` calculations updates all views at once.
 
 **Visual result:**
+
 ```
 ┌─ helm ───────────────────────── SESSIONS ──────────────┐
 │ > filter text                                          │
@@ -47,17 +48,17 @@ Replace the right-side sidebar with a bottom action bar rendered by the existing
 
 ## Files to Modify
 
-| File | What changes |
-|------|-------------|
-| `internal/ui/layout.go` | Add `ActionBarHeight = 5` constant |
-| `internal/ui/sidebar.go` | Add `RenderButtonLabel`, `RenderButtonKeybind`, `RenderButtonBar`, `renderButtonRow`; refactor `RenderButton` to reuse new helpers |
-| `internal/model/model.go` | `sidebarWidth()` → return `0`; `sessionListWidth()` → return `contentWidth()`; `rowWidth()` → use full width; `renderWithSidebar()` → render bottom bar instead of right sidebar, adjust padding target |
-| `internal/model/session.go` | `sessionMaxVisibleItems()` → add `ActionBarHeight` to overhead |
-| `internal/model/directory.go` | `projectMaxVisibleItems()` → add `ActionBarHeight` to overhead |
-| `internal/model/bookmarks.go` | Inline visible-items calculation → add `ActionBarHeight` to overhead |
-| `internal/model/clone.go` | `cloneMaxVisibleItems()` → add `ActionBarHeight` to overhead |
-| `internal/model/layout_test.go` | Update expected values for `sessionMaxVisibleItems` and `projectMaxVisibleItems` tests |
-| `internal/ui/styles_test.go` (or new `sidebar_test.go`) | Add tests for `RenderButtonBar` |
+| File                                                    | What changes                                                                                                                                                                                            |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `internal/ui/layout.go`                                 | Add `ActionBarHeight = 5` constant                                                                                                                                                                      |
+| `internal/ui/sidebar.go`                                | Add `RenderButtonLabel`, `RenderButtonKeybind`, `RenderButtonBar`, `renderButtonRow`; refactor `RenderButton` to reuse new helpers                                                                      |
+| `internal/model/model.go`                               | `sidebarWidth()` → return `0`; `sessionListWidth()` → return `contentWidth()`; `rowWidth()` → use full width; `renderWithSidebar()` → render bottom bar instead of right sidebar, adjust padding target |
+| `internal/model/session.go`                             | `sessionMaxVisibleItems()` → add `ActionBarHeight` to overhead                                                                                                                                          |
+| `internal/model/directory.go`                           | `projectMaxVisibleItems()` → add `ActionBarHeight` to overhead                                                                                                                                          |
+| `internal/model/bookmarks.go`                           | Inline visible-items calculation → add `ActionBarHeight` to overhead                                                                                                                                    |
+| `internal/model/clone.go`                               | `cloneMaxVisibleItems()` → add `ActionBarHeight` to overhead                                                                                                                                            |
+| `internal/model/layout_test.go`                         | Update expected values for `sessionMaxVisibleItems` and `projectMaxVisibleItems` tests                                                                                                                  |
+| `internal/ui/styles_test.go` (or new `sidebar_test.go`) | Add tests for `RenderButtonBar`                                                                                                                                                                         |
 
 ## Reuse
 
@@ -73,6 +74,7 @@ Replace the right-side sidebar with a bottom action bar rendered by the existing
 ### Step 1: Add layout constant
 
 In `internal/ui/layout.go`, add:
+
 ```go
 ActionBarHeight = 5 // 2 rows × 2 lines each + 1 gap line
 ```
@@ -104,7 +106,7 @@ In `internal/model/model.go`:
 2. **`sessionListWidth()`** → return `m.contentWidth()`
 3. **`rowWidth()`** → return `m.contentWidth() - ui.ScrollbarColumnWidth`
 
-These are the *only* width changes needed. All view functions already call `sessionListWidth()` / `rowWidth()`, so the list automatically expands to full width.
+These are the _only_ width changes needed. All view functions already call `sessionListWidth()` / `rowWidth()`, so the list automatically expands to full width.
 
 ### Step 4: Rewrite `renderWithSidebar` as bottom-bar composer
 
@@ -125,12 +127,12 @@ Remove the entire line-by-line list+sidebar joining block, the `SidebarGap` usag
 
 Each `*MaxVisibleItems()` function currently accounts for header + footer overhead. Add `ui.ActionBarHeight` to the overhead in all of them:
 
-| Function | File | Current overhead | New overhead |
-|----------|------|-----------------|--------------|
-| `sessionMaxVisibleItems` | `session.go` | `6 + tableHeader + selfSession` | `+ ActionBarHeight` |
-| `projectMaxVisibleItems` | `directory.go` | `6` | `+ ActionBarHeight` |
-| `cloneMaxVisibleItems` | `clone.go` | `6` | `+ ActionBarHeight` |
-| Bookmarks inline calc | `bookmarks.go` | `8` | `+ ActionBarHeight` |
+| Function                 | File           | Current overhead                | New overhead        |
+| ------------------------ | -------------- | ------------------------------- | ------------------- |
+| `sessionMaxVisibleItems` | `session.go`   | `6 + tableHeader + selfSession` | `+ ActionBarHeight` |
+| `projectMaxVisibleItems` | `directory.go` | `6`                             | `+ ActionBarHeight` |
+| `cloneMaxVisibleItems`   | `clone.go`     | `6`                             | `+ ActionBarHeight` |
+| Bookmarks inline calc    | `bookmarks.go` | `8`                             | `+ ActionBarHeight` |
 
 ### Step 6: Update layout tests
 
@@ -167,15 +169,15 @@ Add tests for `RenderButtonBar` and `renderButtonRow`:
 
 ## Edge Cases & Decisions
 
-| Case | Decision |
-|------|----------|
-| Very narrow terminal (< 40 cols) | Buttons may truncate; acceptable — old code hid sidebar entirely, new code always shows bar |
-| Modes with < 5 actions (e.g. Clone: 1 action) | Row 1 shows the action, row 2 is empty (padded to width). Keeps layout stable across mode switches. |
-| Modes with exactly 5 actions | Row 1 fills, row 2 empty. Clean. |
-| Modes with > 10 actions | Not currently possible (max is 9). If added later, row 2 would show actions 6–10 and truncate. |
-| Padding between list and action bar | Natural via `renderWithSidebar` padding logic. When list is short, empty lines push bar down. When list is long, bar sits immediately below last item. |
-| Background gaps between buttons | 1-space gap has terminal default background. Consistent with current sidebar blank lines between buttons. |
-| "ACTIONS" label | Omitted for compactness. The button visual style is self-explanatory. |
+| Case                                          | Decision                                                                                                                                               |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Very narrow terminal (< 40 cols)              | Buttons may truncate; acceptable — old code hid sidebar entirely, new code always shows bar                                                            |
+| Modes with < 5 actions (e.g. Clone: 1 action) | Row 1 shows the action, row 2 is empty (padded to width). Keeps layout stable across mode switches.                                                    |
+| Modes with exactly 5 actions                  | Row 1 fills, row 2 empty. Clean.                                                                                                                       |
+| Modes with > 10 actions                       | Not currently possible (max is 9). If added later, row 2 would show actions 6–10 and truncate.                                                         |
+| Padding between list and action bar           | Natural via `renderWithSidebar` padding logic. When list is short, empty lines push bar down. When list is long, bar sits immediately below last item. |
+| Background gaps between buttons               | 1-space gap has terminal default background. Consistent with current sidebar blank lines between buttons.                                              |
+| "ACTIONS" label                               | Omitted for compactness. The button visual style is self-explanatory.                                                                                  |
 
 ## Verification Checklist
 
