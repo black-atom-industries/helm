@@ -9,8 +9,8 @@ const (
 	// Pinned self session (row + separator)
 	SelfSessionOverhead = 2
 
-	// Bottom action bar height (2 rows × 2 lines each + 1 gap line)
-	ActionBarHeight = 5
+	// Bottom action bar height (2 rows of compact buttons + 1 gap line)
+	ActionBarHeight = 3
 
 	// Fallback values
 	DefaultVisibleItems = 10

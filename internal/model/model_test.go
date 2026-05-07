@@ -286,17 +286,17 @@ func TestSessionMaxVisibleItems(t *testing.T) {
 		},
 		{
 			name:   "small window",
-			height: 12, // contentHeight = 10, overhead = 6 + ActionBarHeight(5) = 11, available = -1 → fallback
-			want:   10,
+			height: 12, // contentHeight = 10, overhead = 6 + ActionBarHeight(3) = 9, available = 1
+			want:   1,
 		},
 		{
 			name:   "large window uses all space",
-			height: 50, // contentHeight = 48, overhead = 11, available = 37
-			want:   37,
+			height: 50, // contentHeight = 48, overhead = 9, available = 39
+			want:   39,
 		},
 		{
 			name:   "very small window",
-			height: 10, // contentHeight = 8, overhead = 11, available = -3 → fallback
+			height: 10, // contentHeight = 8, overhead = 9, available = -1 → fallback
 			want:   10,
 		},
 	}
@@ -330,18 +330,18 @@ func TestProjectMaxVisibleItems(t *testing.T) {
 		},
 		{
 			name:   "small window",
-			height: 12, // contentHeight = 10, overhead = 6 + 5 = 11, available = -1 → fallback
-			want:   10,
+			height: 12, // contentHeight = 10, overhead = 6 + ActionBarHeight(3) = 9, available = 1
+			want:   1,
 		},
 		{
 			name:   "large window uses all space",
-			height: 50, // contentHeight = 48, overhead = 11, available = 37
-			want:   37,
+			height: 50, // contentHeight = 48, overhead = 9, available = 39
+			want:   39,
 		},
 		{
 			name:   "medium window",
-			height: 17, // contentHeight = 15, overhead = 11, available = 4
-			want:   4,
+			height: 17, // contentHeight = 15, overhead = 9, available = 6
+			want:   6,
 		},
 	}
 
