@@ -194,9 +194,60 @@ Sessions show Claude status as a single animated character:
 - `?` - Claude waiting for input
 - `!` - Claude waiting for input > 5 minutes (needs attention)
 
+## Pi Status Integration
+
+Display Pi agent status for each session with an animated indicator.
+
+### Setup
+
+1. Copy both files to their destinations:
+
+   ```sh
+   # Hook script (called by the extension)
+   cp hooks/helm-pi-hook.sh ~/.local/bin/
+   chmod +x ~/.local/bin/helm-pi-hook.sh
+
+   # Pi extension (auto-discovered)
+   cp hooks/helm-pi-status.ts ~/.pi/agent/extensions/
+   ```
+
+2. Restart Pi (or use `/reload`)
+
+3. Enable in config (`~/.config/black-atom/helm/config.yml`):
+
+   ```yaml
+   pi_status_enabled: true
+   ```
+
+Or via environment variable:
+
+   ```sh
+   export TMUX_SESSION_PICKER_PI_STATUS=1
+   ```
+
+### Extension Events
+
+The extension subscribes to these Pi events:
+
+| Event | Hook | Status |
+|-------|------|--------|
+| `session_start` | `start` | New |
+| `agent_start` | `working` | Processing |
+| `agent_end` | `waiting` | Idle |
+| `session_shutdown` | `end` | Cleanup |
+
+### Display
+
+Sessions show Pi status as a single animated character (same visual style as Claude Code):
+
+- `⠤⠆⠒⠰` (spinner) - Pi actively processing
+- `?` - Pi waiting for input
+- `!` - Pi waiting for input > 5 minutes (needs attention)
+- `Z` - Pi idle > 15 minutes
+
 ## Project Tracking
 
-Issues and roadmap are tracked in [Linear](https://linear.app/black-atom-industries) under the Development team with the `helm` label.
+Issues are tracked in [GitHub Issues](https://github.com/black-atom-industries/helm/issues) with the `helm` label.
 
 ## License
 
