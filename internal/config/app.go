@@ -11,6 +11,7 @@ const (
 	ConfigFileName    = "config.yml"
 	BookmarksFileName = "bookmarks.yml"
 	StatusFileExt     = ".status"
+	PiStatusFileExt   = ".pi-status"
 )
 
 // ConfigDirName returns the relative path for config files under ~/.config/

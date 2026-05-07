@@ -16,6 +16,7 @@ import (
 	"github.com/black-atom-industries/helm/internal/config"
 	"github.com/black-atom-industries/helm/internal/git"
 	"github.com/black-atom-industries/helm/internal/lib/fuzzy"
+	"github.com/black-atom-industries/helm/internal/pi"
 	"github.com/black-atom-industries/helm/internal/tmux"
 	"github.com/black-atom-industries/helm/internal/ui"
 )
@@ -83,6 +84,7 @@ type Model struct {
 	sessions          []tmux.Session
 	selfSession       *tmux.Session // The current/self session (pinned at top)
 	claudeStatuses    map[string]claude.Status
+	piStatuses        map[string]pi.Status
 	gitStatuses       map[string]git.Status
 	currentSession    string
 	cursor            int
@@ -298,6 +300,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sessionsLoaded = true
 		m.saveSessionCache() // Cache for instant startup next time
 		m.loadClaudeStatuses()
+		m.loadPiStatuses()
 		// Initialize git statuses map (will be populated async)
 		if m.gitStatuses == nil {
 			m.gitStatuses = make(map[string]git.Status)
@@ -518,6 +521,25 @@ func (m *Model) loadClaudeStatuses() {
 		status := claude.GetStatus(s.Name, m.config.CacheDir)
 		if status.State != "" {
 			m.claudeStatuses[s.Name] = status
+		}
+	}
+}
+
+func (m *Model) loadPiStatuses() {
+	m.piStatuses = make(map[string]pi.Status)
+	if !m.config.PiStatusEnabled {
+		return
+	}
+	if m.selfSession != nil {
+		status := pi.GetStatus(m.selfSession.Name, m.config.CacheDir)
+		if status.State != "" {
+			m.piStatuses[m.selfSession.Name] = status
+		}
+	}
+	for _, s := range m.sessions {
+		status := pi.GetStatus(s.Name, m.config.CacheDir)
+		if status.State != "" {
+			m.piStatuses[s.Name] = status
 		}
 	}
 }

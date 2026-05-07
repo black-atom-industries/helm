@@ -1,0 +1,93 @@
+package pi
+
+import (
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/black-atom-industries/helm/internal/config"
+)
+
+// StaleThreshold is how long before a "working" status is considered stale.
+// If Pi hasn't updated the status file in this time, assume it's not running.
+const StaleThreshold = 2 * time.Minute
+
+// WaitingStaleThreshold is how long before a "waiting" status is considered stale.
+// Safety net — the TUI handles visual progression (? → ! → Z) before this kicks in.
+const WaitingStaleThreshold = 30 * time.Minute
+
+// Status represents Pi status for a session
+type Status struct {
+	State     string    // "new", "working", "waiting", or ""
+	Timestamp time.Time // When the status was last updated
+}
+
+// IsStale returns true if the status hasn't been updated within the appropriate threshold.
+func (s Status) IsStale() bool {
+	if s.State == "" {
+		return false // No status to be stale
+	}
+	if s.State == "waiting" {
+		return time.Since(s.Timestamp) > WaitingStaleThreshold
+	}
+	return time.Since(s.Timestamp) > StaleThreshold
+}
+
+// GetStatus reads the Pi status for a session from the given cache directory.
+// Returns empty Status if no status file exists or if status is stale.
+func GetStatus(sessionName string, cacheDir string) Status {
+	statusFile := filepath.Join(cacheDir, sessionName+config.PiStatusFileExt)
+	content, err := os.ReadFile(statusFile)
+	if err != nil {
+		return Status{}
+	}
+
+	// Parse format: "state:timestamp"
+	parts := strings.SplitN(strings.TrimSpace(string(content)), ":", 2)
+	if len(parts) != 2 {
+		return Status{}
+	}
+
+	timestamp, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil {
+		return Status{}
+	}
+
+	status := Status{
+		State:     parts[0],
+		Timestamp: time.Unix(timestamp, 0),
+	}
+
+	// If status is stale, treat it as no status
+	if status.IsStale() {
+		return Status{}
+	}
+
+	return status
+}
+
+// CleanupStale removes Pi status files for sessions that no longer exist
+func CleanupStale(cacheDir string, activeSessions []string) {
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return
+	}
+
+	activeSet := make(map[string]bool)
+	for _, s := range activeSessions {
+		activeSet[s] = true
+	}
+
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), config.PiStatusFileExt) {
+			continue
+		}
+
+		sessionName := strings.TrimSuffix(entry.Name(), config.PiStatusFileExt)
+		if !activeSet[sessionName] {
+			_ = os.Remove(filepath.Join(cacheDir, entry.Name()))
+		}
+	}
+}

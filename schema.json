@@ -31,6 +31,11 @@
       "description": "Enable Claude Code status integration",
       "default": false
     },
+    "pi_status_enabled": {
+      "type": "boolean",
+      "description": "Enable Pi status integration",
+      "default": false
+    },
     "git_status_enabled": {
       "type": "boolean",
       "description": "Enable git status indicator (shows dirty/ahead/behind for repos)",

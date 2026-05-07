@@ -9,6 +9,7 @@ import (
 
 	"github.com/black-atom-industries/helm/internal/claude"
 	"github.com/black-atom-industries/helm/internal/git"
+	"github.com/black-atom-industries/helm/internal/pi"
 )
 
 // RowLayout holds calculated column widths for consistent alignment across rows
@@ -33,7 +34,8 @@ type RowOpts struct {
 	GitStatus        *git.Status    // Show git status if set
 	GitStatusLoading bool           // Show loading indicator for git status
 	ClaudeStatus     *claude.Status // Show claude status if set
-	AnimFrame        int            // Animation frame for claude status
+	PiStatus         *pi.Status     // Show pi status if set
+	AnimFrame        int            // Animation frame for status icons
 	IsSelf           bool           // True for the pinned current/self session
 }
 
@@ -176,6 +178,21 @@ func RenderClaudeIcon(status *claude.Status, animFrame int, selected bool) strin
 	return icon
 }
 
+// RenderPiIcon renders a single-character Pi status icon
+// Returns a space for no status to preserve column alignment
+func RenderPiIcon(status *pi.Status, animFrame int, selected bool) string {
+	if status == nil || status.State == "" {
+		return SpacerStyle(" ", selected) // Reserved space for alignment
+	}
+	waitDuration := time.Since(status.Timestamp)
+	icon := FormatPiIcon(status.State, animFrame, waitDuration)
+	if selected {
+		// Re-apply the icon style with background
+		return lipgloss.NewStyle().Background(Colors.Bg.Selected).Render(icon)
+	}
+	return icon
+}
+
 // SessionRowOpts wraps RowOpts with session-specific settings
 type SessionRowOpts struct {
 	RowOpts
@@ -211,10 +228,16 @@ func RenderSessionRow(name string, lastActivity time.Time, layout RowLayout, opt
 	cols := []string{
 		renderIndex,
 		SpacerStyle(" ", opts.Selected),
-		// Claude icon (after index, before expand arrow)
-		RenderClaudeIcon(opts.ClaudeStatus, opts.AnimFrame, opts.Selected),
-		SpacerStyle(" ", opts.Selected),
 	}
+
+	// Status columns: always show both CC and Pi together (reserved space for alignment).
+	// Spacer between icons is 2 chars wide to align under the 2-char "CC"/"Pi" headers.
+	cols = append(cols,
+		RenderClaudeIcon(opts.ClaudeStatus, opts.AnimFrame, opts.Selected),
+		SpacerStyle("  ", opts.Selected),
+		RenderPiIcon(opts.PiStatus, opts.AnimFrame, opts.Selected),
+		SpacerStyle(" ", opts.Selected),
+	)
 
 	// Expand icon (optional)
 	if opts.ShowExpandIcon {
@@ -246,8 +269,11 @@ func RenderBookmarkRow(name string, layout RowLayout, opts RowOpts, width int) s
 	cols := []string{
 		RenderIndex(opts.Num, opts.Selected),
 		SpacerStyle(" ", opts.Selected),
-		// Claude icon column (always reserved for alignment with session rows)
+		// Status columns: always show both CC and Pi together (reserved space for alignment).
+		// Spacer between icons is 2 chars wide to align under the 2-char "CC"/"Pi" headers.
 		RenderClaudeIcon(opts.ClaudeStatus, opts.AnimFrame, opts.Selected),
+		SpacerStyle("  ", opts.Selected),
+		RenderPiIcon(opts.PiStatus, opts.AnimFrame, opts.Selected),
 		SpacerStyle(" ", opts.Selected),
 		RenderSessionName(name, layout.NameWidth, opts.Selected),
 	}
@@ -269,6 +295,8 @@ type TableHeaderOpts struct {
 	ShowExpandIcon bool
 	ShowTime       bool
 	ShowGit        bool
+	ShowCC         bool   // Show Claude Code status column
+	ShowPi         bool   // Show Pi status column
 	NameLabel      string // e.g., "Session" or "Bookmark"
 }
 
@@ -279,9 +307,14 @@ func RenderTableHeader(layout RowLayout, opts TableHeaderOpts) string {
 	cols := []string{
 		"  ", // Align with scrollbar column in data rows
 		dim.Render(fmt.Sprintf("%-3s", "#")),
-		" ",
-		CCHeaderStyle.Render("CC"), // Claude Code status column (orange)
-		" ",
+	}
+
+	// Status columns: show which ones are enabled (data rows always reserve both)
+	if opts.ShowCC {
+		cols = append(cols, " ", CCHeaderStyle.Render("CC"))
+	}
+	if opts.ShowPi {
+		cols = append(cols, " ", PiHeaderStyle.Render("Pi"))
 	}
 
 	// Expand icon placeholder

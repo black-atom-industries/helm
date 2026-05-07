@@ -794,6 +794,8 @@ func (m Model) viewSessionList() string {
 			ShowExpandIcon: true,
 			ShowTime:       true,
 			ShowGit:        m.maxGitStatusWidth > 0,
+			ShowCC:         true, // Always show CC in header when data rows have it reserved
+			ShowPi:         true, // Always show Pi in header when data rows have it reserved
 			NameLabel:      "SESS",
 		})
 		listBuilder.WriteString(header)
@@ -867,6 +869,9 @@ func (m Model) viewSessionList() string {
 			}
 			if status, ok := m.claudeStatuses[session.Name]; ok {
 				opts.ClaudeStatus = &status
+			}
+			if status, ok := m.piStatuses[session.Name]; ok {
+				opts.PiStatus = &status
 			}
 
 			listBuilder.WriteString(ui.RenderSessionRow(session.Name, session.LastActivity, layout, opts, m.rowWidth()))

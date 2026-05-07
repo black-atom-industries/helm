@@ -64,6 +64,13 @@ var (
 	ClaudeWaitingUrgentStyle lipgloss.Style
 	ClaudeIdleStyle          lipgloss.Style
 
+	// Pi status styles
+	PiNewStyle           lipgloss.Style
+	PiWorkingStyle       lipgloss.Style
+	PiWaitingStyle       lipgloss.Style
+	PiWaitingUrgentStyle lipgloss.Style
+	PiIdleStyle          lipgloss.Style
+
 	// Git status styles
 	GitFilesStyle   lipgloss.Style
 	GitAddStyle     lipgloss.Style
@@ -103,6 +110,9 @@ var (
 
 	// CC header label style
 	CCHeaderStyle lipgloss.Style
+
+	// Pi header label style
+	PiHeaderStyle lipgloss.Style
 
 	// Self session styles (pinned current session)
 	SelfIndexStyle         lipgloss.Style
@@ -233,6 +243,26 @@ func initStyles() {
 		Foreground(Colors.Fg.ClaudeIdle).
 		Bold(true)
 
+	PiNewStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.Muted).
+		Bold(true)
+
+	PiWorkingStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.PiWorking).
+		Bold(true)
+
+	PiWaitingStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.PiWaiting).
+		Bold(true)
+
+	PiWaitingUrgentStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.PiUrgent).
+		Bold(true)
+
+	PiIdleStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.PiIdle).
+		Bold(true)
+
 	GitFilesStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.GitFiles)
 
@@ -296,6 +326,10 @@ func initStyles() {
 	CCHeaderStyle = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(Colors.Fg.ClaudeHeader)
+
+	PiHeaderStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(Colors.Fg.PiHeader)
 
 	SelfIndexStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Accent).
@@ -469,6 +503,31 @@ func FormatClaudeIcon(state string, animationFrame int, waitDuration time.Durati
 			return ClaudeWaitingUrgentStyle.Render("!")
 		}
 		return ClaudeWaitingStyle.Render("?")
+	default:
+		return " "
+	}
+}
+
+// FormatPiIcon formats the Pi status as a single character icon
+// animationFrame cycles 0-3 for the spinner, waitDuration determines ? vs !
+func FormatPiIcon(state string, animationFrame int, waitDuration time.Duration) string {
+	switch state {
+	case "new":
+		// Don't show icon for "new" - it's just noise
+		return " "
+	case "working":
+		// Animated spinner
+		frame := animationFrame % len(ClaudeSpinnerFrames)
+		return PiWorkingStyle.Render(ClaudeSpinnerFrames[frame])
+	case "waiting":
+		// Time-based progression: ? → ! → Z
+		if waitDuration >= ClaudeIdleThreshold {
+			return PiIdleStyle.Render("Z")
+		}
+		if waitDuration >= ClaudeWaitThreshold {
+			return PiWaitingUrgentStyle.Render("!")
+		}
+		return PiWaitingStyle.Render("?")
 	default:
 		return " "
 	}

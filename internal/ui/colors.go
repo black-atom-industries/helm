@@ -115,6 +115,13 @@ type FgColors struct {
 	GitAdd   lipgloss.TerminalColor // Additions
 	GitDel   lipgloss.TerminalColor // Deletions
 
+	// Pi status
+	PiHeader  lipgloss.TerminalColor // "Pi" label
+	PiWorking lipgloss.TerminalColor // Spinner
+	PiWaiting lipgloss.TerminalColor // "?" icon
+	PiUrgent  lipgloss.TerminalColor // "!" icon
+	PiIdle    lipgloss.TerminalColor // "Z" icon
+
 	// Scrollbar
 	ScrollbarTrack lipgloss.TerminalColor // Track (subtle background line)
 	ScrollbarThumb lipgloss.TerminalColor // Thumb (visible position indicator)
@@ -166,6 +173,12 @@ func darkFg() FgColors {
 		GitFiles: hc.Blue,
 		GitAdd:   hc.Green,
 		GitDel:   hc.Red,
+
+		PiHeader:  hc.ClaudeOrange, // Same orange as CC
+		PiWorking: hc.Yellow,
+		PiWaiting: hc.Green,
+		PiUrgent:  hc.Red,
+		PiIdle:    hc.Blue,
 
 		ScrollbarTrack: tc.BrightBlack,
 		ScrollbarThumb: tc.White,
@@ -230,6 +243,12 @@ func lightFg() FgColors {
 		GitFiles: hc.Blue,
 		GitAdd:   hc.Green,
 		GitDel:   hc.Red,
+
+		PiHeader:  hc.ClaudeOrange, // Same orange as CC
+		PiWorking: hc.Yellow,
+		PiWaiting: hc.Green,
+		PiUrgent:  hc.Red,
+		PiIdle:    hc.Blue,
 
 		ScrollbarTrack: tc.BrightWhite,
 		ScrollbarThumb: tc.White,

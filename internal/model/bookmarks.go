@@ -300,6 +300,8 @@ func (m Model) viewBookmarks() string {
 			ShowExpandIcon: false,
 			ShowTime:       false,
 			ShowGit:        maxGitWidth > 0,
+			ShowCC:         true, // Always show CC in header when data rows have it reserved
+			ShowPi:         true, // Always show Pi in header when data rows have it reserved
 			NameLabel:      "BKMK",
 		})
 		b.WriteString(header)
@@ -350,6 +352,9 @@ func (m Model) viewBookmarks() string {
 				}
 				if status, ok := m.claudeStatuses[sessionName]; ok {
 					opts.ClaudeStatus = &status
+				}
+				if status, ok := m.piStatuses[sessionName]; ok {
+					opts.PiStatus = &status
 				}
 				b.WriteString(ui.RenderSessionRow(sessionName, session.LastActivity, layout, opts, m.rowWidth()))
 				b.WriteString("\n")

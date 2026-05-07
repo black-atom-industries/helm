@@ -34,6 +34,9 @@ type Config struct {
 	// Enable Claude Code status integration
 	ClaudeStatusEnabled bool `yaml:"claude_status_enabled"`
 
+	// Enable Pi status integration
+	PiStatusEnabled bool `yaml:"pi_status_enabled"`
+
 	// Enable git status indicator in session list
 	GitStatusEnabled bool `yaml:"git_status_enabled"`
 
@@ -100,6 +103,7 @@ func DefaultConfig() Config {
 		LayoutDir:           filepath.Join(home, ".config", "tmux", "layouts"),
 		EnableLayouts:       false,
 		ClaudeStatusEnabled: false,
+		PiStatusEnabled:     false,
 		GitStatusEnabled:    false,
 		CacheDir:            filepath.Join(home, ".cache", AppDirName),
 		ProjectDirs:         []string{filepath.Join(home, "repos")},
@@ -175,6 +179,9 @@ func Load() (Config, error) {
 	}
 	if os.Getenv("TMUX_SESSION_PICKER_CLAUDE_STATUS") == "1" {
 		cfg.ClaudeStatusEnabled = true
+	}
+	if os.Getenv("TMUX_SESSION_PICKER_PI_STATUS") == "1" {
+		cfg.PiStatusEnabled = true
 	}
 	if os.Getenv("TMUX_SESSION_PICKER_GIT_STATUS") == "1" {
 		cfg.GitStatusEnabled = true
