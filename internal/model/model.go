@@ -784,12 +784,6 @@ func (m *Model) borderWidth() int {
 	return m.contentWidth()
 }
 
-// sidebarWidth returns the total width consumed by the sidebar.
-// Now always 0 — actions moved to bottom bar.
-func (m *Model) sidebarWidth() int {
-	return 0
-}
-
 // sessionListWidth returns the width available for the session list.
 // Now equivalent to contentWidth — actions moved to bottom bar.
 func (m *Model) sessionListWidth() int {
