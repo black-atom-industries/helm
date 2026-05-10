@@ -170,7 +170,7 @@ func New(currentSession string, cfg config.Config, initialView string) Model {
 	pathInput.Prompt = ""
 	pathInput.CharLimit = 256
 
-	// Create project list with filter function that matches on display path
+	// Create project list with filter function using segment-aware matching
 	projectList := ui.NewScrollList(func(fullPath string, filter string) bool {
 		parts := strings.Split(fullPath, string(filepath.Separator))
 		depth := cfg.ProjectDepth
@@ -178,18 +178,19 @@ func New(currentSession string, cfg config.Config, initialView string) Model {
 			depth = len(parts)
 		}
 		displayPath := strings.Join(parts[len(parts)-depth:], "/")
-		return fuzzy.Match(displayPath, filter)
+		return fuzzy.MatchPath(displayPath, filter)
 	})
 
-	// Create clone list with filter function that matches on repo name
+	// Create clone list with filter function using segment-aware matching
 	cloneList := ui.NewScrollList(func(repo string, filter string) bool {
-		return fuzzy.Match(repo, filter)
+		return fuzzy.MatchPath(repo, filter)
 	})
 
-	// Create bookmark list with filter function that matches on path basename
+	// Create bookmark list with filter function using segment-aware matching
 	bookmarkList := ui.NewScrollList(func(b config.Bookmark, filter string) bool {
-		name := filepath.Base(b.Path)
-		return fuzzy.Match(name, filter) || fuzzy.Match(b.Path, filter)
+		// Normalize path: strip leading slash to avoid empty first segment
+		path := strings.TrimPrefix(b.Path, "/")
+		return fuzzy.MatchPath(path, filter)
 	})
 
 	m := Model{
