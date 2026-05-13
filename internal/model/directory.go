@@ -48,6 +48,13 @@ func (m *Model) handlePickDirectoryMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.pendingSessionName != "" {
 				return m.createSessionWithNewFolder(selected, m.pendingSessionName)
 			}
+			if m.returnToBookmarks {
+				result, cmd := m.addPathToBookmarks(selected)
+				m.returnToBookmarks = false
+				m.mode = ModeBookmarks
+				m.bookmarkList.SetItems(m.config.Bookmarks)
+				return result, cmd
+			}
 			return m.createSessionFromDir(selected)
 		}
 
