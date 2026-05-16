@@ -147,6 +147,154 @@ func TestMatch(t *testing.T) {
 	}
 }
 
+func TestMatchPath(t *testing.T) {
+	tests := []struct {
+		name    string
+		text    string
+		pattern string
+		want    bool
+	}{
+		// No "/" in pattern — match against last segment only
+		{
+			name:    "last segment exact match",
+			text:    "black-atom-industries/core",
+			pattern: "core",
+			want:    true,
+		},
+		{
+			name:    "last segment no match",
+			text:    "black-atom-industries/ai",
+			pattern: "core",
+			want:    false,
+		},
+		{
+			name:    "org chars scattered in last segment no match",
+			text:    "black-atom-industries/docs",
+			pattern: "core",
+			want:    false,
+		},
+		{
+			name:    "fuzzy within last segment",
+			text:    "nikbrunner/imf-notes",
+			pattern: "imfnotes",
+			want:    true,
+		},
+		{
+			name:    "abbreviated within last segment",
+			text:    "hello-world",
+			pattern: "hw",
+			want:    true,
+		},
+		{
+			name:    "no segments text matches normally",
+			text:    "core",
+			pattern: "core",
+			want:    true,
+		},
+		{
+			name:    "single segment no match",
+			text:    "ai",
+			pattern: "core",
+			want:    false,
+		},
+		{
+			name:    "empty pattern matches all",
+			text:    "black-atom-industries/core",
+			pattern: "",
+			want:    true,
+		},
+		{
+			name:    "empty text with pattern",
+			text:    "",
+			pattern: "core",
+			want:    false,
+		},
+
+		// "/" in pattern — match segments right-to-left
+		{
+			name:    "slash pattern matches org+repo",
+			text:    "black-atom-industries/core",
+			pattern: "black/core",
+			want:    true,
+		},
+		{
+			name:    "slash pattern no match on repo",
+			text:    "black-atom-industries/ai",
+			pattern: "black/core",
+			want:    false,
+		},
+		{
+			name:    "slash pattern fuzzy org match",
+			text:    "black-atom-industries/core",
+			pattern: "indu/core",
+			want:    true,
+		},
+		{
+			name:    "more pattern segments than text",
+			text:    "core",
+			pattern: "black/core",
+			want:    false,
+		},
+		{
+			name:    "fewer pattern segments than text (tail match)",
+			text:    "some/deep/black-atom-industries/core",
+			pattern: "industries/core",
+			want:    true,
+		},
+		{
+			name:    "trailing slash matches all repos in org",
+			text:    "black-atom-industries/core",
+			pattern: "black-atom-industries/",
+			want:    true,
+		},
+		{
+			name:    "leading slash no match wrong repo",
+			text:    "black-atom-industries/ai",
+			pattern: "/core",
+			want:    false,
+		},
+		{
+			name:    "leading slash match right repo",
+			text:    "black-atom-industries/core",
+			pattern: "/core",
+			want:    true,
+		},
+		{
+			name:    "triple segment match tail",
+			text:    "a/b/c",
+			pattern: "b/c",
+			want:    true,
+		},
+		{
+			name:    "triple segment no match wrong tail",
+			text:    "a/b/c",
+			pattern: "a/c",
+			want:    false,
+		},
+		{
+			name:    "deeper path than pattern segments",
+			text:    "w/x/deep/path/here",
+			pattern: "path/here",
+			want:    true,
+		},
+		{
+			name:    "empty pattern segments for trailing slash",
+			text:    "black-atom-industries/ui",
+			pattern: "industries/",
+			want:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := MatchPath(tt.text, tt.pattern)
+			if got != tt.want {
+				t.Errorf("MatchPath(%q, %q) = %v, want %v", tt.text, tt.pattern, got, tt.want)
+			}
+		})
+	}
+}
+
 func BenchmarkMatch(b *testing.B) {
 	text := "nikbrunner/imf-notes"
 	pattern := "imfnotes"
