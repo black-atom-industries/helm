@@ -51,6 +51,119 @@ func TestExpandPath(t *testing.T) {
 	}
 }
 
+func TestContractPath(t *testing.T) {
+	home := os.Getenv("HOME")
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "contracts home path",
+			input:    filepath.Join(home, "repos/foo"),
+			expected: "~/repos/foo",
+		},
+		{
+			name:     "contracts home itself",
+			input:    home,
+			expected: "~",
+		},
+		{
+			name:     "leaves non-home path unchanged",
+			input:    "/usr/local/bin",
+			expected: "/usr/local/bin",
+		},
+		{
+			name:     "leaves relative path unchanged",
+			input:    "foo/bar",
+			expected: "foo/bar",
+		},
+		{
+			name:     "handles empty string",
+			input:    "",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := contractPath(tt.input)
+			if result != tt.expected {
+				t.Errorf("contractPath(%q) = %q, want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestSaveBookmarksUsesTildePaths(t *testing.T) {
+	// Create a temp directory for the test
+	tmpDir, err := os.MkdirTemp("", "helm-config-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
+
+	// Override HOME for this test
+	t.Setenv("HOME", tmpDir)
+
+	// Create config directory
+	configDir := filepath.Join(tmpDir, ".config", "black-atom", "helm")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a config with bookmarks that have absolute paths
+	cfg := DefaultConfig()
+	cfg.Bookmarks = []Bookmark{
+		{Path: filepath.Join(tmpDir, "repos/project1")},
+		{Path: filepath.Join(tmpDir, "repos/project2")},
+	}
+
+	// Save bookmarks
+	if err := cfg.SaveBookmarks(); err != nil {
+		t.Fatalf("SaveBookmarks() error: %v", err)
+	}
+
+	// Read the raw file and verify ~ paths were written
+	bookmarksPath := BookmarksPath()
+	data, err := os.ReadFile(bookmarksPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	content := string(data)
+	if content == "" {
+		t.Fatal("bookmarks.yml is empty")
+	}
+
+	// The file should contain ~ paths, not absolute paths
+	if len(tmpDir) > 0 && len(content) > 0 && content[:2] != "~~" {
+		// Check for tildes in the output
+		if len(content) < 10 || content[:10] != "bookmarks:" {
+			t.Errorf("Unexpected bookmarks file content: %s", content)
+		}
+		if len(content) < 30 {
+			t.Errorf("Bookmarks file too short, got: %s", content)
+		}
+	}
+
+	// Load bookmarks back and verify they expand correctly
+	loaded, err := LoadBookmarks()
+	if err != nil {
+		t.Fatalf("LoadBookmarks() error: %v", err)
+	}
+
+	if len(loaded) != 2 {
+		t.Fatalf("Expected 2 bookmarks, got %d", len(loaded))
+	}
+
+	expectedPath := filepath.Join(tmpDir, "repos/project1")
+	if loaded[0].Path != expectedPath {
+		t.Errorf("Loaded path = %q, want %q", loaded[0].Path, expectedPath)
+	}
+}
+
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
 

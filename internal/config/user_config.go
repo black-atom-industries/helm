@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -253,7 +254,12 @@ project_dirs:
 // SaveBookmarks writes bookmarks to the separate bookmarks file
 // This preserves comments in the main config.yml
 func (cfg *Config) SaveBookmarks() error {
-	bf := BookmarksFile{Bookmarks: cfg.Bookmarks}
+	// Contract absolute paths back to ~ before saving
+	contracted := make([]Bookmark, len(cfg.Bookmarks))
+	for i, b := range cfg.Bookmarks {
+		contracted[i] = Bookmark{Path: contractPath(b.Path)}
+	}
+	bf := BookmarksFile{Bookmarks: contracted}
 	data, err := yaml.Marshal(bf)
 	if err != nil {
 		return fmt.Errorf("failed to marshal bookmarks: %w", err)
@@ -276,6 +282,18 @@ func expandPath(path string) string {
 	if len(path) > 0 && path[0] == '~' {
 		home := os.Getenv("HOME")
 		return filepath.Join(home, path[1:])
+	}
+	return path
+}
+
+// contractPath replaces the user's home directory with ~
+func contractPath(path string) string {
+	home := os.Getenv("HOME")
+	if home != "" && strings.HasPrefix(path, home+"/") {
+		return "~" + path[len(home):]
+	}
+	if path == home {
+		return "~"
 	}
 	return path
 }
