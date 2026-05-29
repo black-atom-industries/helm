@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/black-atom-industries/helm/internal/config"
-	"github.com/black-atom-industries/helm/internal/github"
+	"github.com/black-atom-industries/helm/internal/giturl"
 )
 
 // setupResult tracks the outcome of a single clone operation
@@ -70,7 +70,7 @@ func runSetup() error {
 
 	var wg sync.WaitGroup
 	for _, url := range urls {
-		ownerRepo := github.ParseGitURL(url)
+		ownerRepo := giturl.ParseGitURL(url)
 		if ownerRepo == "" {
 			mu.Lock()
 			results = append(results, setupResult{repo: url, status: "failed", err: fmt.Errorf("could not parse URL")})
@@ -94,7 +94,7 @@ func runSetup() error {
 			destPath := filepath.Join(cloneDir, repo)
 			result := setupResult{repo: repo}
 
-			if err := github.CloneRepo(repo, destPath); err != nil {
+			if err := giturl.CloneRepo(gitURL, destPath); err != nil {
 				result.status = "failed"
 				result.err = err
 			} else {
@@ -201,7 +201,7 @@ func expandEntries(entries []config.EnsureClonedEntry) ([]string, map[string]str
 
 		// Track post_clone command by owner/repo
 		if entry.PostClone != "" {
-			ownerRepo := github.ParseGitURL(url)
+			ownerRepo := giturl.ParseGitURL(url)
 			if ownerRepo != "" {
 				postCloneMap[ownerRepo] = entry.PostClone
 			}
@@ -218,7 +218,7 @@ func isWildcard(url string) bool {
 
 // expandWildcard expands an org/* pattern to individual repo URLs via gh CLI
 func expandWildcard(url string) ([]string, error) {
-	if err := github.CheckGhCli(); err != nil {
+	if err := giturl.CheckGhCli(); err != nil {
 		return nil, err
 	}
 

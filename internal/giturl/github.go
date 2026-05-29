@@ -1,4 +1,4 @@
-package github
+package giturl
 
 import (
 	"fmt"
@@ -39,28 +39,33 @@ func FetchAvailableRepos() ([]string, error) {
 	return lines, nil
 }
 
-// CloneRepo clones a repository to the specified destination path
-func CloneRepo(ownerRepo, destPath string) error {
+// CloneRepo clones a repository to the specified destination path.
+// gitURL should be a full clone URL (ssh://, git@, https://, or owner/repo).
+// If given owner/repo, it defaults to git@github.com:owner/repo.git.
+func CloneRepo(gitURL, destPath string) error {
 	// Ensure parent directory exists
 	parentDir := filepath.Dir(destPath)
 	if err := os.MkdirAll(parentDir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", parentDir, err)
 	}
 
-	// Construct SSH URL
-	gitURL := fmt.Sprintf("git@github.com:%s.git", ownerRepo)
+	// If it's just owner/repo (no host), default to GitHub SSH
+	if !strings.Contains(gitURL, "@") && !strings.Contains(gitURL, "://") && strings.Contains(gitURL, "/") {
+		gitURL = fmt.Sprintf("git@github.com:%s.git", gitURL)
+	}
 
 	// Clone the repository
 	cmd := exec.Command("git", "clone", gitURL, destPath)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to clone %s: %w", ownerRepo, err)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to clone %s: %w\n%s", gitURL, err, string(out))
 	}
 
 	return nil
 }
 
 // ResolveOwnerRepo normalizes a repo identifier to owner/repo format.
-// Accepts: "owner/repo", SSH URLs, or HTTPS URLs.
+// Accepts: "owner/repo", SSH URLs, SSH protocol URLs, or HTTPS URLs.
 func ResolveOwnerRepo(input string) (string, error) {
 	// If it looks like a URL, parse it
 	if strings.Contains(input, "@") || strings.Contains(input, "://") {
@@ -79,19 +84,29 @@ func ResolveOwnerRepo(input string) (string, error) {
 	return input, nil
 }
 
-// ParseGitURL extracts owner/repo from a git URL (SSH or HTTPS).
+// ParseGitURL extracts owner/repo from a git URL.
+// Supports:
+//   - SSH: git@github.com:owner/repo.git
+//   - SSH protocol: ssh://git@codeberg.org/owner/repo.git
+//   - HTTPS: https://github.com/owner/repo.git
 // Returns empty string if the URL cannot be parsed.
 func ParseGitURL(url string) string {
 	// SSH: git@github.com:owner/repo.git
-	sshRe := regexp.MustCompile(`git@[^:]+:(.+?)(?:\.git)?$`)
-	if m := sshRe.FindStringSubmatch(url); len(m) == 2 {
-		return m[1]
+	sshRe := regexp.MustCompile(`git@([^:]+):(.+?)(?:\.git)?$`)
+	if m := sshRe.FindStringSubmatch(url); len(m) == 3 {
+		return m[2]
 	}
 
-	// HTTPS: https://github.com/owner/repo.git
-	httpsRe := regexp.MustCompile(`https?://[^/]+/(.+?)(?:\.git)?$`)
-	if m := httpsRe.FindStringSubmatch(url); len(m) == 2 {
-		return m[1]
+	// SSH protocol: ssh://git@host/owner/repo.git
+	sshProtoRe := regexp.MustCompile(`ssh://[^@]+@([^/]+)/(.+?)(?:\.git)?$`)
+	if m := sshProtoRe.FindStringSubmatch(url); len(m) == 3 {
+		return m[2]
+	}
+
+	// HTTPS: https://host/owner/repo.git
+	httpsRe := regexp.MustCompile(`https?://([^/]+)/(.+?)(?:\.git)?$`)
+	if m := httpsRe.FindStringSubmatch(url); len(m) == 3 {
+		return m[2]
 	}
 
 	return ""

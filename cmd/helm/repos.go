@@ -11,7 +11,7 @@ import (
 
 	"github.com/black-atom-industries/helm/internal/config"
 	"github.com/black-atom-industries/helm/internal/git"
-	"github.com/black-atom-industries/helm/internal/github"
+	"github.com/black-atom-industries/helm/internal/giturl"
 )
 
 // repoStatus holds status info for a single repo (used in JSON output)
@@ -125,7 +125,7 @@ func runReposAdd(args []string) error {
 		return nil
 	}
 
-	ownerRepo, err := github.ResolveOwnerRepo(args[0])
+	ownerRepo, err := giturl.ResolveOwnerRepo(args[0])
 	if err != nil {
 		return err
 	}
@@ -149,7 +149,7 @@ func runReposAdd(args []string) error {
 	}
 
 	fmt.Printf("  → Cloning %s...\n", ownerRepo)
-	if err := github.CloneRepo(ownerRepo, destPath); err != nil {
+	if err := giturl.CloneRepo(args[0], destPath); err != nil {
 		return fmt.Errorf("failed to clone %s: %w", ownerRepo, err)
 	}
 
@@ -554,7 +554,7 @@ func runReposRebuild(args []string) error {
 		if entry.PostClone == "" {
 			continue
 		}
-		ownerRepo := github.ParseGitURL(entry.URL)
+		ownerRepo := giturl.ParseGitURL(entry.URL)
 		if ownerRepo != "" {
 			postCloneMap[ownerRepo] = entry.PostClone
 		}

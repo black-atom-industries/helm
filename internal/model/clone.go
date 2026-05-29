@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/black-atom-industries/helm/internal/config"
-	"github.com/black-atom-industries/helm/internal/github"
+	"github.com/black-atom-industries/helm/internal/giturl"
 	"github.com/black-atom-industries/helm/internal/tmux"
 	"github.com/black-atom-industries/helm/internal/ui"
 )
@@ -115,7 +115,7 @@ func (m *Model) handleCloneURLMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if value == "" {
 			return m, nil
 		}
-		ownerRepo, err := github.ResolveOwnerRepo(value)
+		ownerRepo, err := giturl.ResolveOwnerRepo(value)
 		if err != nil {
 			m.cloneError = err.Error()
 			return m, nil
@@ -229,7 +229,7 @@ func (m *Model) cloneSelectedRepo(selected string) (tea.Model, tea.Cmd) {
 	sessionName := sanitizeSessionName(selected)
 
 	return m, func() tea.Msg {
-		if err := github.CloneRepo(selected, destPath); err != nil {
+		if err := giturl.CloneRepo(selected, destPath); err != nil {
 			return cloneErrorMsg{err: err}
 		}
 
@@ -250,12 +250,12 @@ func (m *Model) fetchAvailableReposCmd() tea.Cmd {
 	basePath := m.cloneBasePath
 	return func() tea.Msg {
 		// Check gh CLI
-		if err := github.CheckGhCli(); err != nil {
+		if err := giturl.CheckGhCli(); err != nil {
 			return cloneErrorMsg{err: err}
 		}
 
 		// Fetch available repos
-		available, err := github.FetchAvailableRepos()
+		available, err := giturl.FetchAvailableRepos()
 		if err != nil {
 			return cloneErrorMsg{err: err}
 		}

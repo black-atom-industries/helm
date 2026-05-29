@@ -41,7 +41,7 @@ internal/
   git/
     status.go             # Git status per session (dirty, ahead/behind)
     repo.go               # Repo sync state (clean/dirty/ahead/behind/diverged)
-  github/github.go        # GitHub API for repo listing
+  giturl/github.go         # Git URL parsing, clone, and GitHub API
 hooks/helm-hook.sh        # Claude Code hook for status updates
 ```
 
