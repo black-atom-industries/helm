@@ -146,9 +146,20 @@ func KillWindow(sessionName string, windowIndex int) error {
 	return exec.Command("tmux", "kill-window", "-t", target).Run()
 }
 
-// SessionExists checks if a tmux session with the given name exists
+// SessionExists checks if a tmux session with the exact given name exists.
+// Uses list-sessions to avoid tmux's implicit prefix matching when using
+// the -t flag (e.g., "has-session -t foo" also matches "foobar").
 func SessionExists(name string) bool {
-	return exec.Command("tmux", "has-session", "-t", name).Run() == nil
+	out, err := exec.Command("tmux", "list-sessions", "-F", "#{session_name}").Output()
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line == name {
+			return true
+		}
+	}
+	return false
 }
 
 // ClientSize returns the current tmux client's terminal dimensions.
@@ -183,7 +194,16 @@ func CreateSession(name, dir string) error {
 
 // SwitchClient switches the tmux client to a session or window.
 // If running inside tmux, uses switch-client. If outside, uses attach-session.
+// For session-only targets (no : or .), resolves the exact session name to
+// avoid tmux's implicit prefix matching (e.g., "foo" matching "foobar").
 func SwitchClient(target string) error {
+	// Resolve session-only targets to exact name to avoid prefix matching
+	if !strings.Contains(target, ":") && !strings.Contains(target, ".") {
+		if resolved := resolveExactSessionName(target); resolved != "" {
+			target = resolved
+		}
+	}
+
 	var cmd *exec.Cmd
 	if os.Getenv("TMUX") != "" {
 		cmd = exec.Command("tmux", "switch-client", "-t", target)
@@ -195,6 +215,21 @@ func SwitchClient(target string) error {
 		cmd.Stderr = os.Stderr
 	}
 	return cmd.Run()
+}
+
+// resolveExactSessionName finds the exact session name, avoiding tmux's
+// prefix matching. Returns the exact name if found, empty string otherwise.
+func resolveExactSessionName(name string) string {
+	out, err := exec.Command("tmux", "list-sessions", "-F", "#{session_name}").Output()
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line == name {
+			return line
+		}
+	}
+	return ""
 }
 
 // SelectWindow selects a specific window in the current client
