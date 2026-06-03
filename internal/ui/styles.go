@@ -396,13 +396,14 @@ func RenderTitleBar(logo, viewName string, width int) string {
 	return TitleBarStyle.Width(innerWidth).Render(content)
 }
 
-// RenderPrompt renders the prompt line with optional filter text
+// RenderPrompt renders the prompt line with optional filter text and cursor
 func RenderPrompt(filter string, width int) string {
 	innerWidth := width - AppBorderOverheadX
 	if innerWidth < 10 {
 		innerWidth = 40 // fallback for initial render
 	}
-	prompt := "> " + filter
+	// Add block cursor indicator
+	prompt := "> " + filter + "\u2588" // █ (full block)
 	return PromptStyle.Width(innerWidth).Render(prompt)
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/black-atom-industries/helm/internal/claude"
 	"github.com/black-atom-industries/helm/internal/config"
 	"github.com/black-atom-industries/helm/internal/git"
+	"github.com/black-atom-industries/helm/internal/lib/filter"
 	"github.com/black-atom-industries/helm/internal/lib/fuzzy"
 	"github.com/black-atom-industries/helm/internal/pi"
 	"github.com/black-atom-industries/helm/internal/tmux"
@@ -98,7 +99,7 @@ type Model struct {
 	config            config.Config
 	maxNameWidth      int    // For column alignment
 	maxGitStatusWidth int    // For git status column alignment
-	filter            string // Current filter text for fuzzy matching
+	sessionFilter     *filter.Filter[tmux.Session] // Session filter (shared filter logic)
 
 	// Directory picker state (uses ScrollList for cursor/scroll/filter)
 	projectList        *ui.ScrollList[string]
@@ -171,14 +172,9 @@ func New(currentSession string, cfg config.Config, initialView string) Model {
 	pathInput.CharLimit = 256
 
 	// Create project list with filter function using segment-aware matching
+	// Uses full path (relative to base dir) for matching — no depth truncation
 	projectList := ui.NewScrollList(func(fullPath string, filter string) bool {
-		parts := strings.Split(fullPath, string(filepath.Separator))
-		depth := cfg.ProjectDepth
-		if depth > len(parts) {
-			depth = len(parts)
-		}
-		displayPath := strings.Join(parts[len(parts)-depth:], "/")
-		return fuzzy.MatchPath(displayPath, filter)
+		return fuzzy.MatchPath(fullPath, filter)
 	})
 
 	// Create clone list with filter function using segment-aware matching
@@ -193,6 +189,10 @@ func New(currentSession string, cfg config.Config, initialView string) Model {
 		return fuzzy.MatchPath(path, filter)
 	})
 
+	sessionFilter := filter.New([]tmux.Session{}, func(s tmux.Session, f string) bool {
+		return fuzzy.Match(s.Name, f)
+	})
+
 	m := Model{
 		currentSession:   currentSession,
 		mode:             ParseInitialView(initialView),
@@ -202,6 +202,7 @@ func New(currentSession string, cfg config.Config, initialView string) Model {
 		projectList:      projectList,
 		cloneList:        cloneList,
 		bookmarkList:     bookmarkList,
+		sessionFilter:    sessionFilter,
 		bookmarkExpanded: make(map[string]bool),
 	}
 
@@ -216,6 +217,7 @@ func New(currentSession string, cfg config.Config, initialView string) Model {
 	// Load cached sessions for instant startup
 	if cached := m.loadSessionCache(); cached != nil {
 		m.sessions = cached
+		m.sessionFilter.SetItems(m.sessions)
 		m.sessionsLoaded = true
 		m.calculateColumnWidths()
 		// Reserve git status column to prevent layout shift when statuses load
@@ -297,6 +299,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case sessionsMsg:
 		m.sessions = msg.sessions
+		m.sessionFilter.SetItems(m.sessions)
 		m.selfSession = msg.selfSession
 		m.sessionsLoaded = true
 		m.saveSessionCache() // Cache for instant startup next time
@@ -627,7 +630,7 @@ func (m *Model) stateText() string {
 			total++
 		}
 		visible := len(m.items)
-		if m.filter != "" {
+		if m.Filter() != "" {
 			return fmt.Sprintf("Showing %d/%d sessions", visible, total)
 		}
 		return fmt.Sprintf("%d sessions", total)
@@ -686,7 +689,6 @@ func (m *Model) stateText() string {
 
 func (m *Model) rebuildItems() {
 	m.items = nil
-	filterLower := strings.ToLower(m.filter)
 
 	// Pin self session at top (always visible, not affected by filter)
 	if m.selfSession != nil {
@@ -719,7 +721,7 @@ func (m *Model) rebuildItems() {
 
 	for i, session := range m.sessions {
 		// Apply fuzzy filter if active
-		if m.filter != "" && !fuzzy.Match(session.Name, filterLower) {
+		if !m.matchesFilter(session.Name) {
 			continue
 		}
 

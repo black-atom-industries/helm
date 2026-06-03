@@ -54,8 +54,8 @@ func (m *Model) handleCloneChoiceMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		// My repos — enter existing clone flow
-		m.clonePendingFilter = m.filter
-		m.filter = ""
+		m.clonePendingFilter = m.Filter()
+		m.SetFilter("")
 		m.cloneList.Reset()
 		m.cloneList.Clear()
 		m.cloneError = ""
@@ -206,15 +206,9 @@ func (m *Model) handleCloneRepoMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Quit):
 		return m, tea.Quit
 
-	case msg.Type == tea.KeyBackspace:
-		filter := m.cloneList.Filter()
-		if len(filter) > 0 && !m.cloneLoading && !m.cloneCloning {
-			m.cloneList.SetFilter(filter[:len(filter)-1])
-		}
-
-	case msg.Type == tea.KeyRunes:
+	default:
 		if !m.cloneLoading && !m.cloneCloning && m.cloneError == "" {
-			m.cloneList.SetFilter(m.cloneList.Filter() + string(msg.Runes))
+			m.cloneList.HandleKey(msg)
 		}
 	}
 
