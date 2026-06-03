@@ -171,14 +171,9 @@ func New(currentSession string, cfg config.Config, initialView string) Model {
 	pathInput.CharLimit = 256
 
 	// Create project list with filter function using segment-aware matching
+	// Uses full path (relative to base dir) for matching — no depth truncation
 	projectList := ui.NewScrollList(func(fullPath string, filter string) bool {
-		parts := strings.Split(fullPath, string(filepath.Separator))
-		depth := cfg.ProjectDepth
-		if depth > len(parts) {
-			depth = len(parts)
-		}
-		displayPath := strings.Join(parts[len(parts)-depth:], "/")
-		return fuzzy.MatchPath(displayPath, filter)
+		return fuzzy.MatchPath(fullPath, filter)
 	})
 
 	// Create clone list with filter function using segment-aware matching
