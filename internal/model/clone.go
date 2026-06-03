@@ -206,20 +206,9 @@ func (m *Model) handleCloneRepoMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Quit):
 		return m, tea.Quit
 
-	case msg.Type == tea.KeyBackspace:
-		filter := m.cloneList.Filter()
-		if len(filter) > 0 && !m.cloneLoading && !m.cloneCloning {
-			m.cloneList.SetFilter(filter[:len(filter)-1])
-		}
-
-	case msg.Type == tea.KeySpace:
+	default:
 		if !m.cloneLoading && !m.cloneCloning && m.cloneError == "" {
-			m.cloneList.SetFilter(m.cloneList.Filter() + " ")
-		}
-
-	case msg.Type == tea.KeyRunes:
-		if !m.cloneLoading && !m.cloneCloning && m.cloneError == "" {
-			m.cloneList.SetFilter(m.cloneList.Filter() + string(msg.Runes))
+			m.cloneList.HandleKey(msg)
 		}
 	}
 

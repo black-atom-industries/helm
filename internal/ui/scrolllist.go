@@ -1,6 +1,10 @@
 package ui
 
-import "github.com/black-atom-industries/helm/internal/lib/filter"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/black-atom-industries/helm/internal/lib/filter"
+)
 
 // ScrollList is a generic scrollable list with cursor, filtering, and scroll offset management.
 // It eliminates duplicate scroll/cursor logic across different list modes.
@@ -183,4 +187,24 @@ func (s *ScrollList[T]) Clear() {
 	s.cursor = 0
 	s.scrollOffset = 0
 	s.filter.SetFilter("")
+}
+
+// HandleKey processes filter-related key events (space, runes, backspace).
+// Returns true if the key was handled, false if the caller should handle it.
+func (s *ScrollList[T]) HandleKey(msg tea.KeyMsg) bool {
+	switch msg.Type {
+	case tea.KeySpace:
+		s.SetFilter(s.Filter() + " ")
+		return true
+	case tea.KeyRunes:
+		s.SetFilter(s.Filter() + string(msg.Runes))
+		return true
+	case tea.KeyBackspace:
+		filter := s.Filter()
+		if len(filter) > 0 {
+		s.SetFilter(filter[:len(filter)-1])
+		}
+		return true
+	}
+	return false
 }

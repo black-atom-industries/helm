@@ -77,17 +77,8 @@ func (m *Model) handlePickDirectoryMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Quit):
 		return m, tea.Quit
 
-	case msg.Type == tea.KeyBackspace:
-		filter := m.projectList.Filter()
-		if len(filter) > 0 {
-			m.projectList.SetFilter(filter[:len(filter)-1])
-		}
-
-	case msg.Type == tea.KeySpace:
-		m.projectList.SetFilter(m.projectList.Filter() + " ")
-
-	case msg.Type == tea.KeyRunes:
-		m.projectList.SetFilter(m.projectList.Filter() + string(msg.Runes))
+	default:
+		m.projectList.HandleKey(msg)
 	}
 
 	return m, nil
