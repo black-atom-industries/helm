@@ -221,65 +221,15 @@ func (m *Model) projectMaxVisibleItems() int {
 	return ui.DefaultVisibleItems
 }
 
-// scanProjectDirectories scans all configured project directories at the configured depth
-// and returns full paths to each discovered directory
+// scanProjectDirectories scans all configured project directories recursively
+// using .git detection to find repos at any depth.
 func (m *Model) scanProjectDirectories() []string {
 	var dirs []string
-	depth := m.config.ProjectDepth
-
-	// Scan each configured base directory
 	for _, baseDir := range m.config.ProjectDirs {
-		m.walkAtDepth(baseDir, "", depth, &dirs)
+		repos := config.ScanForGitRepos(baseDir)
+		for _, repo := range repos {
+			dirs = append(dirs, filepath.Join(baseDir, repo))
+		}
 	}
-
 	return dirs
-}
-
-// walkAtDepth recursively walks directories and collects full paths at the target depth
-func (m *Model) walkAtDepth(baseDir, currentPath string, remainingDepth int, dirs *[]string) {
-	if remainingDepth == 0 {
-		// We've reached the target depth - add the full path
-		if currentPath != "" {
-			fullPath := filepath.Join(baseDir, currentPath)
-			*dirs = append(*dirs, fullPath)
-		}
-		return
-	}
-
-	// Read the current directory
-	scanPath := filepath.Join(baseDir, currentPath)
-	entries, err := os.ReadDir(scanPath)
-	if err != nil {
-		return
-	}
-
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		// Skip VCS/internal hidden directories but allow project dirs like .github-private
-		if isInternalHiddenDir(entry.Name()) {
-			continue
-		}
-
-		var nextPath string
-		if currentPath == "" {
-			nextPath = entry.Name()
-		} else {
-			nextPath = filepath.Join(currentPath, entry.Name())
-		}
-
-		m.walkAtDepth(baseDir, nextPath, remainingDepth-1, dirs)
-	}
-}
-
-// isInternalHiddenDir returns true for VCS and internal metadata directories
-// (e.g. .git, .hg, .svn) but false for project directories that happen to
-// start with a dot (e.g. .github-private).
-func isInternalHiddenDir(name string) bool {
-	switch name {
-	case ".git", ".hg", ".svn", ".DS_Store", ".Trash", ".cache", ".local", ".config":
-		return true
-	}
-	return false
 }

@@ -125,14 +125,14 @@ func runReposAdd(args []string) error {
 		return nil
 	}
 
-	ownerRepo, err := giturl.ResolveOwnerRepo(args[0])
-	if err != nil {
-		return err
-	}
-
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	ownerRepo, err := giturl.ResolveOwnerRepo(args[0], cfg.GitProviders)
+	if err != nil {
+		return err
 	}
 
 	cloneDir, err := resolveCloneDir(cfg.ProjectDirs)
@@ -554,9 +554,8 @@ func runReposRebuild(args []string) error {
 		if entry.PostClone == "" {
 			continue
 		}
-		ownerRepo := giturl.ParseGitURL(entry.URL)
-		if ownerRepo != "" {
-			postCloneMap[ownerRepo] = entry.PostClone
+		if parsed, err := giturl.ParseGitURL(entry.URL); err == nil {
+			postCloneMap[giturl.ResolveRepoDir(parsed, cfg.GitProviders)] = entry.PostClone
 		}
 	}
 

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -297,5 +298,80 @@ bookmarks:
 
 	if cfg.Bookmarks[0].Path != "/from/bookmarks" {
 		t.Errorf("Bookmark path = %q, want %q (bookmarks.yml should take priority)", cfg.Bookmarks[0].Path, "/from/bookmarks")
+	}
+}
+
+func TestScanForGitRepos(t *testing.T) {
+	// Create a temp directory for the test
+	tmpDir, err := os.MkdirTemp("", "helm-scantest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
+
+	// Create structure:
+	// tmpDir/
+	//   repo1/.git
+	//   subdir/
+	//     repo2/.git
+	//     .cache/  (should be skipped)
+	//     nested/
+	//       repo3/.git
+
+	repo1 := filepath.Join(tmpDir, "repo1")
+	if err := os.MkdirAll(filepath.Join(repo1, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	subdir := filepath.Join(tmpDir, "subdir")
+	if err := os.MkdirAll(subdir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	repo2 := filepath.Join(subdir, "repo2")
+	if err := os.MkdirAll(filepath.Join(repo2, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	cacheDir := filepath.Join(subdir, ".cache")
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	nested := filepath.Join(subdir, "nested")
+	if err := os.MkdirAll(nested, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	repo3 := filepath.Join(nested, "repo3")
+	if err := os.MkdirAll(filepath.Join(repo3, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Also create a .git directory inside repo3 (should be ignored since repo3 is already a repo)
+	deeperGit := filepath.Join(repo3, ".claude")
+	if err := os.MkdirAll(deeperGit, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	repos := ScanForGitRepos(tmpDir)
+
+	// Should find all three repos (sorted alphabetically)
+	expected := []string{"repo1", "subdir/nested/repo3", "subdir/repo2"}
+	if len(repos) != len(expected) {
+		t.Fatalf("Expected %d repos, got %d: %v", len(expected), len(repos), repos)
+	}
+
+	for i, exp := range expected {
+		if repos[i] != exp {
+			t.Errorf("repos[%d] = %q, want %q", i, repos[i], exp)
+		}
+	}
+
+	// Verify .cache was skipped (doesn't appear in repos)
+	for _, r := range repos {
+		if strings.Contains(r, ".cache") {
+			t.Errorf("repos should not contain .cache: got %v", repos)
+		}
 	}
 }

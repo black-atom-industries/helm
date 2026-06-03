@@ -6,8 +6,103 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
+
+// GitURL represents a parsed git URL with structured fields.
+type GitURL struct {
+	Scheme string // "ssh", "https", "git" (SCP-like: git@host:path)
+	Host   string // hostname (no port)
+	Port   int    // 0 if default
+	Path   string // repo path relative to host (without .git)
+}
+
+var (
+	// SCP-like: git@github.com:owner/repo.git
+	scpRe = regexp.MustCompile(`^git@([^:]+):(.+?)(?:\.git)?$`)
+
+	// SSH protocol: ssh://git@host:port/path/repo.git
+	sshProtoRe = regexp.MustCompile(`^ssh://[^@]+@([^:/]+)(?::(\d+))?/(.+?)(?:\.git)?$`)
+
+	// HTTPS: https://host/path/repo.git
+	httpsRe = regexp.MustCompile(`^https?://([^/]+)/(.+?)(?:\.git)?$`)
+)
+
+// ParseGitURL parses any supported git URL into a GitURL struct.
+// Supported formats:
+//
+//	SCP-like:    git@github.com:owner/repo.git
+//	SSH protocol: ssh://git@host:port/path/repo.git
+//	HTTPS:       https://host/path/repo.git
+func ParseGitURL(url string) (GitURL, error) {
+	if url == "" {
+		return GitURL{}, fmt.Errorf("empty URL")
+	}
+
+	// SCP-like: git@host:path.git
+	if m := scpRe.FindStringSubmatch(url); m != nil {
+		return GitURL{
+			Scheme: "git",
+			Host:   m[1],
+			Path:   m[2],
+		}, nil
+	}
+
+	// SSH protocol: ssh://git@host:port/path.git
+	if m := sshProtoRe.FindStringSubmatch(url); m != nil {
+		port := 0
+		if m[2] != "" {
+			port, _ = strconv.Atoi(m[2])
+		}
+		return GitURL{
+			Scheme: "ssh",
+			Host:   m[1],
+			Port:   port,
+			Path:   m[3],
+		}, nil
+	}
+
+	// HTTPS: https://host/path.git
+	if m := httpsRe.FindStringSubmatch(url); m != nil {
+		return GitURL{
+			Scheme: "https",
+			Host:   m[1],
+			Path:   m[2],
+		}, nil
+	}
+
+	return GitURL{}, fmt.Errorf("could not parse git URL: %s", url)
+}
+
+// cleanPath strips a leading slash from a path but preserves ~ prefixes
+// (which distinguish personal repos from team/org repos).
+func cleanPath(path string) string {
+	return strings.TrimPrefix(path, "/")
+}
+
+// ResolveRepoDir returns the directory name for a parsed git URL.
+// The providers map is from config.GitProviders (host → alias).
+//
+// Rules:
+//  1. Look up GitURL.Host in providers map
+//  2. If found with alias: "alias/{cleaned_path}"
+//  3. If found with empty string: "{cleaned_path}"
+//  4. If not found: "{host}/{cleaned_path}"
+func ResolveRepoDir(gitURL GitURL, providers map[string]string) string {
+	cleaned := cleanPath(gitURL.Path)
+	if providers == nil {
+		return gitURL.Host + "/" + cleaned
+	}
+	alias, ok := providers[gitURL.Host]
+	if !ok {
+		return gitURL.Host + "/" + cleaned
+	}
+	if alias == "" {
+		return cleaned
+	}
+	return alias + "/" + cleaned
+}
 
 // CheckGhCli verifies that gh CLI is installed and authenticated
 func CheckGhCli() error {
@@ -66,14 +161,16 @@ func CloneRepo(gitURL, destPath string) error {
 
 // ResolveOwnerRepo normalizes a repo identifier to owner/repo format.
 // Accepts: "owner/repo", SSH URLs, SSH protocol URLs, or HTTPS URLs.
-func ResolveOwnerRepo(input string) (string, error) {
+// The providers map (from config.GitProviders) is used to resolve directory names
+// for non-GitHub hosts (host-qualified paths like "gitlab.com/group/repo").
+func ResolveOwnerRepo(input string, providers map[string]string) (string, error) {
 	// If it looks like a URL, parse it
 	if strings.Contains(input, "@") || strings.Contains(input, "://") {
-		ownerRepo := ParseGitURL(input)
-		if ownerRepo == "" {
+		parsed, err := ParseGitURL(input)
+		if err != nil {
 			return "", fmt.Errorf("could not parse repo from URL: %s", input)
 		}
-		return ownerRepo, nil
+		return ResolveRepoDir(parsed, providers), nil
 	}
 
 	// Must contain a slash for owner/repo format
@@ -82,32 +179,4 @@ func ResolveOwnerRepo(input string) (string, error) {
 	}
 
 	return input, nil
-}
-
-// ParseGitURL extracts owner/repo from a git URL.
-// Supports:
-//   - SSH: git@github.com:owner/repo.git
-//   - SSH protocol: ssh://git@codeberg.org/owner/repo.git
-//   - HTTPS: https://github.com/owner/repo.git
-// Returns empty string if the URL cannot be parsed.
-func ParseGitURL(url string) string {
-	// SSH: git@github.com:owner/repo.git
-	sshRe := regexp.MustCompile(`git@([^:]+):(.+?)(?:\.git)?$`)
-	if m := sshRe.FindStringSubmatch(url); len(m) == 3 {
-		return m[2]
-	}
-
-	// SSH protocol: ssh://git@host/owner/repo.git
-	sshProtoRe := regexp.MustCompile(`ssh://[^@]+@([^/]+)/(.+?)(?:\.git)?$`)
-	if m := sshProtoRe.FindStringSubmatch(url); len(m) == 3 {
-		return m[2]
-	}
-
-	// HTTPS: https://host/owner/repo.git
-	httpsRe := regexp.MustCompile(`https?://([^/]+)/(.+?)(?:\.git)?$`)
-	if m := httpsRe.FindStringSubmatch(url); len(m) == 3 {
-		return m[2]
-	}
-
-	return ""
 }
