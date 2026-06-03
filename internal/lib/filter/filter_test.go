@@ -101,10 +101,13 @@ func TestFilter_SessionNames(t *testing.T) {
 }
 
 func TestFilter_PathMatching(t *testing.T) {
+	// Real paths from the project picker (full paths, no depth truncation)
 	paths := []string{
 		"imfusion/~brunner/agents",
 		"imfusion/websdk/web-ui",
 		"imfusion/websdk/web-viewer",
+		"imfusion/websdk/web-viewer-next",
+		"imfusion/websdk/websdk",
 		"black-atom-industries/helm",
 	}
 
@@ -112,14 +115,15 @@ func TestFilter_PathMatching(t *testing.T) {
 
 	tests := []struct {
 		filter  string
-		wantAll []string
-		noneOf  []string
+		wantAll []string // ALL of these must match
+		noneOf  []string // NONE of these should match
 	}{
-		{"imfusion", []string{"imfusion/~brunner/agents", "imfusion/websdk/web-ui", "imfusion/websdk/web-viewer"}, nil},
-		{"brunner", []string{"imfusion/~brunner/agents"}, []string{"imfusion/websdk/web-ui"}},
-		{"websdk", []string{"imfusion/websdk/web-ui", "imfusion/websdk/web-viewer"}, nil},
-		{"helm", []string{"black-atom-industries/helm"}, nil},
-		{"agents", []string{"imfusion/~brunner/agents"}, nil},
+		// "imfusion" must match ALL imfusion repos (the bug we're preventing)
+		{"imfusion", paths[:5], nil},
+		{"brunner", []string{"imfusion/~brunner/agents"}, paths[1:]},
+		{"websdk", paths[1:4], []string{paths[0], paths[5]}},
+		{"helm", []string{paths[5]}, paths[:5]},
+		{"agents", []string{paths[0]}, paths[1:]},
 	}
 
 	for _, tt := range tests {
