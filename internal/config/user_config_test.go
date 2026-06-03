@@ -40,6 +40,11 @@ func TestExpandPath(t *testing.T) {
 			input:    "~",
 			expected: home,
 		},
+		{
+			name:     "preserves ~username",
+			input:    "~brunner/repos/imfusion",
+			expected: "~brunner/repos/imfusion",
+		},
 	}
 
 	for _, tt := range tests {
@@ -79,6 +84,11 @@ func TestContractPath(t *testing.T) {
 			name:     "leaves relative path unchanged",
 			input:    "foo/bar",
 			expected: "foo/bar",
+		},
+		{
+			name:     "leaves ~username unchanged",
+			input:    "~brunner/repos/imfusion",
+			expected: "~brunner/repos/imfusion",
 		},
 		{
 			name:     "handles empty string",

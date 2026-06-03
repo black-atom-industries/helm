@@ -285,15 +285,21 @@ func (cfg *Config) SaveBookmarks() error {
 
 // expandPath expands ~ to the user's home directory
 func expandPath(path string) string {
-	if len(path) > 0 && path[0] == '~' {
+	// Only expand bare ~ (not ~username)
+	if path == "~" || strings.HasPrefix(path, "~/") {
 		home := os.Getenv("HOME")
 		return filepath.Join(home, path[1:])
 	}
 	return path
 }
 
-// contractPath replaces the user's home directory with ~
+// contractPath replaces the user's home directory with ~.
+// Paths starting with ~ (e.g. ~username) are returned as-is.
 func contractPath(path string) string {
+	// Already contracted or ~username — leave it alone
+	if strings.HasPrefix(path, "~") {
+		return path
+	}
 	home := os.Getenv("HOME")
 	if home != "" && strings.HasPrefix(path, home+"/") {
 		return "~" + path[len(home):]

@@ -75,10 +75,13 @@ func ParseGitURL(url string) (GitURL, error) {
 	return GitURL{}, fmt.Errorf("could not parse git URL: %s", url)
 }
 
-// cleanPath strips a leading slash from a path but preserves ~ prefixes
-// (which distinguish personal repos from team/org repos).
+// cleanPath strips a leading slash and ~ prefix from a path.
+// The ~ prefix (used by Bitbucket/Stash for personal repos) causes
+// shell issues when used as a local directory name.
 func cleanPath(path string) string {
-	return strings.TrimPrefix(path, "/")
+	path = strings.TrimPrefix(path, "/")
+	path = strings.TrimPrefix(path, "~")
+	return path
 }
 
 // ResolveRepoDir returns the directory name for a parsed git URL.

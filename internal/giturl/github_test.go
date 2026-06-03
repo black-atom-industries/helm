@@ -206,8 +206,8 @@ func TestResolveOwnerRepo_with_providers_config(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got != "corp/~alice/my-project" {
-		t.Errorf("got %q, want %q", got, "corp/~alice/my-project")
+	if got != "corp/alice/my-project" {
+		t.Errorf("got %q, want %q", got, "corp/alice/my-project")
 	}
 }
 
@@ -232,8 +232,8 @@ func TestResolveRepoDir_codeberg(t *testing.T) {
 func TestResolveRepoDir_personal_repo_with_alias(t *testing.T) {
 	u, _ := ParseGitURL("ssh://git@git.corp.example.com:7999/~alice/my-project.git")
 	got := ResolveRepoDir(u, map[string]string{"git.corp.example.com": "corp"})
-	if got != "corp/~alice/my-project" {
-		t.Errorf("got %q, want %q", got, "corp/~alice/my-project")
+	if got != "corp/alice/my-project" {
+		t.Errorf("got %q, want %q", got, "corp/alice/my-project")
 	}
 }
 
@@ -258,6 +258,14 @@ func TestResolveRepoDir_tilde_preserved_in_middle(t *testing.T) {
 	got := ResolveRepoDir(u, map[string]string{"example.com": "x"})
 	if got != "x/a/~user/b" {
 		t.Errorf("got %q, want %q", got, "x/a/~user/b")
+	}
+}
+
+func TestResolveRepoDir_strips_leading_tilde(t *testing.T) {
+	u := GitURL{Host: "bitbucket.corp.com", Path: "~alice/repo"}
+	got := ResolveRepoDir(u, map[string]string{"bitbucket.corp.com": "bb"})
+	if got != "bb/alice/repo" {
+		t.Errorf("got %q, want %q", got, "bb/alice/repo")
 	}
 }
 
