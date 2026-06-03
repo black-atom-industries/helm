@@ -154,7 +154,7 @@ func TestMatchPath(t *testing.T) {
 		pattern string
 		want    bool
 	}{
-		// No "/" in pattern — match against last segment only
+		// No "/" in pattern — match against any segment
 		{
 			name:    "last segment exact match",
 			text:    "black-atom-industries/core",
@@ -162,16 +162,22 @@ func TestMatchPath(t *testing.T) {
 			want:    true,
 		},
 		{
-			name:    "last segment no match",
+			name:    "matches org segment",
 			text:    "black-atom-industries/ai",
-			pattern: "core",
+			pattern: "black",
+			want:    true,
+		},
+		{
+			name:    "no segment matches",
+			text:    "black-atom-industries/ai",
+			pattern: "xyz",
 			want:    false,
 		},
 		{
-			name:    "org chars scattered in last segment no match",
-			text:    "black-atom-industries/docs",
-			pattern: "core",
-			want:    false,
+			name:    "fuzzy matches any segment",
+			text:    "imfusion/~brunner/agents",
+			pattern: "imfusion",
+			want:    true,
 		},
 		{
 			name:    "fuzzy within last segment",

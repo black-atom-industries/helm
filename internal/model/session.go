@@ -307,7 +307,7 @@ func (m *Model) updatePathCompletions() {
 			continue
 		}
 		// Skip VCS/internal hidden directories but allow project dirs like .github-private
-		if isInternalHiddenDir(entry.Name()) {
+		if config.IsHiddenDir(entry.Name()) {
 			continue
 		}
 		// Match prefix (case-insensitive)

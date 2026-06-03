@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/black-atom-industries/helm/internal/config"
+	"github.com/black-atom-industries/helm/internal/lib/fuzzy"
 	"github.com/black-atom-industries/helm/internal/tmux"
 )
 
@@ -356,6 +357,113 @@ func TestProjectMaxVisibleItems(t *testing.T) {
 			if got != tt.want {
 				t.Errorf("projectMaxVisibleItems() with height=%d = %d, want %d",
 					tt.height, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestFilterMatching verifies that the fuzzy filter works correctly with
+// real session names from the user's environment.
+func TestFilterMatching(t *testing.T) {
+	// Real session names from the user's tmux
+	sessions := []string{
+		"black-atom-industries-core",
+		"black-atom-industries-helm",
+		"imfusion-brunner-agents",
+		"nikbrunner-dots",
+		"nikbrunner-flux-nvim",
+		"nikbrunner-imf-notes",
+		"nikbrunner-notes",
+	}
+
+	tests := []struct {
+		name    string
+		filter  string
+		wantAll []string // sessions that should match
+		noneOf  []string // sessions that should NOT match
+	}{
+		{
+			name:    "imfusion matches imfusion-brunner-agents",
+			filter:  "imfusion",
+			wantAll: []string{"imfusion-brunner-agents"},
+			noneOf:  []string{"black-atom-industries-helm", "nikbrunner-dots"},
+		},
+		{
+			name:    "black matches both black-atom repos",
+			filter:  "black",
+			wantAll: []string{"black-atom-industries-core", "black-atom-industries-helm"},
+			noneOf:  []string{"imfusion-brunner-agents", "nikbrunner-dots"},
+		},
+		{
+			name:    "helm matches only helm",
+			filter:  "helm",
+			wantAll: []string{"black-atom-industries-helm"},
+			noneOf:  []string{"black-atom-industries-core", "imfusion-brunner-agents"},
+		},
+		{
+			name:    "brunner matches imfusion-brunner-agents and nikbrunner repos",
+			filter:  "brunner",
+			wantAll: []string{"imfusion-brunner-agents", "nikbrunner-dots", "nikbrunner-flux-nvim", "nikbrunner-imf-notes", "nikbrunner-notes"},
+			noneOf:  []string{"black-atom-industries-helm"},
+		},
+		{
+			name:    "nik matches all nikbrunner repos",
+			filter:  "nik",
+			wantAll: []string{"nikbrunner-dots", "nikbrunner-flux-nvim", "nikbrunner-imf-notes", "nikbrunner-notes"},
+			noneOf:  []string{"black-atom-industries-helm", "imfusion-brunner-agents"},
+		},
+		{
+			name:    "agents matches imfusion-brunner-agents",
+			filter:  "agents",
+			wantAll: []string{"imfusion-brunner-agents"},
+			noneOf:  []string{"black-atom-industries-helm"},
+		},
+		{
+			name:    "dots matches nikbrunner-dots",
+			filter:  "dots",
+			wantAll: []string{"nikbrunner-dots"},
+			noneOf:  []string{"black-atom-industries-helm", "imfusion-brunner-agents"},
+		},
+		{
+			name:    "xyz matches nothing",
+			filter:  "xyz",
+			wantAll: []string{},
+			noneOf:  sessions,
+		},
+		{
+			name:    "empty filter matches all",
+			filter:  "",
+			wantAll: sessions,
+			noneOf:  []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filterLower := tt.filter
+			var matched []string
+			for _, name := range sessions {
+				if tt.filter == "" || fuzzy.Match(name, filterLower) {
+					matched = append(matched, name)
+				}
+			}
+
+			// Check wanted sessions matched
+			matchedSet := make(map[string]bool)
+			for _, m := range matched {
+				matchedSet[m] = true
+			}
+			for _, want := range tt.wantAll {
+				if !matchedSet[want] {
+					t.Errorf("filter %q should match %q but didn't. Matched: %v", tt.filter, want, matched)
+				}
+			}
+
+			// Check unwanted sessions didn't match
+			for _, none := range tt.noneOf {
+				if matchedSet[none] {
+					t.Errorf("filter %q should NOT match %q but did. Matched: %v", tt.filter, none, matched)
+				}
 			}
 		})
 	}

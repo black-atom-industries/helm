@@ -43,7 +43,7 @@ func runSetup() error {
 	fmt.Printf("Clone target: %s\n", cloneDir)
 
 	// Expand all entries to concrete URLs
-	urls, postCloneMap, err := expandEntries(cfg.EnsureCloned)
+	urls, postCloneMap, err := expandEntries(cfg.EnsureCloned, cfg.GitProviders)
 	if err != nil {
 		return err
 	}
@@ -70,8 +70,8 @@ func runSetup() error {
 
 	var wg sync.WaitGroup
 	for _, url := range urls {
-		ownerRepo := giturl.ParseGitURL(url)
-		if ownerRepo == "" {
+		ownerRepo, err := giturl.ResolveOwnerRepo(url, cfg.GitProviders)
+		if err != nil {
 			mu.Lock()
 			results = append(results, setupResult{repo: url, status: "failed", err: fmt.Errorf("could not parse URL")})
 			mu.Unlock()
@@ -176,7 +176,7 @@ func resolveCloneDir(dirs []string) (string, error) {
 
 // expandEntries resolves all ensure_cloned entries to concrete git URLs.
 // Returns the URL list and a map of owner/repo -> post_clone command.
-func expandEntries(entries []config.EnsureClonedEntry) ([]string, map[string]string, error) {
+func expandEntries(entries []config.EnsureClonedEntry, providers map[string]string) ([]string, map[string]string, error) {
 	var urls []string
 	postCloneMap := make(map[string]string)
 
@@ -199,10 +199,9 @@ func expandEntries(entries []config.EnsureClonedEntry) ([]string, map[string]str
 
 		urls = append(urls, url)
 
-		// Track post_clone command by owner/repo
+		// Track post_clone command by resolved directory name
 		if entry.PostClone != "" {
-			ownerRepo := giturl.ParseGitURL(url)
-			if ownerRepo != "" {
+			if ownerRepo, err := giturl.ResolveOwnerRepo(url, providers); err == nil {
 				postCloneMap[ownerRepo] = entry.PostClone
 			}
 		}

@@ -115,7 +115,7 @@ func (m *Model) handleCloneURLMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if value == "" {
 			return m, nil
 		}
-		ownerRepo, err := giturl.ResolveOwnerRepo(value)
+		ownerRepo, err := giturl.ResolveOwnerRepo(value, m.config.GitProviders)
 		if err != nil {
 			m.cloneError = err.Error()
 			return m, nil

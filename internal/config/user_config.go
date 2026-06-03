@@ -50,6 +50,12 @@ type Config struct {
 	// Scan depth for project directories (default: 2 for owner/repo structure)
 	ProjectDepth int `yaml:"project_depth"`
 
+	// Maps git hosts to directory aliases for clone destination paths.
+	// Empty string = use path as-is (GitHub style). Omitted hosts use host/ as prefix.
+	// Example: {"git.corp.example.com": "corp"} resolves ssh://git@git.corp.example.com:7999/~alice/proj
+	// to corp/~alice/proj instead of git.corp.example.com/~alice/proj
+	GitProviders map[string]string `yaml:"git_providers,omitempty"`
+
 	// Default directory for new sessions created with C-n
 	DefaultSessionDir string `yaml:"default_session_dir"`
 
@@ -304,42 +310,60 @@ type RepoInfo struct {
 	Path string // absolute path on disk
 }
 
-// ListClonedRepos returns already-cloned repos in owner/repo format.
-// Scans the base path at depth 2 (owner/repo structure).
-func ListClonedRepos(basePath string) ([]string, error) {
+// ScanForGitRepos walks baseDir recursively, collecting directories that contain .git.
+// Stops recursing into directories that are themselves repos.
+func ScanForGitRepos(baseDir string) []string {
 	var repos []string
-
-	owners, err := os.ReadDir(basePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return []string{}, nil
-		}
-		return nil, err
-	}
-
-	for _, owner := range owners {
-		if !owner.IsDir() {
-			continue
-		}
-
-		ownerPath := filepath.Join(basePath, owner.Name())
-		repoEntries, err := os.ReadDir(ownerPath)
+	var walk func(dir string, relPath string)
+	walk = func(dir string, relPath string) {
+		entries, err := os.ReadDir(dir)
 		if err != nil {
-			continue
+			return
 		}
-
-		for _, repo := range repoEntries {
-			if !repo.IsDir() {
+		for _, entry := range entries {
+			if !entry.IsDir() {
 				continue
 			}
-
-			gitPath := filepath.Join(ownerPath, repo.Name(), ".git")
-			if _, err := os.Stat(gitPath); err == nil {
-				repos = append(repos, owner.Name()+"/"+repo.Name())
+			if IsHiddenDir(entry.Name()) {
+				continue
 			}
+			entryRel := entry.Name()
+			if relPath != "" {
+				entryRel = relPath + "/" + entry.Name()
+			}
+			entryPath := filepath.Join(dir, entry.Name())
+			gitPath := filepath.Join(entryPath, ".git")
+			if _, err := os.Stat(gitPath); err == nil {
+				// Found a repo — add it, don't recurse into it
+				repos = append(repos, entryRel)
+				continue
+			}
+			// Not a repo — recurse deeper
+			walk(entryPath, entryRel)
 		}
 	}
+	walk(baseDir, "")
+	return repos
+}
 
+// IsHiddenDir returns true for VCS and internal metadata directories
+// (e.g. .git, .hg, .svn) but false for project directories that happen to
+// start with a dot (e.g. .github-private).
+func IsHiddenDir(name string) bool {
+	switch name {
+	case ".git", ".hg", ".svn", ".DS_Store", ".Trash", ".cache", ".local", ".config":
+		return true
+	}
+	return false
+}
+
+// ListClonedRepos returns already-cloned repos in owner/repo format.
+// Uses recursive walk with .git detection — discovers repos at any depth.
+func ListClonedRepos(basePath string) ([]string, error) {
+	if _, err := os.Stat(basePath); os.IsNotExist(err) {
+		return []string{}, nil
+	}
+	repos := ScanForGitRepos(basePath)
 	sort.Strings(repos)
 	return repos, nil
 }

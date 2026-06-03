@@ -438,8 +438,15 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // extractSessionName extracts a session name from a full path
-// Uses the last N path components based on ProjectDepth config
+// Computes the relative path from the matching project directory.
 func (m *Model) extractSessionName(fullPath string) string {
+	// Find which project directory this path belongs to
+	for _, projectDir := range m.config.ProjectDirs {
+		if rel, err := filepath.Rel(projectDir, fullPath); err == nil && !strings.HasPrefix(rel, "..") {
+			return sanitizeSessionName(filepath.ToSlash(rel))
+		}
+	}
+	// Fallback: use the last 2 components
 	parts := strings.Split(fullPath, string(filepath.Separator))
 	depth := m.config.ProjectDepth
 	if depth > len(parts) {
@@ -450,8 +457,15 @@ func (m *Model) extractSessionName(fullPath string) string {
 }
 
 // extractDisplayPath extracts a display path from a full path
-// Uses the last N path components based on ProjectDepth config
+// Computes the relative path from the matching project directory.
 func (m *Model) extractDisplayPath(fullPath string) string {
+	// Find which project directory this path belongs to
+	for _, projectDir := range m.config.ProjectDirs {
+		if rel, err := filepath.Rel(projectDir, fullPath); err == nil && !strings.HasPrefix(rel, "..") {
+			return filepath.ToSlash(rel)
+		}
+	}
+	// Fallback: use the last 2 components
 	parts := strings.Split(fullPath, string(filepath.Separator))
 	depth := m.config.ProjectDepth
 	if depth > len(parts) {
