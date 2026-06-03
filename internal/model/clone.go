@@ -54,8 +54,8 @@ func (m *Model) handleCloneChoiceMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		// My repos — enter existing clone flow
-		m.clonePendingFilter = m.filter
-		m.filter = ""
+		m.clonePendingFilter = m.Filter()
+		m.SetFilter("")
 		m.cloneList.Reset()
 		m.cloneList.Clear()
 		m.cloneError = ""

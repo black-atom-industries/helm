@@ -27,9 +27,8 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.Cancel):
 		// Escape: clear filter if active, otherwise quit
-		if m.filter != "" {
-			m.filter = ""
-			m.rebuildItems()
+		if m.Filter() != "" {
+			m.SetFilter("")
 			return m, nil
 		}
 		return m, tea.Quit
@@ -54,14 +53,14 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.Select):
 		// If filter is active but no results, transition to path input mode
-		if m.filter != "" && len(m.items) == 0 {
-			name := strings.TrimSpace(m.filter)
+		if m.Filter() != "" && len(m.items) == 0 {
+			name := strings.TrimSpace(m.Filter())
 			if name == "" {
 				return m, nil
 			}
 			m.pendingSessionName = sanitizeSessionName(name)
 			m.mode = ModeCreatePath
-			m.filter = ""
+			m.SetFilter("")
 			// Pre-fill with first ProjectDir + session name
 			defaultPath := ""
 			if len(m.config.ProjectDirs) > 0 {
@@ -83,7 +82,7 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.Create):
 		m.mode = ModeCreate
-		m.filter = "" // Clear any active filter
+		m.SetFilter("") // Clear any active filter
 		// Reset input completely
 		m.input.Reset()
 		m.input.SetValue("")
@@ -97,9 +96,9 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.projectList.Reset()
 		m.projectList.SetItems(m.scanProjectDirectories())
 		// Carry over the active filter
-		if m.filter != "" {
-			m.projectList.SetFilter(m.filter)
-			m.filter = ""
+		if m.Filter() != "" {
+			m.projectList.SetFilter(m.Filter())
+			m.SetFilter("")
 		}
 		// Request window size to get proper height for layout
 		return m, tea.WindowSize()
@@ -125,9 +124,9 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.bookmarkList.Reset()
 		m.bookmarkList.SetItems(m.config.Bookmarks)
 		// Carry over the active filter
-		if m.filter != "" {
-			m.bookmarkList.SetFilter(m.filter)
-			m.filter = ""
+		if m.Filter() != "" {
+			m.bookmarkList.SetFilter(m.Filter())
+			m.SetFilter("")
 		}
 		return m, tea.WindowSize()
 
@@ -135,40 +134,29 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.addSelectedToBookmarks()
 
 	// Number jumps (only when no filter active)
-	case m.filter == "" && key.Matches(msg, keys.Jump0):
+	case m.Filter() == "" && key.Matches(msg, keys.Jump0):
 		return m.handleJump(0)
-	case m.filter == "" && key.Matches(msg, keys.Jump1):
+	case m.Filter() == "" && key.Matches(msg, keys.Jump1):
 		return m.handleJump(1)
-	case m.filter == "" && key.Matches(msg, keys.Jump2):
+	case m.Filter() == "" && key.Matches(msg, keys.Jump2):
 		return m.handleJump(2)
-	case m.filter == "" && key.Matches(msg, keys.Jump3):
+	case m.Filter() == "" && key.Matches(msg, keys.Jump3):
 		return m.handleJump(3)
-	case m.filter == "" && key.Matches(msg, keys.Jump4):
+	case m.Filter() == "" && key.Matches(msg, keys.Jump4):
 		return m.handleJump(4)
-	case m.filter == "" && key.Matches(msg, keys.Jump5):
+	case m.Filter() == "" && key.Matches(msg, keys.Jump5):
 		return m.handleJump(5)
-	case m.filter == "" && key.Matches(msg, keys.Jump6):
+	case m.Filter() == "" && key.Matches(msg, keys.Jump6):
 		return m.handleJump(6)
-	case m.filter == "" && key.Matches(msg, keys.Jump7):
+	case m.Filter() == "" && key.Matches(msg, keys.Jump7):
 		return m.handleJump(7)
-	case m.filter == "" && key.Matches(msg, keys.Jump8):
+	case m.Filter() == "" && key.Matches(msg, keys.Jump8):
 		return m.handleJump(8)
-	case m.filter == "" && key.Matches(msg, keys.Jump9):
+	case m.Filter() == "" && key.Matches(msg, keys.Jump9):
 		return m.handleJump(9)
 
-	case msg.Type == tea.KeyBackspace:
-		if len(m.filter) > 0 {
-			m.filter = m.filter[:len(m.filter)-1]
-			m.rebuildItems()
-		}
-
-	case msg.Type == tea.KeySpace:
-		m.filter += " "
-		m.rebuildItems()
-
-	case msg.Type == tea.KeyRunes:
-		m.filter += string(msg.Runes)
-		m.rebuildItems()
+	default:
+		m.HandleFilterKey(msg)
 	}
 
 	return m, nil
@@ -775,7 +763,7 @@ func (m Model) viewSessionList() string {
 	b.WriteString("\n")
 
 	// Prompt line - always show filter (input goes in notification line for create mode)
-	b.WriteString(ui.RenderPrompt(m.filter, m.width))
+	b.WriteString(ui.RenderPrompt(m.Filter(), m.width))
 	b.WriteString("\n")
 
 	b.WriteString(ui.RenderBorder(m.borderWidth()))
@@ -904,7 +892,7 @@ func (m Model) viewSessionList() string {
 
 	// Empty state (only show after sessions have loaded to avoid flash)
 	if len(m.items) == 0 && m.sessionsLoaded {
-		if m.filter != "" {
+		if m.Filter() != "" {
 			listBuilder.WriteString("  No sessions matching filter\n")
 		} else {
 			listBuilder.WriteString("  No other sessions available\n")
