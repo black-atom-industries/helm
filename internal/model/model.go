@@ -684,9 +684,17 @@ func (m *Model) stateText() string {
 	}
 }
 
+// matchesFilter checks if a name matches the current filter.
+// Returns true if filter is empty or name matches via fuzzy matching.
+func (m *Model) matchesFilter(name string) bool {
+	if m.filter == "" {
+		return true
+	}
+	return fuzzy.Match(name, strings.ToLower(m.filter))
+}
+
 func (m *Model) rebuildItems() {
 	m.items = nil
-	filterLower := strings.ToLower(m.filter)
 
 	// Pin self session at top (always visible, not affected by filter)
 	if m.selfSession != nil {
@@ -719,7 +727,7 @@ func (m *Model) rebuildItems() {
 
 	for i, session := range m.sessions {
 		// Apply fuzzy filter if active
-		if m.filter != "" && !fuzzy.Match(session.Name, filterLower) {
+		if !m.matchesFilter(session.Name) {
 			continue
 		}
 
