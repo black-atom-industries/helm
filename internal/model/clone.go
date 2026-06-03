@@ -212,6 +212,11 @@ func (m *Model) handleCloneRepoMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cloneList.SetFilter(filter[:len(filter)-1])
 		}
 
+	case msg.Type == tea.KeySpace:
+		if !m.cloneLoading && !m.cloneCloning && m.cloneError == "" {
+			m.cloneList.SetFilter(m.cloneList.Filter() + " ")
+		}
+
 	case msg.Type == tea.KeyRunes:
 		if !m.cloneLoading && !m.cloneCloning && m.cloneError == "" {
 			m.cloneList.SetFilter(m.cloneList.Filter() + string(msg.Runes))

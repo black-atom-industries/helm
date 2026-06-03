@@ -83,6 +83,9 @@ func (m *Model) handlePickDirectoryMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.projectList.SetFilter(filter[:len(filter)-1])
 		}
 
+	case msg.Type == tea.KeySpace:
+		m.projectList.SetFilter(m.projectList.Filter() + " ")
+
 	case msg.Type == tea.KeyRunes:
 		m.projectList.SetFilter(m.projectList.Filter() + string(msg.Runes))
 	}

@@ -82,6 +82,9 @@ func (m *Model) handleBookmarksMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.bookmarkList.SetFilter(filter[:len(filter)-1])
 		}
 
+	case msg.Type == tea.KeySpace:
+		m.bookmarkList.SetFilter(m.bookmarkList.Filter() + " ")
+
 	case msg.Type == tea.KeyRunes:
 		m.bookmarkList.SetFilter(m.bookmarkList.Filter() + string(msg.Runes))
 	}
