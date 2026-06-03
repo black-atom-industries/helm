@@ -684,15 +684,6 @@ func (m *Model) stateText() string {
 	}
 }
 
-// matchesFilter checks if a name matches the current filter.
-// Returns true if filter is empty or name matches via fuzzy matching.
-func (m *Model) matchesFilter(name string) bool {
-	if m.filter == "" {
-		return true
-	}
-	return fuzzy.Match(name, strings.ToLower(m.filter))
-}
-
 func (m *Model) rebuildItems() {
 	m.items = nil
 

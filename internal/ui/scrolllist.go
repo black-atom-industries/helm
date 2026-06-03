@@ -1,32 +1,32 @@
 package ui
 
-import "strings"
+import "github.com/black-atom-industries/helm/internal/lib/filter"
 
 // ScrollList is a generic scrollable list with cursor, filtering, and scroll offset management.
 // It eliminates duplicate scroll/cursor logic across different list modes.
 type ScrollList[T any] struct {
 	items        []T
-	filtered     []T
+	filter       *filter.Filter[T]
 	cursor       int
 	scrollOffset int
-	filter       string
-	filterFn     func(T, string) bool // Returns true if item matches filter
-	height       int                  // Visible height (number of items that fit)
+	height       int // Visible height (number of items that fit)
 }
 
 // NewScrollList creates a new ScrollList with a filter function.
 // The filterFn should return true if the item matches the given filter string.
 func NewScrollList[T any](filterFn func(T, string) bool) *ScrollList[T] {
 	return &ScrollList[T]{
-		filterFn: filterFn,
-		height:   10, // Default fallback
+		filter: filter.New[T](nil, filterFn),
+		height: 10, // Default fallback
 	}
 }
 
 // SetItems replaces all items and re-applies the current filter
 func (s *ScrollList[T]) SetItems(items []T) {
 	s.items = items
-	s.applyFilter()
+	s.filter.SetItems(items)
+	s.clampCursor()
+	s.updateScrollOffset()
 }
 
 // SetHeight sets the visible height (number of items that fit on screen)
@@ -44,30 +44,14 @@ func (s *ScrollList[T]) Height() int {
 
 // SetFilter sets the filter text and re-filters the items
 func (s *ScrollList[T]) SetFilter(filter string) {
-	s.filter = filter
-	s.applyFilter()
+	s.filter.SetFilter(filter)
+	s.clampCursor()
+	s.updateScrollOffset()
 }
 
 // Filter returns the current filter string
 func (s *ScrollList[T]) Filter() string {
-	return s.filter
-}
-
-// applyFilter applies the current filter to items
-func (s *ScrollList[T]) applyFilter() {
-	if s.filter == "" {
-		s.filtered = s.items
-	} else {
-		s.filtered = nil
-		filterLower := strings.ToLower(s.filter)
-		for _, item := range s.items {
-			if s.filterFn(item, filterLower) {
-				s.filtered = append(s.filtered, item)
-			}
-		}
-	}
-	s.clampCursor()
-	s.updateScrollOffset()
+	return s.filter.Filter()
 }
 
 // Items returns all items (unfiltered)
@@ -77,12 +61,12 @@ func (s *ScrollList[T]) Items() []T {
 
 // Filtered returns the filtered items
 func (s *ScrollList[T]) Filtered() []T {
-	return s.filtered
+	return s.filter.Results()
 }
 
 // Len returns the number of filtered items
 func (s *ScrollList[T]) Len() int {
-	return len(s.filtered)
+	return s.filter.Count()
 }
 
 // Cursor returns the current cursor position
@@ -106,8 +90,9 @@ func (s *ScrollList[T]) MoveCursor(delta int) {
 
 // clampCursor ensures cursor is within valid bounds
 func (s *ScrollList[T]) clampCursor() {
-	if s.cursor >= len(s.filtered) {
-		s.cursor = len(s.filtered) - 1
+	filtered := s.filter.Results()
+	if s.cursor >= len(filtered) {
+		s.cursor = len(filtered) - 1
 	}
 	if s.cursor < 0 {
 		s.cursor = 0
@@ -121,6 +106,7 @@ func (s *ScrollList[T]) ScrollOffset() int {
 
 // updateScrollOffset adjusts scroll offset to keep cursor visible
 func (s *ScrollList[T]) updateScrollOffset() {
+	filtered := s.filter.Results()
 	// If cursor is above visible area, scroll up
 	if s.cursor < s.scrollOffset {
 		s.scrollOffset = s.cursor
@@ -133,40 +119,47 @@ func (s *ScrollList[T]) updateScrollOffset() {
 	if s.scrollOffset < 0 {
 		s.scrollOffset = 0
 	}
+	// Ensure scroll offset doesn't exceed total items
+	if len(filtered) > 0 && s.scrollOffset >= len(filtered) {
+		s.scrollOffset = len(filtered) - 1
+	}
 }
 
 // SelectedItem returns the currently selected item, or false if none
 func (s *ScrollList[T]) SelectedItem() (T, bool) {
 	var zero T
-	if s.cursor < 0 || s.cursor >= len(s.filtered) {
+	filtered := s.filter.Results()
+	if s.cursor < 0 || s.cursor >= len(filtered) {
 		return zero, false
 	}
-	return s.filtered[s.cursor], true
+	return filtered[s.cursor], true
 }
 
 // VisibleItems returns the slice of items currently visible on screen
 func (s *ScrollList[T]) VisibleItems() []T {
-	if len(s.filtered) == 0 {
+	filtered := s.filter.Results()
+	if len(filtered) == 0 {
 		return nil
 	}
 
 	start := s.scrollOffset
 	end := start + s.height
-	if end > len(s.filtered) {
-		end = len(s.filtered)
+	if end > len(filtered) {
+		end = len(filtered)
 	}
 	if start >= end {
 		return nil
 	}
-	return s.filtered[start:end]
+	return filtered[start:end]
 }
 
 // VisibleRange returns the start and end indices of visible items in the filtered slice
 func (s *ScrollList[T]) VisibleRange() (start, end int) {
 	start = s.scrollOffset
 	end = start + s.height
-	if end > len(s.filtered) {
-		end = len(s.filtered)
+	filtered := s.filter.Results()
+	if end > len(filtered) {
+		end = len(filtered)
 	}
 	return start, end
 }
@@ -178,17 +171,16 @@ func (s *ScrollList[T]) IsSelected(index int) bool {
 
 // Reset clears the filter and resets cursor to 0
 func (s *ScrollList[T]) Reset() {
-	s.filter = ""
+	s.filter.SetFilter("")
 	s.cursor = 0
 	s.scrollOffset = 0
-	s.applyFilter()
 }
 
 // Clear removes all items
 func (s *ScrollList[T]) Clear() {
 	s.items = nil
-	s.filtered = nil
+	s.filter.SetItems(nil)
 	s.cursor = 0
 	s.scrollOffset = 0
-	s.filter = ""
+	s.filter.SetFilter("")
 }

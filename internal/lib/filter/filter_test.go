@@ -1,4 +1,4 @@
-package model
+package filter
 
 import (
 	"testing"
@@ -6,9 +6,7 @@ import (
 
 func TestFilter_BasicMatching(t *testing.T) {
 	items := []string{"apple", "banana", "avocado", "blueberry"}
-	f := NewFilter(items, func(s string, filter string) bool {
-		return MatchSessionName(s, filter)
-	})
+	f := New(items, MatchSessionName)
 
 	// Empty filter returns all
 	if f.Count() != 4 {
@@ -35,16 +33,14 @@ func TestFilter_BasicMatching(t *testing.T) {
 }
 
 func TestFilter_SetItems(t *testing.T) {
-	f := NewFilter([]string{"a", "b"}, func(s string, filter string) bool {
-		return MatchSessionName(s, filter)
-	})
+	f := New([]string{"a", "b"}, MatchSessionName)
 
 	f.SetFilter("a")
 	if f.Count() != 1 {
-		t.Errorf("before SetItems: got %d, want 1", f.Count())
+		t.Errorf("before SetItems: got %d, want 1 (only 'a' matches)", f.Count())
 	}
 
-	// Update items — 'a' matches both alpha and beta (subsequence)
+	// Update items — 'a' matches alpha and beta (subsequence)
 	f.SetItems([]string{"alpha", "beta"})
 	if f.Count() != 2 {
 		t.Errorf("after SetItems with filter 'a': got %d, want 2 (alpha, beta)", f.Count())
@@ -63,7 +59,7 @@ func TestFilter_SessionNames(t *testing.T) {
 		"nikbrunner-notes",
 	}
 
-	f := NewFilter(sessions, MatchSessionName)
+	f := New(sessions, MatchSessionName)
 
 	tests := []struct {
 		filter  string
@@ -112,7 +108,7 @@ func TestFilter_PathMatching(t *testing.T) {
 		"black-atom-industries/helm",
 	}
 
-	f := NewFilter(paths, MatchPath)
+	f := New(paths, MatchPath)
 
 	tests := []struct {
 		filter  string
