@@ -402,8 +402,8 @@ func RenderPrompt(filter string, width int) string {
 	if innerWidth < 10 {
 		innerWidth = 40 // fallback for initial render
 	}
-	// Add blinking cursor indicator
-	prompt := "> " + filter + "\u258e" // ▎ (left one-eighth block)
+	// Add block cursor indicator
+	prompt := "> " + filter + "\u2588" // █ (full block)
 	return PromptStyle.Width(innerWidth).Render(prompt)
 }
 

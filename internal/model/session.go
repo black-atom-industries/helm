@@ -162,13 +162,8 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.rebuildItems()
 		}
 
-	case msg.Type == tea.KeySpace:
-		// Add space to filter
-		m.filter += " "
-		m.rebuildItems()
-
 	case msg.Type == tea.KeyRunes:
-		// Add typed characters to filter
+		// Add typed characters to filter (including space)
 		m.filter += string(msg.Runes)
 		m.rebuildItems()
 	}
