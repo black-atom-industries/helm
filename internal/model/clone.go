@@ -220,7 +220,7 @@ func (m *Model) cloneSelectedRepo(selected string) (tea.Model, tea.Cmd) {
 	m.cloneCloningRepo = selected
 
 	destPath := filepath.Join(m.cloneBasePath, selected)
-	sessionName := sanitizeSessionName(selected)
+	sessionName := config.SanitizeSessionName(selected)
 
 	return m, func() tea.Msg {
 		if err := giturl.CloneRepo(selected, destPath); err != nil {

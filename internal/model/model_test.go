@@ -151,59 +151,6 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestSanitizeSessionName(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		want  string
-	}{
-		{
-			name:  "simple name unchanged",
-			input: "my-session",
-			want:  "my-session",
-		},
-		{
-			name:  "slashes to dashes",
-			input: "owner/repo",
-			want:  "owner-repo",
-		},
-		{
-			name:  "dots to dashes",
-			input: "nbr.haus",
-			want:  "nbr-haus",
-		},
-		{
-			name:  "colons to dashes",
-			input: "session:window",
-			want:  "session-window",
-		},
-		{
-			name:  "mixed special chars",
-			input: "owner/repo.name:tag",
-			want:  "owner-repo-name-tag",
-		},
-		{
-			name:  "spaces to dashes",
-			input: "my session name",
-			want:  "my-session-name",
-		},
-		{
-			name:  "real world example",
-			input: "nikbrunner/nbr.haus",
-			want:  "nikbrunner-nbr-haus",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := sanitizeSessionName(tt.input)
-			if got != tt.want {
-				t.Errorf("sanitizeSessionName(%q) = %q, want %q", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
 // Layout height calculation tests
 
 func TestContentWidth(t *testing.T) {

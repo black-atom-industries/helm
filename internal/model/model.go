@@ -873,12 +873,6 @@ func (m *Model) setMessage(format string, args ...any) {
 	m.messageIsError = false
 }
 
-// sanitizeSessionName converts a path to a valid tmux session name.
-// Thin wrapper around config.SanitizeSessionName, kept for internal call sites.
-func sanitizeSessionName(name string) string {
-	return config.SanitizeSessionName(name)
-}
-
 // View implements tea.Model
 func (m Model) View() string {
 	if m.mode == ModePickDirectory || m.mode == ModeConfirmRemoveFolder {
