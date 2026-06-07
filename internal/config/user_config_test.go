@@ -385,3 +385,190 @@ func TestScanForGitRepos(t *testing.T) {
 		}
 	}
 }
+
+func TestExtractSessionName(t *testing.T) {
+	// Real paths from the user's environment, mirroring the bug report:
+	// "imfusion/websdk/web-ui" bookmark opens as "websdk-web-ui" via CLI but
+	// "imfusion-websdk-web-ui" via project picker. Both should agree.
+	projectDirs := []string{"/Users/brunner/repos"}
+
+	tests := []struct {
+		name        string
+		fullPath    string
+		projectDirs []string
+		depth       int
+		want        string
+	}{
+		{
+			// Bug repro: path inside project_dir, deeper than depth
+			name:        "path inside project_dir uses full relative path",
+			fullPath:    "/Users/brunner/repos/imfusion/websdk/web-ui",
+			projectDirs: projectDirs,
+			depth:       2,
+			want:        "imfusion-websdk-web-ui",
+		},
+		{
+			// TUI behavior for direct child of project_dir
+			name:        "direct child of project_dir",
+			fullPath:    "/Users/brunner/repos/helm",
+			projectDirs: projectDirs,
+			depth:       2,
+			want:        "helm",
+		},
+		{
+			// Two-level child, matches depth
+			name:        "two-level child of project_dir",
+			fullPath:    "/Users/brunner/repos/black-atom-industries/helm",
+			projectDirs: projectDirs,
+			depth:       2,
+			want:        "black-atom-industries-helm",
+		},
+		{
+			// Path outside all project_dirs falls back to depth
+			name:        "path outside project_dirs falls back to depth",
+			fullPath:    "/tmp/some/random/project",
+			projectDirs: projectDirs,
+			depth:       2,
+			want:        "random-project",
+		},
+		{
+			// Empty project_dirs falls back to depth
+			name:        "empty project_dirs falls back to depth",
+			fullPath:    "/Users/brunner/repos/helm",
+			projectDirs: nil,
+			depth:       2,
+			want:        "repos-helm",
+		},
+		{
+			// Multiple project_dirs, second one matches
+			name:        "multiple project_dirs, second matches",
+			fullPath:    "/Users/code/other/repo",
+			projectDirs: []string{"/Users/brunner/repos", "/Users/code"},
+			depth:       2,
+			want:        "other-repo",
+		},
+		{
+			// Multiple project_dirs, first one matches
+			name:        "multiple project_dirs, first matches",
+			fullPath:    "/Users/brunner/repos/helm",
+			projectDirs: []string{"/Users/brunner/repos", "/Users/code"},
+			depth:       2,
+			want:        "helm",
+		},
+		{
+			// Path at project_dir root. "." gets sanitized to "-" (preserved
+			// from the original implementation). This is a degenerate case
+			// that shouldn't occur in practice.
+			name:        "path equal to project_dir",
+			fullPath:    "/Users/brunner/repos",
+			projectDirs: projectDirs,
+			depth:       2,
+			want:        "-",
+		},
+		{
+			// Depth exceeds path length. Leading "/" produces an empty
+			// first element in the split, preserved from the original
+			// implementation.
+			name:        "depth exceeds path length",
+			fullPath:    "/a/b",
+			projectDirs: nil,
+			depth:       5,
+			want:        "-a-b",
+		},
+		{
+			// Dots in path are sanitized
+			name:        "dots in path are sanitized",
+			fullPath:    "/Users/brunner/repos/nikbrunner/nbr.haus",
+			projectDirs: projectDirs,
+			depth:       2,
+			want:        "nikbrunner-nbr-haus",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ExtractSessionName(tt.fullPath, tt.projectDirs, tt.depth)
+			if got != tt.want {
+				t.Errorf("ExtractSessionName(%q, %v, %d) = %q, want %q",
+					tt.fullPath, tt.projectDirs, tt.depth, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExtractDisplayPath(t *testing.T) {
+	projectDirs := []string{"/Users/brunner/repos"}
+
+	tests := []struct {
+		name        string
+		fullPath    string
+		projectDirs []string
+		depth       int
+		want        string
+	}{
+		{
+			name:        "inside project_dir uses forward-slash relative path",
+			fullPath:    "/Users/brunner/repos/imfusion/websdk/web-ui",
+			projectDirs: projectDirs,
+			depth:       2,
+			want:        "imfusion/websdk/web-ui",
+		},
+		{
+			name:        "direct child of project_dir",
+			fullPath:    "/Users/brunner/repos/helm",
+			projectDirs: projectDirs,
+			depth:       2,
+			want:        "helm",
+		},
+		{
+			name:        "outside project_dirs falls back to last depth components",
+			fullPath:    "/tmp/some/random/project",
+			projectDirs: projectDirs,
+			depth:       2,
+			want:        "random/project",
+		},
+		{
+			name:        "no project_dirs uses depth only",
+			fullPath:    "/Users/brunner/repos/helm",
+			projectDirs: nil,
+			depth:       2,
+			want:        "repos/helm",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ExtractDisplayPath(tt.fullPath, tt.projectDirs, tt.depth)
+			if got != tt.want {
+				t.Errorf("ExtractDisplayPath(%q, %v, %d) = %q, want %q",
+					tt.fullPath, tt.projectDirs, tt.depth, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSanitizeSessionName(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"simple name unchanged", "my-session", "my-session"},
+		{"slashes to dashes", "owner/repo", "owner-repo"},
+		{"dots to dashes", "nbr.haus", "nbr-haus"},
+		{"colons to dashes", "session:window", "session-window"},
+		{"mixed special chars", "owner/repo.name:tag", "owner-repo-name-tag"},
+		{"spaces to dashes", "my session name", "my-session-name"},
+		{"real world example", "nikbrunner/nbr.haus", "nikbrunner-nbr-haus"},
+		{"empty string", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := SanitizeSessionName(tt.input)
+			if got != tt.want {
+				t.Errorf("SanitizeSessionName(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
