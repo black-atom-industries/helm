@@ -58,7 +58,7 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if name == "" {
 				return m, nil
 			}
-			m.pendingSessionName = sanitizeSessionName(name)
+			m.pendingSessionName = config.SanitizeSessionName(name)
 			m.mode = ModeCreatePath
 			m.SetFilter("")
 			// Pre-fill with first ProjectDir + session name
@@ -369,7 +369,7 @@ func (m *Model) createSessionAtPath(fullPath string) (tea.Model, tea.Cmd) {
 
 func (m *Model) createSession(name string) (tea.Model, tea.Cmd) {
 	// Sanitize session name (spaces, dots, colons break tmux target syntax)
-	name = sanitizeSessionName(name)
+	name = config.SanitizeSessionName(name)
 	workingDir := m.config.DefaultSessionDir
 	if err := tmux.CreateSession(name, workingDir); err != nil {
 		m.setError("Error: %v", err)

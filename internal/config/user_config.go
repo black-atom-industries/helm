@@ -416,3 +416,55 @@ func ListAllRepos(projectDirs []string) ([]RepoInfo, error) {
 
 	return all, nil
 }
+
+// SanitizeSessionName converts a path or identifier to a valid tmux session name.
+// Replaces characters with special meaning in tmux target syntax:
+//   - "/" (path separator, also used in session:window)
+//   - "." (window.pane separator)
+//   - ":" (session:window separator)
+//   - " " (breaks shell commands)
+func SanitizeSessionName(name string) string {
+	replacer := strings.NewReplacer(
+		"/", "-",
+		".", "-",
+		":", "-",
+		" ", "-",
+	)
+	return replacer.Replace(name)
+}
+
+// extractRelPath converts an absolute path to a relative form for display or
+// session naming. Tries each projectDir in order — the first one that contains
+// the path wins. Falls back to the last `depth` components of the path when
+// no projectDir matches (or when projectDirs is empty).
+func extractRelPath(fullPath string, projectDirs []string, depth int) string {
+	for _, projectDir := range projectDirs {
+		if rel, err := filepath.Rel(projectDir, fullPath); err == nil && !strings.HasPrefix(rel, "..") {
+			return filepath.ToSlash(rel)
+		}
+	}
+	parts := strings.Split(fullPath, string(filepath.Separator))
+	if depth > len(parts) {
+		depth = len(parts)
+	}
+	return strings.Join(parts[len(parts)-depth:], "/")
+}
+
+// ExtractDisplayPath converts an absolute path to a display path.
+// Returns the path relative to the matching projectDir, or the last `depth`
+// components if no projectDir matches. Forward slashes are used on all
+// platforms for stable display.
+func ExtractDisplayPath(fullPath string, projectDirs []string, depth int) string {
+	return extractRelPath(fullPath, projectDirs, depth)
+}
+
+// ExtractSessionName converts an absolute path to a tmux-safe session name.
+// Tries projectDirs first (gives names like "imfusion-websdk-web-ui"), then
+// falls back to the last `depth` components for paths outside any projectDir.
+//
+// This is the single source of truth for session naming — both the TUI
+// (project picker, bookmarks view) and the CLI (`helm bookmark N`) must use
+// it to ensure the same path always produces the same session name.
+func ExtractSessionName(fullPath string, projectDirs []string, depth int) string {
+	return SanitizeSessionName(extractRelPath(fullPath, projectDirs, depth))
+}

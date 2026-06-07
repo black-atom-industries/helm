@@ -440,41 +440,16 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// extractSessionName extracts a session name from a full path
-// Computes the relative path from the matching project directory.
+// extractSessionName extracts a session name from a full path.
+// Delegates to config.ExtractSessionName so the CLI and TUI agree on naming.
 func (m *Model) extractSessionName(fullPath string) string {
-	// Find which project directory this path belongs to
-	for _, projectDir := range m.config.ProjectDirs {
-		if rel, err := filepath.Rel(projectDir, fullPath); err == nil && !strings.HasPrefix(rel, "..") {
-			return sanitizeSessionName(filepath.ToSlash(rel))
-		}
-	}
-	// Fallback: use the last 2 components
-	parts := strings.Split(fullPath, string(filepath.Separator))
-	depth := m.config.ProjectDepth
-	if depth > len(parts) {
-		depth = len(parts)
-	}
-	relPath := strings.Join(parts[len(parts)-depth:], "/")
-	return sanitizeSessionName(relPath)
+	return config.ExtractSessionName(fullPath, m.config.ProjectDirs, m.config.ProjectDepth)
 }
 
-// extractDisplayPath extracts a display path from a full path
-// Computes the relative path from the matching project directory.
+// extractDisplayPath extracts a display path from a full path.
+// Delegates to config.ExtractDisplayPath for parity with extractSessionName.
 func (m *Model) extractDisplayPath(fullPath string) string {
-	// Find which project directory this path belongs to
-	for _, projectDir := range m.config.ProjectDirs {
-		if rel, err := filepath.Rel(projectDir, fullPath); err == nil && !strings.HasPrefix(rel, "..") {
-			return filepath.ToSlash(rel)
-		}
-	}
-	// Fallback: use the last 2 components
-	parts := strings.Split(fullPath, string(filepath.Separator))
-	depth := m.config.ProjectDepth
-	if depth > len(parts) {
-		depth = len(parts)
-	}
-	return strings.Join(parts[len(parts)-depth:], "/")
+	return config.ExtractDisplayPath(fullPath, m.config.ProjectDirs, m.config.ProjectDepth)
 }
 
 // allSessions returns self session + other sessions as a combined slice
@@ -896,19 +871,6 @@ func (m *Model) setError(format string, args ...any) {
 func (m *Model) setMessage(format string, args ...any) {
 	m.message = fmt.Sprintf(format, args...)
 	m.messageIsError = false
-}
-
-// sanitizeSessionName converts a path to a valid tmux session name
-// Dots and colons have special meaning in tmux target syntax (window.pane, session:window)
-// Spaces cause issues with shell commands
-func sanitizeSessionName(name string) string {
-	replacer := strings.NewReplacer(
-		"/", "-",
-		".", "-",
-		":", "-",
-		" ", "-",
-	)
-	return replacer.Replace(name)
 }
 
 // View implements tea.Model
