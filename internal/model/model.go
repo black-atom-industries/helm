@@ -97,8 +97,8 @@ type Model struct {
 	killTarget        string // Name of session/window being killed
 	removeTarget      string // Full path of folder being removed
 	config            config.Config
-	maxNameWidth      int    // For column alignment
-	maxGitStatusWidth int    // For git status column alignment
+	maxNameWidth      int                          // For column alignment
+	maxGitStatusWidth int                          // For git status column alignment
 	sessionFilter     *filter.Filter[tmux.Session] // Session filter (shared filter logic)
 
 	// Directory picker state (uses ScrollList for cursor/scroll/filter)

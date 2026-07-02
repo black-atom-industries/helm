@@ -202,7 +202,7 @@ func (s *ScrollList[T]) HandleKey(msg tea.KeyMsg) bool {
 	case tea.KeyBackspace:
 		filter := s.Filter()
 		if len(filter) > 0 {
-		s.SetFilter(filter[:len(filter)-1])
+			s.SetFilter(filter[:len(filter)-1])
 		}
 		return true
 	}
