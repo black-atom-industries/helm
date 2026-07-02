@@ -42,16 +42,13 @@ var termColors = TermColors{
 }
 
 // Hard coded hex colors (terminal-independent)
+// Deliberate exceptions: the git status colors (semantic, should look the
+// same everywhere) and the Claude brand orange (no ANSI equivalent).
 type HardCodedPalette struct {
-	ClaudeOrange lipgloss.Color
-	Blue         lipgloss.Color
-	Green        lipgloss.Color
-	Red          lipgloss.Color
-	Yellow       lipgloss.Color
-	SelectedBg   lipgloss.Color // Accent background for selected rows
-	ButtonAccent lipgloss.Color // Button accent background
-	ButtonWarn   lipgloss.Color // Button warning/danger background
-	ButtonLabel  lipgloss.Color // Button label text
+	ClaudeOrange lipgloss.Color // CC/Pi header brand color
+	Blue         lipgloss.Color // Git file count
+	Green        lipgloss.Color // Git additions
+	Red          lipgloss.Color // Git deletions
 }
 
 // Hex colors (terminal-independent)
@@ -64,29 +61,18 @@ var hardCodedColor = struct {
 		Blue:         lipgloss.Color("#0997ee"),
 		Green:        lipgloss.Color("#67a52a"),
 		Red:          lipgloss.Color("#e35f6d"),
-		Yellow:       lipgloss.Color("#b98700"),
-		SelectedBg:   lipgloss.Color("#f0d8c0"),
-		ButtonAccent: lipgloss.Color("#e2663c"),
-		ButtonWarn:   lipgloss.Color("#f05442"),
-		ButtonLabel:  lipgloss.Color("#f9f3e5"),
 	},
 	Dark: HardCodedPalette{
 		ClaudeOrange: lipgloss.Color("#f38b6a"),
 		Blue:         lipgloss.Color("#5cb2fb"),
 		Green:        lipgloss.Color("#89be61"),
 		Red:          lipgloss.Color("#f4868c"),
-		Yellow:       lipgloss.Color("#d5a335"),
-		SelectedBg:   lipgloss.Color("#5c3a1e"),
-		ButtonAccent: lipgloss.Color("#df7f44"),
-		ButtonWarn:   lipgloss.Color("#e74947"),
-		ButtonLabel:  lipgloss.Color("#f9f3e5"),
 	},
 }
 
 // FgColors defines all foreground (text) colors
 type FgColors struct {
 	Default   lipgloss.TerminalColor // Terminal default text
-	Selected  lipgloss.TerminalColor // Selected/highlighted items
 	Muted     lipgloss.TerminalColor // De-emphasized text
 	Accent    lipgloss.TerminalColor // Primary accent
 	Subtle    lipgloss.TerminalColor // Secondary/subtle text
@@ -98,10 +84,9 @@ type FgColors struct {
 	TitleBar lipgloss.TerminalColor // Text on title bar
 
 	// Table
-	TableHeader         lipgloss.TerminalColor // Column headers
-	SessionName         lipgloss.TerminalColor // Unselected session names
-	SessionNameSelected lipgloss.TerminalColor // Selected session name
-	WindowName          lipgloss.TerminalColor // Unselected window names
+	TableHeader lipgloss.TerminalColor // Column headers
+	SessionName lipgloss.TerminalColor // Unselected session names
+	WindowName  lipgloss.TerminalColor // Unselected window names
 
 	// Claude status
 	ClaudeHeader  lipgloss.TerminalColor // "CC" label
@@ -125,19 +110,14 @@ type FgColors struct {
 	// Scrollbar
 	ScrollbarTrack lipgloss.TerminalColor // Track (subtle background line)
 	ScrollbarThumb lipgloss.TerminalColor // Thumb (visible position indicator)
-
-	// Sidebar buttons
-	ButtonLabel   lipgloss.TerminalColor // Button label text (on accent bg)
-	ButtonKeybind lipgloss.TerminalColor // Button keybind hint (on accent bg)
 }
 
 // BgColors defines all background colors
+// Selected rows and action buttons use reverse video (terminal-native)
+// instead of explicit background colors.
 type BgColors struct {
-	Default      lipgloss.TerminalColor // Terminal default (none)
-	TitleBar     lipgloss.TerminalColor // Title bar background
-	Selected     lipgloss.TerminalColor // Selected row background (accent)
-	ButtonAccent lipgloss.TerminalColor // Action button background
-	ButtonWarn   lipgloss.TerminalColor // Warning/danger button background
+	Default  lipgloss.TerminalColor // Terminal default (none)
+	TitleBar lipgloss.TerminalColor // Title bar background
 }
 
 // *****************************************************************************
@@ -149,7 +129,6 @@ func darkFg() FgColors {
 	hc := hardCodedColor.Dark
 	return FgColors{
 		Default:   lipgloss.NoColor{},
-		Selected:  tc.BrightWhite,
 		Muted:     tc.BrightBlack,
 		Accent:    tc.Blue,
 		Subtle:    tc.White,
@@ -159,43 +138,35 @@ func darkFg() FgColors {
 
 		TitleBar: tc.BrightWhite,
 
-		TableHeader:         lipgloss.NoColor{},
-		SessionName:         lipgloss.NoColor{},
-		SessionNameSelected: tc.BrightWhite,
-		WindowName:          lipgloss.NoColor{},
+		TableHeader: lipgloss.NoColor{},
+		SessionName: lipgloss.NoColor{},
+		WindowName:  lipgloss.NoColor{},
 
 		ClaudeHeader:  hc.ClaudeOrange,
-		ClaudeWorking: hc.Yellow,
-		ClaudeWaiting: hc.Green,
-		ClaudeUrgent:  hc.Red,
-		ClaudeIdle:    hc.Blue,
+		ClaudeWorking: tc.Yellow,
+		ClaudeWaiting: tc.Green,
+		ClaudeUrgent:  tc.Red,
+		ClaudeIdle:    tc.Blue,
 
 		GitFiles: hc.Blue,
 		GitAdd:   hc.Green,
 		GitDel:   hc.Red,
 
 		PiHeader:  hc.ClaudeOrange, // Same orange as CC
-		PiWorking: hc.Yellow,
-		PiWaiting: hc.Green,
-		PiUrgent:  hc.Red,
-		PiIdle:    hc.Blue,
+		PiWorking: tc.Yellow,
+		PiWaiting: tc.Green,
+		PiUrgent:  tc.Red,
+		PiIdle:    tc.Blue,
 
 		ScrollbarTrack: tc.BrightBlack,
 		ScrollbarThumb: tc.White,
-
-		ButtonLabel:   hc.ButtonLabel,
-		ButtonKeybind: tc.White,
 	}
 }
 
 func darkBg() BgColors {
-	hc := hardCodedColor.Dark
 	return BgColors{
-		Default:      lipgloss.NoColor{},
-		TitleBar:     termColors.Black,
-		Selected:     hc.SelectedBg,
-		ButtonAccent: hc.ButtonAccent,
-		ButtonWarn:   hc.ButtonWarn,
+		Default:  lipgloss.NoColor{},
+		TitleBar: termColors.Black,
 	}
 }
 
@@ -204,13 +175,9 @@ func darkBg() BgColors {
 // *****************************************************************************
 
 func lightBg() BgColors {
-	hc := hardCodedColor.Light
 	return BgColors{
-		Default:      lipgloss.NoColor{},
-		TitleBar:     termColors.BrightWhite,
-		Selected:     hc.SelectedBg,
-		ButtonAccent: hc.ButtonAccent,
-		ButtonWarn:   hc.ButtonWarn,
+		Default:  lipgloss.NoColor{},
+		TitleBar: termColors.BrightWhite,
 	}
 }
 
@@ -219,7 +186,6 @@ func lightFg() FgColors {
 	hc := hardCodedColor.Light
 	return FgColors{
 		Default:   lipgloss.NoColor{},
-		Selected:  tc.Black,
 		Muted:     tc.BrightBlack,
 		Accent:    tc.Blue,
 		Subtle:    tc.BrightBlack,
@@ -229,32 +195,28 @@ func lightFg() FgColors {
 
 		TitleBar: tc.Black,
 
-		TableHeader:         lipgloss.NoColor{},
-		SessionName:         lipgloss.NoColor{},
-		SessionNameSelected: tc.Black,
-		WindowName:          lipgloss.NoColor{},
+		TableHeader: lipgloss.NoColor{},
+		SessionName: lipgloss.NoColor{},
+		WindowName:  lipgloss.NoColor{},
 
 		ClaudeHeader:  hc.ClaudeOrange,
-		ClaudeWorking: hc.Yellow,
-		ClaudeWaiting: hc.Green,
-		ClaudeUrgent:  hc.Red,
-		ClaudeIdle:    hc.Blue,
+		ClaudeWorking: tc.Yellow,
+		ClaudeWaiting: tc.Green,
+		ClaudeUrgent:  tc.Red,
+		ClaudeIdle:    tc.Blue,
 
 		GitFiles: hc.Blue,
 		GitAdd:   hc.Green,
 		GitDel:   hc.Red,
 
 		PiHeader:  hc.ClaudeOrange, // Same orange as CC
-		PiWorking: hc.Yellow,
-		PiWaiting: hc.Green,
-		PiUrgent:  hc.Red,
-		PiIdle:    hc.Blue,
+		PiWorking: tc.Yellow,
+		PiWaiting: tc.Green,
+		PiUrgent:  tc.Red,
+		PiIdle:    tc.Blue,
 
 		ScrollbarTrack: tc.BrightWhite,
 		ScrollbarThumb: tc.White,
-
-		ButtonLabel:   hc.ButtonLabel,
-		ButtonKeybind: tc.White,
 	}
 }
 

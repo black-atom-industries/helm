@@ -52,10 +52,10 @@ type PaneRowOpts struct {
 
 // Column component functions - each returns a styled string
 
-// SpacerStyle returns a spacer with background when selected
+// SpacerStyle returns a spacer with reverse video when selected
 func SpacerStyle(text string, selected bool) string {
 	if selected {
-		return lipgloss.NewStyle().Background(Colors.Bg.Selected).Render(text)
+		return SelectedCellStyle.Render(text)
 	}
 	return text
 }
@@ -170,12 +170,12 @@ func RenderClaudeIcon(status *claude.Status, animFrame int, selected bool) strin
 		return SpacerStyle(" ", selected) // Reserved space for alignment
 	}
 	waitDuration := time.Since(status.Timestamp)
-	icon := FormatClaudeIcon(status.State, animFrame, waitDuration)
 	if selected {
-		// Re-apply the icon style with background
-		return lipgloss.NewStyle().Background(Colors.Bg.Selected).Render(icon)
+		// Uncolored reverse video — a colored foreground would invert
+		// into a colored background patch on the selected row
+		return SelectedCellStyle.Render(StatusIconChar(status.State, animFrame, waitDuration))
 	}
-	return icon
+	return FormatClaudeIcon(status.State, animFrame, waitDuration)
 }
 
 // RenderPiIcon renders a single-character Pi status icon
@@ -185,12 +185,12 @@ func RenderPiIcon(status *pi.Status, animFrame int, selected bool) string {
 		return SpacerStyle(" ", selected) // Reserved space for alignment
 	}
 	waitDuration := time.Since(status.Timestamp)
-	icon := FormatPiIcon(status.State, animFrame, waitDuration)
 	if selected {
-		// Re-apply the icon style with background
-		return lipgloss.NewStyle().Background(Colors.Bg.Selected).Render(icon)
+		// Uncolored reverse video — a colored foreground would invert
+		// into a colored background patch on the selected row
+		return SelectedCellStyle.Render(StatusIconChar(status.State, animFrame, waitDuration))
 	}
-	return icon
+	return FormatPiIcon(status.State, animFrame, waitDuration)
 }
 
 // SessionRowOpts wraps RowOpts with session-specific settings

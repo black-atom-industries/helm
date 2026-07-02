@@ -120,11 +120,13 @@ var (
 	SelfNameStyle          lipgloss.Style
 	SelfNameSelectedStyle  lipgloss.Style
 
-	// Sidebar button styles
+	// Action button styles (bottom button bar)
 	ButtonStyle        lipgloss.Style
-	ButtonKeybindStyle lipgloss.Style
 	ButtonWarningStyle lipgloss.Style
-	ButtonWarnKbStyle  lipgloss.Style
+
+	// SelectedCellStyle is the uniform reverse-video treatment for cells
+	// on the selected row (spacers, icons, git status)
+	SelectedCellStyle lipgloss.Style
 )
 
 func init() {
@@ -162,7 +164,7 @@ func initStyles() {
 	SessionSelectedStyle = lipgloss.NewStyle().
 		Padding(0, 1).
 		Bold(true).
-		Background(Colors.Bg.Selected)
+		Reverse(true)
 
 	WindowStyle = lipgloss.NewStyle().
 		Padding(0, 1).
@@ -172,7 +174,7 @@ func initStyles() {
 		Padding(0, 1).
 		PaddingLeft(10).
 		Bold(true).
-		Background(Colors.Bg.Selected)
+		Reverse(true)
 
 	PaneStyle = lipgloss.NewStyle().
 		Padding(0, 1).
@@ -182,15 +184,14 @@ func initStyles() {
 		Padding(0, 1).
 		PaddingLeft(14).
 		Bold(true).
-		Background(Colors.Bg.Selected)
+		Reverse(true)
 
 	IndexStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Subtle).
 		Width(3)
 
 	IndexSelectedStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.Selected).
-		Background(Colors.Bg.Selected).
+		Reverse(true).
 		Bold(true).
 		Width(3)
 
@@ -198,29 +199,26 @@ func initStyles() {
 		Foreground(Colors.Fg.SessionName)
 
 	SessionNameSelectedStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.SessionNameSelected).
-		Background(Colors.Bg.Selected).
+		Reverse(true).
 		Bold(true)
 
 	WindowNameStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.WindowName)
 
 	WindowNameSelectedStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.Selected).
-		Background(Colors.Bg.Selected).
+		Reverse(true).
 		Bold(true)
 
 	ExpandedIcon = lipgloss.NewStyle().Foreground(Colors.Fg.Accent).Render("▼")
-	ExpandedIconSelected = lipgloss.NewStyle().Foreground(Colors.Fg.Accent).Background(Colors.Bg.Selected).Bold(true).Render("▼")
+	ExpandedIconSelected = lipgloss.NewStyle().Reverse(true).Bold(true).Render("▼")
 	CollapsedIcon = lipgloss.NewStyle().Foreground(Colors.Fg.Muted).Render("▶")
-	CollapsedIconSelected = lipgloss.NewStyle().Foreground(Colors.Fg.Muted).Background(Colors.Bg.Selected).Bold(true).Render("▶")
+	CollapsedIconSelected = lipgloss.NewStyle().Reverse(true).Bold(true).Render("▶")
 
 	TimeStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Muted)
 
 	TimeSelectedStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.Muted).
-		Background(Colors.Bg.Selected).
+		Reverse(true).
 		Bold(true)
 
 	ClaudeNewStyle = lipgloss.NewStyle().
@@ -289,8 +287,7 @@ func initStyles() {
 		Foreground(Colors.Fg.Muted)
 
 	FilterStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.Selected).
-		Background(Colors.Bg.Selected).
+		Reverse(true).
 		Bold(true)
 
 	BorderStyle = lipgloss.NewStyle().
@@ -336,8 +333,7 @@ func initStyles() {
 		Width(3)
 
 	SelfIndexSelectedStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.Accent).
-		Background(Colors.Bg.Selected).
+		Reverse(true).
 		Bold(true).
 		Width(3)
 
@@ -345,27 +341,22 @@ func initStyles() {
 		Foreground(Colors.Fg.Muted)
 
 	SelfNameSelectedStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.Accent).
-		Background(Colors.Bg.Selected).
+		Reverse(true).
 		Bold(true)
 
 	ButtonStyle = lipgloss.NewStyle().
-		Background(Colors.Bg.ButtonAccent).
-		Foreground(Colors.Fg.ButtonLabel).
+		Reverse(true).
 		Bold(true)
 
-	ButtonKeybindStyle = lipgloss.NewStyle().
-		Background(Colors.Bg.ButtonAccent).
-		Foreground(Colors.Fg.ButtonLabel)
-
+	// Warning buttons reverse the terminal's ANSI red so the label renders
+	// on a red background regardless of theme
 	ButtonWarningStyle = lipgloss.NewStyle().
-		Background(Colors.Bg.ButtonWarn).
-		Foreground(Colors.Fg.ButtonLabel).
+		Foreground(Colors.Fg.Error).
+		Reverse(true).
 		Bold(true)
 
-	ButtonWarnKbStyle = lipgloss.NewStyle().
-		Background(Colors.Bg.ButtonWarn).
-		Foreground(Colors.Fg.ButtonLabel)
+	SelectedCellStyle = lipgloss.NewStyle().
+		Reverse(true)
 }
 
 // RenderBorder returns a horizontal border line
@@ -484,9 +475,9 @@ const ClaudeWaitThreshold = 5 * time.Minute
 // ClaudeIdleThreshold is the duration after which "waiting" escalates from ! to Z
 const ClaudeIdleThreshold = 15 * time.Minute
 
-// FormatClaudeIcon formats the Claude status as a single character icon
-// animationFrame cycles 0-3 for the spinner, waitDuration determines ? vs !
-func FormatClaudeIcon(state string, animationFrame int, waitDuration time.Duration) string {
+// StatusIconChar returns the raw (unstyled) status icon character.
+// animationFrame cycles 0-3 for the spinner, waitDuration determines ? vs ! vs Z
+func StatusIconChar(state string, animationFrame int, waitDuration time.Duration) string {
 	switch state {
 	case "new":
 		// Don't show icon for "new" - it's just noise
@@ -494,43 +485,52 @@ func FormatClaudeIcon(state string, animationFrame int, waitDuration time.Durati
 	case "working":
 		// Animated spinner
 		frame := animationFrame % len(ClaudeSpinnerFrames)
-		return ClaudeWorkingStyle.Render(ClaudeSpinnerFrames[frame])
+		return ClaudeSpinnerFrames[frame]
 	case "waiting":
 		// Time-based progression: ? → ! → Z
 		if waitDuration >= ClaudeIdleThreshold {
-			return ClaudeIdleStyle.Render("Z")
+			return "Z"
 		}
 		if waitDuration >= ClaudeWaitThreshold {
-			return ClaudeWaitingUrgentStyle.Render("!")
+			return "!"
 		}
-		return ClaudeWaitingStyle.Render("?")
+		return "?"
 	default:
 		return " "
+	}
+}
+
+// FormatClaudeIcon formats the Claude status as a single character icon
+// animationFrame cycles 0-3 for the spinner, waitDuration determines ? vs !
+func FormatClaudeIcon(state string, animationFrame int, waitDuration time.Duration) string {
+	switch char := StatusIconChar(state, animationFrame, waitDuration); char {
+	case " ":
+		return " "
+	case "Z":
+		return ClaudeIdleStyle.Render(char)
+	case "!":
+		return ClaudeWaitingUrgentStyle.Render(char)
+	case "?":
+		return ClaudeWaitingStyle.Render(char)
+	default:
+		return ClaudeWorkingStyle.Render(char)
 	}
 }
 
 // FormatPiIcon formats the Pi status as a single character icon
 // animationFrame cycles 0-3 for the spinner, waitDuration determines ? vs !
 func FormatPiIcon(state string, animationFrame int, waitDuration time.Duration) string {
-	switch state {
-	case "new":
-		// Don't show icon for "new" - it's just noise
+	switch char := StatusIconChar(state, animationFrame, waitDuration); char {
+	case " ":
 		return " "
-	case "working":
-		// Animated spinner
-		frame := animationFrame % len(ClaudeSpinnerFrames)
-		return PiWorkingStyle.Render(ClaudeSpinnerFrames[frame])
-	case "waiting":
-		// Time-based progression: ? → ! → Z
-		if waitDuration >= ClaudeIdleThreshold {
-			return PiIdleStyle.Render("Z")
-		}
-		if waitDuration >= ClaudeWaitThreshold {
-			return PiWaitingUrgentStyle.Render("!")
-		}
-		return PiWaitingStyle.Render("?")
+	case "Z":
+		return PiIdleStyle.Render(char)
+	case "!":
+		return PiWaitingUrgentStyle.Render(char)
+	case "?":
+		return PiWaitingStyle.Render(char)
 	default:
-		return " "
+		return PiWorkingStyle.Render(char)
 	}
 }
 
@@ -545,14 +545,15 @@ func FormatGitStatus(dirty, additions, deletions int, selected bool) string {
 		return ""
 	}
 
-	// Apply background when selected
+	// Selected rows drop the git colors and use uniform reverse video —
+	// colored foregrounds would invert into colored background patches
 	filesStyle := GitFilesStyle
 	addStyle := GitAddStyle
 	delStyle := GitDelStyle
 	if selected {
-		filesStyle = filesStyle.Background(Colors.Bg.Selected)
-		addStyle = addStyle.Background(Colors.Bg.Selected)
-		delStyle = delStyle.Background(Colors.Bg.Selected)
+		filesStyle = SelectedCellStyle
+		addStyle = SelectedCellStyle
+		delStyle = SelectedCellStyle
 	}
 
 	var parts []string
@@ -577,7 +578,7 @@ func FormatGitStatus(dirty, additions, deletions int, selected bool) string {
 
 	// Join with styled spaces when selected
 	if selected {
-		spacer := lipgloss.NewStyle().Background(Colors.Bg.Selected).Render(" ")
+		spacer := SelectedCellStyle.Render(" ")
 		return strings.Join(parts, spacer)
 	}
 	return strings.Join(parts, " ")
