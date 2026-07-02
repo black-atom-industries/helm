@@ -94,8 +94,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize colors based on appearance config
-	ui.InitColors(string(cfg.Appearance))
+	// Initialize colors from Black Atom theme (if set) or appearance config
+	if !ui.InitColors(string(cfg.Appearance), cfg.Theme) {
+		fmt.Fprintf(os.Stderr, "helm: unknown theme %q, using terminal colors\n", cfg.Theme)
+	}
 
 	// Get current session to exclude from list
 	currentSession, err := tmux.CurrentSession()

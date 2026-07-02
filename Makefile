@@ -1,4 +1,4 @@
-.PHONY: build install clean test coverage dev
+.PHONY: build install clean test coverage dev themes
 
 BINARY_NAME=helm
 INSTALL_DIR=$(HOME)/.local/bin
@@ -39,3 +39,9 @@ lint:
 
 tidy:
 	go mod tidy
+
+# Regenerate Black Atom theme files from templates (requires deno)
+themes:
+	deno task generate
+	gofmt -w internal/ui/theme
+	go build ./...

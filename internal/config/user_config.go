@@ -23,6 +23,12 @@ type Config struct {
 	// Terminal appearance mode ("light" or "dark") - controls color adaptation
 	Appearance Appearance `yaml:"appearance"`
 
+	// Black Atom theme key (e.g. "black-atom-jpn-koyo-yoru").
+	// When set, the theme's colors are used and its own appearance wins
+	// over the appearance key. Empty = terminal-native colors (ANSI-16 +
+	// reverse video). Env override: HELM_THEME.
+	Theme string `yaml:"theme,omitempty"`
+
 	// Layout script name to apply when creating new sessions
 	Layout string `yaml:"layout"`
 
@@ -192,6 +198,9 @@ func Load() (Config, error) {
 	}
 	if os.Getenv("TMUX_SESSION_PICKER_GIT_STATUS") == "1" {
 		cfg.GitStatusEnabled = true
+	}
+	if val := os.Getenv("HELM_THEME"); val != "" {
+		cfg.Theme = val
 	}
 
 	// Load bookmarks from separate file (takes priority over config.yml bookmarks)

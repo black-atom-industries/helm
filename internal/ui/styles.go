@@ -18,7 +18,8 @@ const (
 	ScrollbarColumnWidth = 2 // scrollbar char + space
 )
 
-// Styles — initialized with dark defaults, call InitColors() to reinitialize for light mode
+// Styles — initialized with dark defaults, call InitColors() to reinitialize
+// for light mode or a Black Atom theme
 var (
 	// Container styles
 	AppStyle          lipgloss.Style
@@ -133,8 +134,20 @@ func init() {
 	initStyles()
 }
 
+// selectedBase is the base treatment for selected/highlighted cells:
+// explicit theme colors when a Black Atom theme is active, terminal-native
+// reverse video otherwise.
+func selectedBase() lipgloss.Style {
+	if HasTheme {
+		return lipgloss.NewStyle().
+			Background(Colors.Bg.Selected).
+			Foreground(Colors.Fg.Selected)
+	}
+	return lipgloss.NewStyle().Reverse(true)
+}
+
 // initStyles rebuilds all styles from the current Colors values.
-// Called at init and again by InitColors when appearance changes.
+// Called at init and again by InitColors when appearance or theme changes.
 func initStyles() {
 	AppStyle = lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
@@ -161,64 +174,57 @@ func initStyles() {
 	SessionStyle = lipgloss.NewStyle().
 		Padding(0, 1)
 
-	SessionSelectedStyle = lipgloss.NewStyle().
+	SessionSelectedStyle = selectedBase().
 		Padding(0, 1).
-		Bold(true).
-		Reverse(true)
+		Bold(true)
 
 	WindowStyle = lipgloss.NewStyle().
 		Padding(0, 1).
 		PaddingLeft(10)
 
-	WindowSelectedStyle = lipgloss.NewStyle().
+	WindowSelectedStyle = selectedBase().
 		Padding(0, 1).
 		PaddingLeft(10).
-		Bold(true).
-		Reverse(true)
+		Bold(true)
 
 	PaneStyle = lipgloss.NewStyle().
 		Padding(0, 1).
 		PaddingLeft(14)
 
-	PaneSelectedStyle = lipgloss.NewStyle().
+	PaneSelectedStyle = selectedBase().
 		Padding(0, 1).
 		PaddingLeft(14).
-		Bold(true).
-		Reverse(true)
+		Bold(true)
 
 	IndexStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Subtle).
 		Width(3)
 
-	IndexSelectedStyle = lipgloss.NewStyle().
-		Reverse(true).
+	IndexSelectedStyle = selectedBase().
 		Bold(true).
 		Width(3)
 
 	SessionNameStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.SessionName)
 
-	SessionNameSelectedStyle = lipgloss.NewStyle().
-		Reverse(true).
+	SessionNameSelectedStyle = selectedBase().
 		Bold(true)
 
 	WindowNameStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.WindowName)
 
-	WindowNameSelectedStyle = lipgloss.NewStyle().
-		Reverse(true).
+	WindowNameSelectedStyle = selectedBase().
 		Bold(true)
 
 	ExpandedIcon = lipgloss.NewStyle().Foreground(Colors.Fg.Accent).Render("▼")
-	ExpandedIconSelected = lipgloss.NewStyle().Reverse(true).Bold(true).Render("▼")
+	ExpandedIconSelected = selectedBase().Bold(true).Render("▼")
 	CollapsedIcon = lipgloss.NewStyle().Foreground(Colors.Fg.Muted).Render("▶")
-	CollapsedIconSelected = lipgloss.NewStyle().Reverse(true).Bold(true).Render("▶")
+	CollapsedIconSelected = selectedBase().Bold(true).Render("▶")
 
 	TimeStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Muted)
 
-	TimeSelectedStyle = lipgloss.NewStyle().
-		Reverse(true).
+	TimeSelectedStyle = selectedBase().
 		Bold(true)
 
 	ClaudeNewStyle = lipgloss.NewStyle().
@@ -286,8 +292,7 @@ func initStyles() {
 	HelpSepStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Muted)
 
-	FilterStyle = lipgloss.NewStyle().
-		Reverse(true).
+	FilterStyle = selectedBase().
 		Bold(true)
 
 	BorderStyle = lipgloss.NewStyle().
@@ -332,31 +337,35 @@ func initStyles() {
 		Foreground(Colors.Fg.Accent).
 		Width(3)
 
-	SelfIndexSelectedStyle = lipgloss.NewStyle().
-		Reverse(true).
+	SelfIndexSelectedStyle = selectedBase().
 		Bold(true).
 		Width(3)
 
 	SelfNameStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Muted)
 
-	SelfNameSelectedStyle = lipgloss.NewStyle().
-		Reverse(true).
+	SelfNameSelectedStyle = selectedBase().
 		Bold(true)
 
-	ButtonStyle = lipgloss.NewStyle().
-		Reverse(true).
+	ButtonStyle = selectedBase().
 		Bold(true)
 
-	// Warning buttons reverse the terminal's ANSI red so the label renders
-	// on a red background regardless of theme
-	ButtonWarningStyle = lipgloss.NewStyle().
-		Foreground(Colors.Fg.Error).
-		Reverse(true).
-		Bold(true)
+	// Warning buttons: strong red on the theme's soft negative tint
+	// (diff-delete pairing); in fallback, reverse the terminal's ANSI
+	// red so the label renders on red
+	if HasTheme {
+		ButtonWarningStyle = lipgloss.NewStyle().
+			Background(Colors.Bg.Negative).
+			Foreground(Colors.Fg.Error).
+			Bold(true)
+	} else {
+		ButtonWarningStyle = lipgloss.NewStyle().
+			Foreground(Colors.Fg.Error).
+			Reverse(true).
+			Bold(true)
+	}
 
-	SelectedCellStyle = lipgloss.NewStyle().
-		Reverse(true)
+	SelectedCellStyle = selectedBase()
 }
 
 // RenderBorder returns a horizontal border line

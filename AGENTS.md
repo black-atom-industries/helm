@@ -32,9 +32,11 @@ internal/
   model/model.go          # Bubbletea Model - main state, Update/View logic
   ui/
     keys.go               # Key bindings (KeyMap) and help text
-    styles.go             # Lipgloss colors and styles
+    styles.go             # Lipgloss styles (built from colors.go tokens)
+    colors.go             # Semantic color tokens: Black Atom theme or ANSI-16 fallback
     columns.go            # Row rendering (sessions, windows, bookmarks)
     scrolllist.go         # Generic scrollable list with filtering
+    theme/                # Black Atom theme registry + generated themes (make themes)
   config/config.go        # YAML config (~/.config/black-atom/helm/config.yml)
   tmux/tmux.go            # tmux command wrappers (list, switch, kill)
   claude/status.go        # Claude Code status file parsing
@@ -87,6 +89,7 @@ Navigation uses Ctrl modifiers to reserve letters for filtering:
 Config file: `~/.config/black-atom/helm/config.yml`
 
 ```yaml
+theme: black-atom-jpn-koyo-yoru # Black Atom theme (empty = terminal ANSI colors)
 layout: ide # Layout script for new sessions
 layout_dir: ~/.config/tmux/layouts
 claude_status_enabled: true # Show CC status indicator
@@ -94,7 +97,21 @@ cache_dir: ~/.cache/helm
 dirty_walkthrough_command: "lazygit -p {}" # Command for 'helm repos dirty --walk'
 ```
 
-Environment variables override config: `TMUX_LAYOUT`, `TMUX_LAYOUTS_DIR`, `TMUX_SESSION_PICKER_CLAUDE_STATUS=1`
+Environment variables override config: `TMUX_LAYOUT`, `TMUX_LAYOUTS_DIR`, `TMUX_SESSION_PICKER_CLAUDE_STATUS=1`, `HELM_THEME`
+
+## Theming (Black Atom adapter)
+
+helm is a [Black Atom](https://github.com/black-atom-industries/core) adapter. The
+`black-atom-adapter.json` manifest maps every collection to the Eta template
+`internal/ui/theme/collection.template.go`, which renders one self-registering Go
+file per theme (committed, so end users never need Deno).
+
+- Set `theme:` in config (or `HELM_THEME`) to a theme key; the theme's own
+  appearance wins over the `appearance` key. Empty = terminal-native ANSI-16 +
+  reverse-video fallback.
+- Regenerate after core changes: `make themes` (requires deno).
+- The template is itself valid Go; the unrendered entry it registers at init is
+  dropped by `Register`'s key guard (`internal/ui/theme/registry.go`).
 
 ## Testing
 
