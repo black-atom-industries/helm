@@ -137,14 +137,18 @@ func init() {
 	initStyles()
 }
 
-// selectedBase is the base treatment for selected/highlighted cells:
-// explicit theme colors when a Black Atom theme is active, terminal-native
-// reverse video otherwise.
-func selectedBase() lipgloss.Style {
+// selectedBase is the base treatment for selected/highlighted cells.
+// In theme mode it paints only the selection background and, when a base
+// style is passed, preserves that style's foreground so per-cell colors
+// survive selection (the row gains a noticeable background, nothing more).
+// Without a theme it falls back to terminal-native reverse video.
+func selectedBase(base ...lipgloss.Style) lipgloss.Style {
 	if HasTheme {
-		return lipgloss.NewStyle().
-			Background(Colors.Bg.Selected).
-			Foreground(Colors.Fg.Selected)
+		s := lipgloss.NewStyle().Background(Colors.Bg.Selected)
+		if len(base) > 0 {
+			s = base[0].Background(Colors.Bg.Selected)
+		}
+		return s
 	}
 	return lipgloss.NewStyle().Reverse(true)
 }
@@ -177,7 +181,7 @@ func initStyles() {
 	SessionStyle = lipgloss.NewStyle().
 		Padding(0, 1)
 
-	SessionSelectedStyle = selectedBase().
+	SessionSelectedStyle = selectedBase(SessionStyle).
 		Padding(0, 1).
 		Bold(true)
 
@@ -185,7 +189,7 @@ func initStyles() {
 		Padding(0, 1).
 		PaddingLeft(10)
 
-	WindowSelectedStyle = selectedBase().
+	WindowSelectedStyle = selectedBase(WindowStyle).
 		Padding(0, 1).
 		PaddingLeft(10).
 		Bold(true)
@@ -194,7 +198,7 @@ func initStyles() {
 		Padding(0, 1).
 		PaddingLeft(14)
 
-	PaneSelectedStyle = selectedBase().
+	PaneSelectedStyle = selectedBase(PaneStyle).
 		Padding(0, 1).
 		PaddingLeft(14).
 		Bold(true)
@@ -203,31 +207,30 @@ func initStyles() {
 		Foreground(Colors.Fg.Subtle).
 		Width(3)
 
-	IndexSelectedStyle = selectedBase().
-		Bold(true).
-		Width(3)
+	IndexSelectedStyle = selectedBase(IndexStyle).
+		Bold(true)
 
 	SessionNameStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.SessionName)
 
-	SessionNameSelectedStyle = selectedBase().
+	SessionNameSelectedStyle = selectedBase(SessionNameStyle).
 		Bold(true)
 
 	WindowNameStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.WindowName)
 
-	WindowNameSelectedStyle = selectedBase().
+	WindowNameSelectedStyle = selectedBase(WindowNameStyle).
 		Bold(true)
 
 	ExpandedIcon = lipgloss.NewStyle().Foreground(Colors.Fg.Accent).Render("▼")
-	ExpandedIconSelected = selectedBase().Bold(true).Render("▼")
+	ExpandedIconSelected = selectedBase(lipgloss.NewStyle().Foreground(Colors.Fg.Accent)).Bold(true).Render("▼")
 	CollapsedIcon = lipgloss.NewStyle().Foreground(Colors.Fg.Muted).Render("▶")
-	CollapsedIconSelected = selectedBase().Bold(true).Render("▶")
+	CollapsedIconSelected = selectedBase(lipgloss.NewStyle().Foreground(Colors.Fg.Muted)).Bold(true).Render("▶")
 
 	TimeStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Muted)
 
-	TimeSelectedStyle = selectedBase().
+	TimeSelectedStyle = selectedBase(TimeStyle).
 		Bold(true)
 
 	ClaudeNewStyle = lipgloss.NewStyle().
@@ -350,14 +353,13 @@ func initStyles() {
 		Foreground(Colors.Fg.Accent).
 		Width(3)
 
-	SelfIndexSelectedStyle = selectedBase().
-		Bold(true).
-		Width(3)
+	SelfIndexSelectedStyle = selectedBase(SelfIndexStyle).
+		Bold(true)
 
 	SelfNameStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Muted)
 
-	SelfNameSelectedStyle = selectedBase().
+	SelfNameSelectedStyle = selectedBase(SelfNameStyle).
 		Bold(true)
 
 	// Agent identity marker ("● claude") on window/pane rows
@@ -482,36 +484,54 @@ func StatusIconChar(state string, animationFrame int, waitDuration time.Duration
 
 // FormatClaudeIcon formats the Claude status as a single character icon
 // animationFrame cycles 0-3 for the spinner, waitDuration determines ? vs !
-func FormatClaudeIcon(state string, animationFrame int, waitDuration time.Duration) string {
-	switch char := StatusIconChar(state, animationFrame, waitDuration); char {
+func FormatClaudeIcon(state string, animationFrame int, waitDuration time.Duration, selected bool) string {
+	char := StatusIconChar(state, animationFrame, waitDuration)
+	var style lipgloss.Style
+	switch char {
 	case " ":
+		if selected {
+			return selectedBase().Render(" ")
+		}
 		return " "
 	case "Z":
-		return ClaudeIdleStyle.Render(char)
+		style = ClaudeIdleStyle
 	case "!":
-		return ClaudeWaitingUrgentStyle.Render(char)
+		style = ClaudeWaitingUrgentStyle
 	case "?":
-		return ClaudeWaitingStyle.Render(char)
+		style = ClaudeWaitingStyle
 	default:
-		return ClaudeWorkingStyle.Render(char)
+		style = ClaudeWorkingStyle
 	}
+	if selected {
+		style = selectedBase(style)
+	}
+	return style.Render(char)
 }
 
 // FormatPiIcon formats the Pi status as a single character icon
 // animationFrame cycles 0-3 for the spinner, waitDuration determines ? vs !
-func FormatPiIcon(state string, animationFrame int, waitDuration time.Duration) string {
-	switch char := StatusIconChar(state, animationFrame, waitDuration); char {
+func FormatPiIcon(state string, animationFrame int, waitDuration time.Duration, selected bool) string {
+	char := StatusIconChar(state, animationFrame, waitDuration)
+	var style lipgloss.Style
+	switch char {
 	case " ":
+		if selected {
+			return selectedBase().Render(" ")
+		}
 		return " "
 	case "Z":
-		return PiIdleStyle.Render(char)
+		style = PiIdleStyle
 	case "!":
-		return PiWaitingUrgentStyle.Render(char)
+		style = PiWaitingUrgentStyle
 	case "?":
-		return PiWaitingStyle.Render(char)
+		style = PiWaitingStyle
 	default:
-		return PiWorkingStyle.Render(char)
+		style = PiWorkingStyle
 	}
+	if selected {
+		style = selectedBase(style)
+	}
+	return style.Render(char)
 }
 
 // GitStatusColumnWidth is the fixed width for the git status column
@@ -525,15 +545,15 @@ func FormatGitStatus(dirty, additions, deletions int, selected bool) string {
 		return ""
 	}
 
-	// Selected rows drop the git colors and use uniform reverse video —
-	// colored foregrounds would invert into colored background patches
+	// On selected rows keep the git colors and paint the selection
+	// background behind them — only the background changes, not the colors.
 	filesStyle := GitFilesStyle
 	addStyle := GitAddStyle
 	delStyle := GitDelStyle
 	if selected {
-		filesStyle = SelectedCellStyle
-		addStyle = SelectedCellStyle
-		delStyle = SelectedCellStyle
+		filesStyle = selectedBase(filesStyle)
+		addStyle = selectedBase(addStyle)
+		delStyle = selectedBase(delStyle)
 	}
 
 	var parts []string

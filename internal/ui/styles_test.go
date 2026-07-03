@@ -120,7 +120,7 @@ func TestFormatClaudeIcon(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := FormatClaudeIcon(tt.state, tt.animationFrame, tt.waitDuration)
+			result := FormatClaudeIcon(tt.state, tt.animationFrame, tt.waitDuration, false)
 
 			if tt.wantSpace && result != " " {
 				t.Errorf("FormatClaudeIcon(%q, %d, %v) = %q, want space", tt.state, tt.animationFrame, tt.waitDuration, result)

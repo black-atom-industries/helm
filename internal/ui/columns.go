@@ -172,11 +172,9 @@ func RenderClaudeIcon(status *agent.Status, animFrame int, selected bool) string
 	}
 	waitDuration := time.Since(status.Timestamp)
 	if selected {
-		// Uncolored reverse video — a colored foreground would invert
-		// into a colored background patch on the selected row
-		return SelectedCellStyle.Render(StatusIconChar(status.State, animFrame, waitDuration))
+		return FormatClaudeIcon(status.State, animFrame, waitDuration, true)
 	}
-	return FormatClaudeIcon(status.State, animFrame, waitDuration)
+	return FormatClaudeIcon(status.State, animFrame, waitDuration, false)
 }
 
 // RenderPiIcon renders a single-character Pi status icon
@@ -187,11 +185,9 @@ func RenderPiIcon(status *agent.Status, animFrame int, selected bool) string {
 	}
 	waitDuration := time.Since(status.Timestamp)
 	if selected {
-		// Uncolored reverse video — a colored foreground would invert
-		// into a colored background patch on the selected row
-		return SelectedCellStyle.Render(StatusIconChar(status.State, animFrame, waitDuration))
+		return FormatPiIcon(status.State, animFrame, waitDuration, true)
 	}
-	return FormatPiIcon(status.State, animFrame, waitDuration)
+	return FormatPiIcon(status.State, animFrame, waitDuration, false)
 }
 
 // SessionRowOpts wraps RowOpts with session-specific settings
@@ -389,7 +385,7 @@ func renderAgentIdent(kind string, selected bool) string {
 		return ""
 	}
 	if selected {
-		return SelectedCellStyle.Render("  ● " + kind)
+		return selectedBase(AgentIdentStyle).Render("  ● " + kind)
 	}
 	return AgentIdentStyle.Render("  ● " + kind)
 }
