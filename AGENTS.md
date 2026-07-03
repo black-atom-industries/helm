@@ -35,6 +35,8 @@ internal/
     styles.go             # Lipgloss styles (built from colors.go tokens)
     colors.go             # Semantic color tokens: Black Atom theme or ANSI-16 fallback
     columns.go            # Row rendering (sessions, windows, bookmarks)
+    agentpanel.go         # AGENTS side panel (per-instance agent status)
+    help.go               # ? keymap overlay
     scrolllist.go         # Generic scrollable list with filtering
     theme/                # Black Atom theme registry + generated themes (make themes)
   config/config.go        # YAML config (~/.config/black-atom/helm/config.yml)
@@ -51,7 +53,7 @@ hooks/helm-hook.sh        # Claude Code hook for status updates
 
 ### Bubbletea Model Flow
 
-The model (`internal/model/model.go`) has seven modes:
+The model (`internal/model/model.go`) has these modes:
 
 - **ModeNormal**: Session list with fuzzy filtering
 - **ModeBookmarks**: Bookmarked repos (local dirs without active sessions)
@@ -60,6 +62,7 @@ The model (`internal/model/model.go`) has seven modes:
 - **ModeCreate**: Text input for new session name
 - **ModeConfirmKill**: Kill confirmation prompt
 - **ModeConfirmRemoveFolder**: Folder removal confirmation
+- **ModeHelp**: Full-keymap overlay (`?`)
 
 Key state:
 
@@ -84,7 +87,11 @@ Navigation uses Ctrl modifiers to reserve letters for filtering:
 - `Ctrl+d`: Download (clone) repo from GitHub
 - `Ctrl+g`: Lazygit
 - `1-9`: Jump to session (only when no filter active)
+- `?`: Help overlay with full keymap (only when no filter active)
 - Type letters: Fuzzy filter
+
+The footer is a single compact hint bar (`ui.RenderHintBar`) derived from the
+per-mode `Action` lists in `internal/ui/sidebar.go` — there are no button rows.
 
 ## Configuration
 
@@ -135,16 +142,18 @@ screencapture -x /tmp/helm_test.png
 
 Then read `/tmp/helm_test.png` to visually verify the UI looks correct.
 
-## Claude Status Integration
+## Agent Status Integration (Claude Code, Pi)
 
-The hook (`hooks/helm-hook.sh`) writes JSON status files to `~/.cache/helm/<session>.status` (`{"state","ts","tool","session_id","transcript","cwd"}`; the legacy `state:timestamp` format still parses). The TUI polls these every second (`internal/agent`) and shows animated status indicators per session:
+The hook (`hooks/helm-hook.sh`) writes JSON status files to `~/.cache/helm/<session>.<session_id>.status` — one file per agent instance, so multiple Claude instances in one tmux session don't overwrite each other (`{"state","ts","tool","session_id","transcript","cwd"}`; the legacy un-suffixed `state:timestamp` format still parses). The TUI polls these every second (`internal/agent`) and shows animated status indicators per session:
 
 - `⠤⠆⠒⠰` (spinner) - Claude actively processing
 - `?` - Claude waiting (0–5 min)
 - `!` - Still waiting (5–15 min)
 - `Z` - Idle (> 15 min)
 
-Because hooks don't fire on crash or SIGKILL, each poll also verifies via a process-tree check (`internal/agent/liveness.go`) that an agent process actually runs beneath the session's panes — stale status files are removed. Pi status works identically via `.pi-status` files.
+With multiple instances, the list glyph shows the most active one (working > waiting > new). The **AGENTS side panel** (viewport ≥ 100×15, 35% of the content width via `ui.AgentPanelRatio`) lists every live instance of the selected session with state, elapsed time, and current/last tool; the footer counts them ("10 sessions · 3 agents"). Expanded window/pane rows carry a per-pane agent ident ("● claude" / "● pi") attributed via the process tree — reliable even when the pane command is just "node".
+
+Because hooks don't fire on crash or SIGKILL, each poll also verifies via a process-tree check (`internal/agent/liveness.go`) that an agent process actually runs beneath the session's panes — stale status files are removed. Pi status works identically via `.pi-status` files. Liveness is per-kind-per-session: it cannot tell which of two same-kind instances died, so individual crashed instances age out via the stale thresholds instead.
 
 > **Known limitation:** Claude Code's `Stop` hook has no `stop_reason` field to differentiate "idle/done" from "waiting for input." See upstream [anthropics/claude-code#13024](https://github.com/anthropics/claude-code/issues/13024).
 

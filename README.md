@@ -16,8 +16,10 @@ Part of the [Black Atom Industries](https://github.com/black-atom-industries) co
 - Create new sessions inline (`Ctrl+n`)
 - Project picker (`Ctrl+p`)
 - Bookmarks (`Ctrl+b`)
-- Claude Code status integration (animated spinner)
+- Agent status integration (Claude Code, Pi): animated spinner per session,
+  AGENTS side panel with per-instance state, elapsed time, and current tool
 - Git status per session (dirty/ahead/behind)
+- `?` help overlay with the full keymap
 
 ## Installation
 
@@ -41,8 +43,12 @@ This builds the `helm` binary and installs it to `~/.local/bin/`.
 Add a key binding to your `~/.tmux.conf`:
 
 ```tmux
-bind -n M-w display-popup -w50% -h35% -B -E "helm"
+bind -n M-w display-popup -w90% -h80% -B -E "helm"
 ```
+
+A lazygit-style large popup is recommended — the AGENTS side panel needs at
+least a 100×15 viewport and hides on smaller popups (the rest of the UI works
+at any size).
 
 Reload your tmux configuration: `tmux source-file ~/.tmux.conf`
 
@@ -62,7 +68,11 @@ Reload your tmux configuration: `tmux source-file ~/.tmux.conf`
 | `Ctrl+a`              | Add/remove bookmark                     |
 | `Ctrl+r`              | Clone repo from GitHub                  |
 | `Ctrl+g`              | Open lazygit                            |
+| `?`                   | Help overlay (when no filter active)    |
 | `q`/`Esc`             | Quit                                    |
+
+The footer shows a compact hint bar with the current mode's actions; `?`
+opens the full keymap.
 
 ## Configuration
 

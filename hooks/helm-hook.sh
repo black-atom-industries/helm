@@ -11,13 +11,29 @@ mkdir -p "$STATUS_DIR"
 # Read JSON from stdin (required by Claude Code hooks)
 INPUT=$(cat)
 
-# Get tmux session name
-TMUX_SESSION=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+# Get the tmux session THIS process runs in. $TMUX_PANE targets the hook's
+# own pane — display-message without a target would report the currently
+# focused client's session instead, misattributing the status whenever the
+# user is looking at a different session while the hook fires.
+if [[ -n "$TMUX_PANE" ]]; then
+    TMUX_SESSION=$(tmux display-message -t "$TMUX_PANE" -p '#{session_name}' 2>/dev/null)
+else
+    TMUX_SESSION=$(tmux display-message -p '#{session_name}' 2>/dev/null)
+fi
 [[ -z "$TMUX_SESSION" ]] && exit 0
 
 HOOK_TYPE="$1"
-STATUS_FILE="$STATUS_DIR/${TMUX_SESSION}.status"
 TIMESTAMP=$(date +%s)
+
+# One status file per agent instance: <session>.<session_id>.status, so two
+# Claude instances in the same tmux session don't overwrite each other.
+# Falls back to the legacy <session>.status when no session_id is available.
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // empty' 2>/dev/null)
+if [[ -n "$SESSION_ID" ]]; then
+    STATUS_FILE="$STATUS_DIR/${TMUX_SESSION}.${SESSION_ID}.status"
+else
+    STATUS_FILE="$STATUS_DIR/${TMUX_SESSION}.status"
+fi
 
 # write_status <state> — persist state plus context from the hook payload
 # (tool name, session id, transcript path). Falls back to a minimal JSON

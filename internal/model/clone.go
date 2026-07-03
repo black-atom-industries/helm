@@ -272,7 +272,7 @@ func (m *Model) fetchAvailableReposCmd() tea.Cmd {
 func (m *Model) cloneMaxVisibleItems() int {
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		if available := contentH - 6 - ui.ActionBarHeight; available > 0 { // header(3) + footer(3) + actionBar(3)
+		if available := contentH - 6; available > 0 { // header(3) + footer(3)
 			return available
 		}
 	}
@@ -301,7 +301,7 @@ func (m Model) viewCloneChoice() string {
 	}
 
 	// Padding is handled by renderWithSidebar
-	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, ui.UniversalHints, m.messageIsError)
+	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, m.messageIsError)
 }
 
 func (m Model) viewCloneURL() string {
@@ -330,7 +330,7 @@ func (m Model) viewCloneURL() string {
 	}
 
 	// Padding is handled by renderWithSidebar
-	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, ui.UniversalHints, m.messageIsError)
+	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, m.messageIsError)
 }
 
 func (m Model) viewCloneRepo() string {
@@ -394,5 +394,5 @@ func (m Model) viewCloneRepo() string {
 	}
 
 	// Padding is handled by renderWithSidebar
-	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, ui.UniversalHints, m.messageIsError)
+	return m.renderWithSidebar(header.String(), b.String(), ui.CloneActions, m.message, m.messageIsError)
 }

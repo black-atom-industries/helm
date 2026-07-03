@@ -40,13 +40,15 @@ type RowOpts struct {
 
 // WindowRowOpts contains per-row options for rendering a window
 type WindowRowOpts struct {
-	Selected bool
-	Expanded bool // Window is expanded to show panes
+	Selected   bool
+	Expanded   bool     // Window is expanded to show panes
+	AgentKinds []string // Agents running in the window's panes (a window can host several)
 }
 
 // PaneRowOpts contains per-row options for rendering a pane
 type PaneRowOpts struct {
-	Selected bool
+	Selected  bool
+	AgentKind string // Agent running in this pane ("" = none)
 }
 
 // Column component functions - each returns a styled string
@@ -352,6 +354,9 @@ func RenderWindowRow(index int, name string, opts WindowRowOpts, width int) stri
 
 	// Window name with index
 	parts = append(parts, RenderWindowName(index, name, opts.Selected))
+	for _, kind := range opts.AgentKinds {
+		parts = append(parts, renderAgentIdent(kind, opts.Selected))
+	}
 
 	content := strings.Join(parts, "")
 	if opts.Selected {
@@ -368,12 +373,25 @@ func RenderPaneRow(index int, command string, active bool, opts PaneRowOpts, wid
 	if active {
 		activeMarker = "*"
 	}
-	text := fmt.Sprintf("%s %d: %s", activeMarker, index, command)
+	text := fmt.Sprintf("%s %d: %s", activeMarker, index, command) + renderAgentIdent(opts.AgentKind, opts.Selected)
 
 	if opts.Selected {
 		return PaneSelectedStyle.Width(width).Render(text)
 	}
 	return PaneStyle.Width(width).Render(text)
+}
+
+// renderAgentIdent renders the "● claude" identity marker for a pane or
+// window that hosts an agent process — attribution comes from the process
+// tree, so it works for agents whose pane command is just "node".
+func renderAgentIdent(kind string, selected bool) string {
+	if kind == "" {
+		return ""
+	}
+	if selected {
+		return SelectedCellStyle.Render("  ● " + kind)
+	}
+	return AgentIdentStyle.Render("  ● " + kind)
 }
 
 // ItemDepth represents the hierarchy level of an item

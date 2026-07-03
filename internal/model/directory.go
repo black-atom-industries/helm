@@ -203,7 +203,7 @@ func (m Model) viewPickDirectory() string {
 	}
 
 	// Padding is handled by renderWithSidebar
-	return m.renderWithSidebar(header.String(), b.String(), ui.ProjectActions, m.message, ui.UniversalHints, m.messageIsError)
+	return m.renderWithSidebar(header.String(), b.String(), ui.ProjectActions, m.message, m.messageIsError)
 }
 
 // projectMaxVisibleItems returns the actual number of items that can be shown
@@ -211,7 +211,7 @@ func (m Model) viewPickDirectory() string {
 func (m *Model) projectMaxVisibleItems() int {
 	contentH := m.contentHeight()
 	if contentH > 0 {
-		if available := contentH - 6 - ui.ActionBarHeight; available > 0 { // header(3) + footer(3) + actionBar(3)
+		if available := contentH - 6; available > 0 { // header(3) + footer(3)
 			return available
 		}
 	}

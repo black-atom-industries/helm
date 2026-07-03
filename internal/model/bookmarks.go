@@ -263,7 +263,7 @@ func (m Model) viewBookmarks() string {
 		contentH := m.contentHeight()
 		maxItems := ui.DefaultVisibleItems
 		if contentH > 0 {
-			if available := contentH - 8 - ui.ActionBarHeight; available > 0 { // header(3) + footer(3) + actionBar(3) + tableHeader(1) + dottedLine(1)
+			if available := contentH - 8; available > 0 { // header(3) + footer(3) + tableHeader(1) + dottedLine(1)
 				maxItems = available
 			}
 		}
@@ -344,11 +344,12 @@ func (m Model) viewBookmarks() string {
 				if m.gitStatusShowLoading && m.gitStatusPending[sessionName] {
 					opts.GitStatusLoading = true
 				}
-				if status, ok := m.claudeStatuses[sessionName]; ok {
-					opts.ClaudeStatus = &status
+				// Statuses are sorted most-active first — [0] drives the glyph
+				if statuses := m.claudeStatuses[sessionName]; len(statuses) > 0 {
+					opts.ClaudeStatus = &statuses[0]
 				}
-				if status, ok := m.piStatuses[sessionName]; ok {
-					opts.PiStatus = &status
+				if statuses := m.piStatuses[sessionName]; len(statuses) > 0 {
+					opts.PiStatus = &statuses[0]
 				}
 				b.WriteString(ui.RenderSessionRow(sessionName, session.LastActivity, layout, opts, m.rowWidth()))
 				b.WriteString("\n")
@@ -377,6 +378,5 @@ func (m Model) viewBookmarks() string {
 	}
 
 	// Padding is handled by renderWithSidebar
-	hints := ui.UniversalHints
-	return m.renderWithSidebar(header.String(), b.String(), ui.BookmarkActions, m.message, hints, m.messageIsError)
+	return m.renderWithSidebar(header.String(), b.String(), ui.BookmarkActions, m.message, m.messageIsError)
 }

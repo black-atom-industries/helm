@@ -82,9 +82,11 @@ var (
 	InputPromptStyle lipgloss.Style
 
 	// Help styles
-	HelpKeyStyle  lipgloss.Style
-	HelpDescStyle lipgloss.Style
-	HelpSepStyle  lipgloss.Style
+	HelpKeyStyle     lipgloss.Style
+	HelpDescStyle    lipgloss.Style
+	HelpSepStyle     lipgloss.Style
+	HelpSectionStyle lipgloss.Style
+	HelpBoxStyle     lipgloss.Style
 
 	// Filter style
 	FilterStyle lipgloss.Style
@@ -122,8 +124,9 @@ var (
 	SelfNameSelectedStyle  lipgloss.Style
 
 	// Action button styles (bottom button bar)
-	ButtonStyle        lipgloss.Style
-	ButtonWarningStyle lipgloss.Style
+	AgentIdentStyle  lipgloss.Style
+	HintStyle        lipgloss.Style
+	HintWarningStyle lipgloss.Style
 
 	// SelectedCellStyle is the uniform reverse-video treatment for cells
 	// on the selected row (spacers, icons, git status)
@@ -292,6 +295,16 @@ func initStyles() {
 	HelpSepStyle = lipgloss.NewStyle().
 		Foreground(Colors.Fg.Muted)
 
+	// Help overlay (? keymap box)
+	HelpSectionStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.Subtle).
+		Bold(true)
+
+	HelpBoxStyle = lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(Colors.Fg.Border).
+		Padding(1, 3)
+
 	FilterStyle = selectedBase().
 		Bold(true)
 
@@ -347,23 +360,17 @@ func initStyles() {
 	SelfNameSelectedStyle = selectedBase().
 		Bold(true)
 
-	ButtonStyle = selectedBase().
-		Bold(true)
+	// Agent identity marker ("● claude") on window/pane rows
+	AgentIdentStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.Accent)
 
-	// Warning buttons: strong red on the theme's soft negative tint
-	// (diff-delete pairing); in fallback, reverse the terminal's ANSI
-	// red so the label renders on red
-	if HasTheme {
-		ButtonWarningStyle = lipgloss.NewStyle().
-			Background(Colors.Bg.Negative).
-			Foreground(Colors.Fg.Error).
-			Bold(true)
-	} else {
-		ButtonWarningStyle = lipgloss.NewStyle().
-			Foreground(Colors.Fg.Error).
-			Reverse(true).
-			Bold(true)
-	}
+	// Footer hint bar: subtle key/action pairs; destructive actions in
+	// the error color so they stand out from the dim line
+	HintStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.Subtle)
+
+	HintWarningStyle = lipgloss.NewStyle().
+		Foreground(Colors.Fg.Error)
 
 	SelectedCellStyle = selectedBase()
 }
@@ -407,47 +414,9 @@ func RenderPrompt(filter string, width int) string {
 	return PromptStyle.Width(innerWidth).Render(prompt)
 }
 
-// RenderFooter renders the 3-line footer (notification, state, hints)
-// Deprecated: Use RenderSimpleFooter for new views.
-func RenderFooter(notification, state, hints string, isError bool, width int) string {
-	innerWidth := width - AppBorderOverheadX
-	if innerWidth < 10 {
-		innerWidth = 40 // fallback for initial render
-	}
-	var b strings.Builder
-
-	// Border
-	b.WriteString(RenderBorder(innerWidth))
-	b.WriteString("\n")
-
-	// Notification line (always 1 line, even if empty)
-	if notification != "" {
-		if isError {
-			b.WriteString(ErrorMessageStyle.Width(innerWidth).Render(notification))
-		} else {
-			b.WriteString(MessageStyle.Width(innerWidth).Render(notification))
-		}
-	} else {
-		b.WriteString(strings.Repeat(" ", innerWidth))
-	}
-	b.WriteString("\n")
-
-	// State line (always 1 line, even if empty)
-	if state != "" {
-		b.WriteString(StateStyle.Width(innerWidth).Render(state))
-	} else {
-		b.WriteString(strings.Repeat(" ", innerWidth))
-	}
-	b.WriteString("\n")
-
-	// Hints line
-	b.WriteString(FooterStyle.Width(innerWidth).Render(hints))
-
-	return b.String()
-}
-
 // RenderSimpleFooter renders a 3-line footer: border + notification + single-line hints.
-// Used by views with sidebar (where state/actions are in the sidebar instead).
+// The hints line arrives pre-styled (see RenderHintBar), so it is only padded here —
+// recoloring it would fight the per-pair styles.
 func RenderSimpleFooter(notification, hints string, isError bool, width int) string {
 	innerWidth := width - AppBorderOverheadX
 	if innerWidth < 10 {
@@ -469,7 +438,9 @@ func RenderSimpleFooter(notification, hints string, isError bool, width int) str
 	}
 	b.WriteString("\n")
 
-	b.WriteString(FooterStyle.Width(innerWidth).Render(hints))
+	// MaxWidth instead of Width: the hint bar must truncate on narrow
+	// viewports, never wrap — the footer is a fixed 3 lines.
+	b.WriteString(lipgloss.NewStyle().Padding(0, 1).MaxWidth(innerWidth).Render(hints))
 
 	return b.String()
 }

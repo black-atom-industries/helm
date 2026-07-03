@@ -101,7 +101,7 @@ func TestGetStatus(t *testing.T) {
 				sessionName = "nonexistent"
 			}
 
-			status := GetStatus(Claude, sessionName, tmpDir)
+			status := primaryStatus(Claude, sessionName, tmpDir)
 
 			if status.State != tt.wantState {
 				t.Errorf("State = %q, want %q", status.State, tt.wantState)
@@ -159,7 +159,7 @@ func TestGetStatusJSONFormat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			writeFile(t, tmpDir, "sess.status", tt.content)
 
-			got := GetStatus(Claude, "sess", tmpDir)
+			got := primaryStatus(Claude, "sess", tmpDir)
 
 			if tt.wantZero {
 				if got.State != "" {
@@ -186,48 +186,82 @@ func TestGetStatusPerKind(t *testing.T) {
 	writeFile(t, tmpDir, "sess.status", "working:"+ts)
 	writeFile(t, tmpDir, "sess.pi-status", "waiting:"+ts)
 
-	if got := GetStatus(Claude, "sess", tmpDir).State; got != "working" {
+	if got := primaryStatus(Claude, "sess", tmpDir).State; got != "working" {
 		t.Errorf("Claude state = %q, want %q", got, "working")
 	}
-	if got := GetStatus(Pi, "sess", tmpDir).State; got != "waiting" {
+	if got := primaryStatus(Pi, "sess", tmpDir).State; got != "waiting" {
 		t.Errorf("Pi state = %q, want %q", got, "waiting")
 	}
 }
 
-func TestRemoveStatus(t *testing.T) {
+func TestGetStatusesMultiInstance(t *testing.T) {
 	tmpDir := t.TempDir()
-	writeFile(t, tmpDir, "sess.status", "working:"+fmt.Sprintf("%d", time.Now().Unix()))
+	now := time.Now().Unix()
 
-	RemoveStatus(Claude, "sess", tmpDir)
+	// Legacy file + two per-instance files in one session
+	writeFile(t, tmpDir, "sess.status", fmt.Sprintf("new:%d", now))
+	writeFile(t, tmpDir, "sess.uuid-1.status", fmt.Sprintf(`{"state":"working","ts":%d,"tool":"Bash"}`, now))
+	writeFile(t, tmpDir, "sess.uuid-2.status", fmt.Sprintf(`{"state":"waiting","ts":%d}`, now))
+	// Different session — must not bleed in
+	writeFile(t, tmpDir, "other.uuid-3.status", fmt.Sprintf(`{"state":"working","ts":%d}`, now))
+
+	statuses := GetStatuses(Claude, "sess", tmpDir)
+
+	if len(statuses) != 3 {
+		t.Fatalf("len = %d, want 3 (%+v)", len(statuses), statuses)
+	}
+	// Sorted most-active first: working > waiting > new
+	if statuses[0].State != "working" || statuses[1].State != "waiting" || statuses[2].State != "new" {
+		t.Errorf("order = %s/%s/%s, want working/waiting/new",
+			statuses[0].State, statuses[1].State, statuses[2].State)
+	}
+	if statuses[0].Tool != "Bash" {
+		t.Errorf("primary tool = %q, want Bash", statuses[0].Tool)
+	}
+}
+
+func TestRemoveStatuses(t *testing.T) {
+	tmpDir := t.TempDir()
+	ts := fmt.Sprintf("%d", time.Now().Unix())
+	writeFile(t, tmpDir, "sess.status", "working:"+ts)
+	writeFile(t, tmpDir, "sess.uuid-1.status", "working:"+ts)
+	writeFile(t, tmpDir, "sess.pi-status", "working:"+ts)
+
+	RemoveStatuses(Claude, "sess", tmpDir)
 
 	if _, err := os.Stat(filepath.Join(tmpDir, "sess.status")); !os.IsNotExist(err) {
 		t.Error("sess.status should be deleted")
 	}
-	// Removing a nonexistent file must not panic or error
-	RemoveStatus(Claude, "nonexistent", tmpDir)
+	if _, err := os.Stat(filepath.Join(tmpDir, "sess.uuid-1.status")); !os.IsNotExist(err) {
+		t.Error("sess.uuid-1.status should be deleted")
+	}
+	if _, err := os.Stat(filepath.Join(tmpDir, "sess.pi-status")); os.IsNotExist(err) {
+		t.Error("sess.pi-status must survive Claude removal")
+	}
+	// Removing a nonexistent session must not panic or error
+	RemoveStatuses(Claude, "nonexistent", tmpDir)
 }
 
 func TestCleanupStale(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	files := []string{"active.status", "stale1.status", "stale2.status", "notastatus.txt"}
-	for _, f := range files {
+	keep := []string{"active.status", "active.uuid-1.status", "notastatus.txt"}
+	remove := []string{"stale1.status", "stale2.status", "gone.uuid-2.status"}
+	for _, f := range append(append([]string{}, keep...), remove...) {
 		writeFile(t, tmpDir, f, "working:123")
 	}
 
 	CleanupStale(Claude, tmpDir, []string{"active"})
 
-	if _, err := os.Stat(filepath.Join(tmpDir, "active.status")); os.IsNotExist(err) {
-		t.Error("active.status should not be deleted")
+	for _, f := range keep {
+		if _, err := os.Stat(filepath.Join(tmpDir, f)); os.IsNotExist(err) {
+			t.Errorf("%s should not be deleted", f)
+		}
 	}
-	if _, err := os.Stat(filepath.Join(tmpDir, "stale1.status")); !os.IsNotExist(err) {
-		t.Error("stale1.status should be deleted")
-	}
-	if _, err := os.Stat(filepath.Join(tmpDir, "stale2.status")); !os.IsNotExist(err) {
-		t.Error("stale2.status should be deleted")
-	}
-	if _, err := os.Stat(filepath.Join(tmpDir, "notastatus.txt")); os.IsNotExist(err) {
-		t.Error("notastatus.txt should not be deleted")
+	for _, f := range remove {
+		if _, err := os.Stat(filepath.Join(tmpDir, f)); !os.IsNotExist(err) {
+			t.Errorf("%s should be deleted", f)
+		}
 	}
 }
 
@@ -254,6 +288,15 @@ func TestCleanupStaleDoesNotCrossKinds(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(tmpDir, "sess.pi-status")); !os.IsNotExist(err) {
 		t.Error("sess.pi-status should be deleted by Pi cleanup")
 	}
+}
+
+// primaryStatus returns the most-active status instance, or zero Status.
+func primaryStatus(kind Kind, sessionName, cacheDir string) Status {
+	statuses := GetStatuses(kind, sessionName, cacheDir)
+	if len(statuses) == 0 {
+		return Status{}
+	}
+	return statuses[0]
 }
 
 func writeFile(t *testing.T, dir, name, content string) {

@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design Export</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+
+    :root {
+      --paper: #f6f5f3;
+      --paper-raised: #fcfcfa;
+      --paper-mid: #edebe7;
+      --ink: #2c2c2e;
+      --ink-faded: #8a8780;
+      --ink-muted: #b0aca4;
+      --blueprint: #0071e3;
+      --blueprint-bright: #0a84ff;
+      --grid-line: #e2dfd9;
+      --grid-line-bold: #d4d0c8;
+      --success: #34c759;
+      --warning: #ff9f0a;
+      --error: #ff3b30;
+      --selected-bg: rgba(0, 113, 227, 0.08);
+      --selected-border: #0071e3;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #1a1a1c;
+        --paper-raised: #242426;
+        --paper-mid: #2e2e30;
+        --ink: #f0efed;
+        --ink-faded: #8e8b86;
+        --ink-muted: #5e5b56;
+        --blueprint: #0a84ff;
+        --blueprint-bright: #409cff;
+        --grid-line: #333234;
+        --grid-line-bold: #424143;
+        --selected-bg: rgba(10, 132, 255, 0.15);
+        --selected-border: #0a84ff;
+      }
+    }
+
+    /* ===== PAPER ===== */
+    html {
+      background-color: var(--paper);
+      background-image: radial-gradient(circle, var(--grid-line) 1.2px, transparent 1.2px);
+      background-size: 20px 20px;
+    }
+    body {
+      background: transparent;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--ink);
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      background: var(--paper-raised);
+      padding: 0.5rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--grid-line-bold);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+    }
+    .header::before {
+      content: '+';
+      position: absolute;
+      left: -1px;
+      bottom: -7px;
+      font-family: monospace;
+      font-size: 10px;
+      color: var(--grid-line-bold);
+      line-height: 1;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -1px;
+      height: 1px;
+      background: var(--grid-line-bold);
+    }
+    body:has(.options .option[data-choice]) .header { display: none; }
+    .header h1 {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--ink-faded);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .header .status {
+      font-size: 0.65rem;
+      color: var(--success);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: monospace;
+    }
+    .header .status::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      background: var(--success);
+    }
+
+    /* ===== DEVICE SELECTOR ===== */
+    .vc-device-selector {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    #vc-device-preset {
+      background: var(--paper);
+      border: 1px solid var(--grid-line-bold);
+      padding: 0.2rem 0.45rem;
+      font-size: 0.7rem;
+      font-family: monospace;
+      color: var(--ink);
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      border-radius: 0;
+    }
+    #vc-device-preset:hover { border-color: var(--blueprint); }
+    #vc-device-preset:focus { outline: none; border-color: var(--blueprint); }
+    .vc-viewport-label {
+      font-size: 0.65rem;
+      color: var(--ink-muted);
+      font-family: monospace;
+      min-width: 4em;
+      text-align: right;
+    }
+    body:has(.options .option[data-choice]) .vc-device-selector { display: none; }
+
+    /* ===== DESIGN FRAME ===== */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      justify-content: center;
+      padding: 1rem;
+    }
+    #vc-design-frame {
+      width: var(--vc-vp-w, 100%);
+      height: var(--vc-vp-h, auto);
+      min-height: var(--vc-vp-h, 100%);
+      background: var(--paper-raised);
+      border: 1px solid var(--grid-line-bold);
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+      transition: width 0.2s ease, height 0.2s ease;
+    }
+    #vc-design-frame.vc-frame-fluid {
+      width: 100%;
+      height: auto;
+      background: var(--paper-raised);
+      border: 1px solid var(--grid-line-bold);
+      overflow: visible;
+    }
+    #claude-content { padding: 2rem; }
+    /* options inside design frame need snap-scroll */
+    #vc-design-frame:has(.options .option) { overflow-y: scroll; scroll-snap-type: y mandatory; }
+    #vc-design-frame #claude-content:has(.options .option) { padding: 0; }
+
+    /* ===== DYNAMIC ISLAND ===== */
+    #vc-island {
+      display: none;
+      position: fixed;
+      bottom: 1.25rem;
+      left: 1.25rem;
+      z-index: 1000;
+      background: var(--paper-raised);
+      border: 1px solid var(--grid-line-bold);
+      font-size: 0.75rem;
+      font-weight: 450;
+      color: var(--ink-faded);
+      align-items: center;
+      font-family: monospace;
+    }
+    #vc-island .vc-island-section {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.85rem;
+    }
+    #vc-island .vc-island-connection .dot {
+      width: 5px; height: 5px;
+      background: var(--success);
+      flex-shrink: 0;
+    }
+    #vc-island .vc-island-separator {
+      width: 1px;
+      align-self: stretch;
+      background: var(--grid-line-bold);
+      flex-shrink: 0;
+    }
+    #vc-island .vc-island-selection {
+      display: none;
+      color: var(--success);
+      font-weight: 500;
+    }
+    #vc-island.has-selection .vc-island-selection { display: flex; }
+
+    /* .main and #claude-content moved to DESIGN FRAME section above */
+
+    .indicator-bar {
+      background: var(--paper-raised);
+      border-top: 1px solid var(--grid-line-bold);
+      padding: 0.4rem 1.5rem;
+      flex-shrink: 0;
+      text-align: center;
+    }
+    body:has(.options .option[data-choice]) .indicator-bar { display: none; }
+    .indicator-bar span {
+      font-size: 0.7rem;
+      color: var(--ink-faded);
+      font-family: monospace;
+    }
+    .indicator-bar .selected-text { color: var(--blueprint); font-weight: 500; }
+
+    /* ===== FLOATING DIALOG (replaces sidebar) ===== */
+    #vc-dialog {
+      display: none;
+      position: fixed;
+      bottom: 4.25rem;
+      right: 1.25rem;
+      z-index: 1001;
+      width: 260px;
+      background: var(--paper-raised);
+      border: 1px solid var(--grid-line-bold);
+      padding: 1rem;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    #vc-dialog.open { display: flex; }
+    #vc-dialog .vc-dialog-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+    }
+    #vc-dialog .vc-option-letter {
+      background: var(--blueprint);
+      color: white;
+      width: 1.75rem;
+      height: 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+      font-family: monospace;
+    }
+    #vc-dialog .vc-dialog-info { flex: 1; min-width: 0; }
+    #vc-dialog .vc-dialog-info h3 {
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #vc-dialog .vc-dialog-info p {
+      font-size: 0.75rem;
+      color: var(--ink-faded);
+      margin-top: 0.15rem;
+      line-height: 1.4;
+    }
+    #vc-dialog #vc-feedback {
+      background: var(--paper);
+      border: 1px solid var(--grid-line-bold);
+      padding: 0.6rem;
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 0.8rem;
+      resize: vertical;
+      min-height: 3.5rem;
+    }
+    #vc-dialog #vc-feedback:focus { outline: none; border-color: var(--blueprint); }
+    #vc-dialog .vc-select-btn {
+      background: var(--blueprint);
+      color: white;
+      border: none;
+      padding: 0.55rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: monospace;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      transition: background 0.15s ease;
+    }
+    #vc-dialog .vc-select-btn:hover { background: var(--blueprint-bright); }
+    #vc-dialog .vc-select-btn:active { opacity: 0.85; }
+
+    /* ===== TOGGLE BUTTON ===== */
+    #vc-toggle {
+      display: none;
+      position: fixed;
+      bottom: 1.25rem;
+      right: 1.25rem;
+      z-index: 1002;
+      width: 2.5rem;
+      height: 2.5rem;
+      border: 1px solid var(--grid-line-bold);
+      background: var(--paper-raised);
+      color: var(--ink-faded);
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: monospace;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      line-height: 1;
+    }
+    #vc-toggle:hover { background: var(--paper-mid); }
+    #vc-toggle.active {
+      background: var(--blueprint);
+      color: white;
+      border-color: var(--blueprint);
+    }
+    #vc-toggle svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+      margin: auto;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* ===== TYPOGRAPHY ===== */
+    h2 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--ink-faded); margin-bottom: 1.5rem; }
+    .section { margin-bottom: 2rem; }
+    .label { font-size: 0.7rem; color: var(--ink-faded); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+    /* ===== OPTIONS ===== */
+    /* .main and #claude-content option overrides moved to DESIGN FRAME section */
+    .options { display: flex; flex-direction: column; }
+    .option {
+      min-height: 100vh;
+      scroll-snap-align: start;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .option-mockup { flex: 1; display: flex; flex-direction: column; }
+
+    /* ===== SELECTION OVERLAY (blueprint style) ===== */
+    .vc-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .vc-overlay-bg {
+      position: absolute;
+      inset: 0;
+      background: var(--paper);
+      background-image: radial-gradient(circle, var(--grid-line) 1.2px, transparent 1.2px);
+      background-size: 20px 20px;
+    }
+    .vc-overlay-inner {
+      position: relative;
+      text-align: center;
+      padding: 2.5rem 3rem;
+      background: var(--paper-raised);
+      border: 1px solid var(--grid-line-bold);
+      max-width: 320px;
+    }
+    .vc-overlay-inner::before {
+      content: '+';
+      position: absolute;
+      top: -1px;
+      left: -8px;
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--grid-line-bold);
+    }
+    .vc-overlay-inner::after {
+      content: '+';
+      position: absolute;
+      bottom: -1px;
+      right: -8px;
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--grid-line-bold);
+    }
+    .vc-overlay-icon {
+      width: 56px;
+      height: 56px;
+      border: 1px solid var(--blueprint);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.25rem;
+    }
+    .vc-overlay-icon svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--blueprint);
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .vc-overlay-title {
+      font-size: 1rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-family: monospace;
+      margin-bottom: 0.25rem;
+    }
+    .vc-overlay-subtitle {
+      font-size: 0.85rem;
+      color: var(--ink-faded);
+      font-family: monospace;
+    }
+    .vc-overlay-status {
+      font-size: 0.75rem;
+      color: var(--ink-muted);
+      font-family: monospace;
+      margin-top: 1.25rem;
+      min-height: 1.2em;
+    }
+    .vc-overlay-btn {
+      margin-top: 1rem;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--grid-line-bold);
+      background: transparent;
+      color: var(--ink-faded);
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-family: monospace;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .vc-overlay-btn:hover {
+      background: var(--paper-mid);
+      border-color: var(--blueprint);
+      color: var(--blueprint);
+    }
+
+    /* ===== CONTENT HELPERS ===== */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .card { background: var(--paper-raised); border: 1px solid var(--grid-line-bold); overflow: hidden; cursor: pointer; transition: border-color 0.15s ease; }
+    .card:hover { border-color: var(--blueprint); }
+    .card.selected { border-color: var(--selected-border); border-width: 2px; }
+    .card-image { background: var(--paper-mid); aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; }
+    .card-body { padding: 1rem; }
+    .card-body h3 { margin-bottom: 0.25rem; }
+    .card-body p { color: var(--ink-faded); font-size: 0.85rem; }
+    .mockup { background: var(--paper-raised); border: 1px solid var(--grid-line-bold); overflow: hidden; margin-bottom: 1.5rem; }
+    .mockup-header { background: var(--paper-mid); padding: 0.5rem 1rem; font-size: 0.75rem; color: var(--ink-faded); border-bottom: 1px solid var(--grid-line-bold); }
+    .mockup-body { padding: 1.5rem; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .split { grid-template-columns: 1fr; } }
+    .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+    .pros, .cons { background: var(--paper-raised); padding: 1rem; }
+    .pros h4 { color: var(--success); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .cons h4 { color: var(--error); font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .pros ul, .cons ul { margin-left: 1.25rem; font-size: 0.85rem; color: var(--ink-faded); }
+    .pros li, .cons li { margin-bottom: 0.25rem; }
+    .placeholder { background: var(--paper-mid); border: 2px dashed var(--grid-line-bold); padding: 2rem; text-align: center; color: var(--ink-muted); }
+    .mock-nav { background: var(--blueprint); color: white; padding: 0.75rem 1rem; display: flex; gap: 1.5rem; font-size: 0.9rem; }
+    .mock-sidebar { background: var(--paper-mid); padding: 1rem; min-width: 180px; }
+    .mock-content { padding: 1.5rem; flex: 1; }
+    .mock-button { background: var(--blueprint); color: white; border: none; padding: 0.5rem 1rem; font-size: 0.85rem; }
+    .mock-input { background: var(--paper); border: 1px solid var(--grid-line-bold); padding: 0.5rem; width: 100%; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    }
+  </style>
+  <style>
+    .header, .indicator-bar, #vc-island, #vc-toggle, #vc-dialog,
+    .vc-overlay, #vc-selection-overlay { display: none !important; }
+    html, body { height: auto; overflow: auto; }
+    .main { overflow: visible; }
+  </style>
+</head>
+<body>
+  <div class="main">
+    <div id="claude-content">
+<style>
+  .app {
+    background: #16181d;
+    color: #e5ecf3;
+    font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    line-height: 1.45;
+    border-radius: 6px;
+    padding: 10px 0 12px 0;
+    overflow-x: auto;
+  }
+  .app pre { margin: 0; padding: 0 14px; white-space: pre; }
+  .app .mid { display: flex; align-items: stretch; }
+  .app .mid .list { flex: 1 1 auto; }
+  .app .mid .panel {
+    flex: 0 0 auto;
+    width: 30ch;
+    border-left: 1px solid #3e4349;
+    margin-left: 8px;
+    padding-left: 12px;
+  }
+  .dim  { color: #7b8187; }
+  .grn  { color: #4ec983; }
+  .yel  { color: #d7a65f; }
+  .red  { color: #d76f6f; }
+  .blu  { color: #6fa7d7; }
+  .sel  { background: #3e4349; display: inline-block; width: 100%; }
+  .bar  { background: #d2d8df; color: #16181d; display: inline-block; width: 100%; }
+</style>
+
+<div class="section">
+  <h2>helm Phase 3 — final: AGENTS right panel + compact hint bar</h2>
+</div>
+
+<div class="app"><pre><span class="bar"> BLACK ATOM HELM                                              SESSIONS </span>
+ <span class="grn">></span> █
+<span class="dim"> ······················································································</span></pre>
+<div class="mid"><pre class="list">  #  CC Pi  SESS                          ACT      GIT
+<span class="dim"> ·····································································</span>
+  *  <span class="grn">⠒</span>     <span class="dim">▸</span> black-atom-industries-helm  7s ago   <span class="blu">14 files</span> <span class="grn">+342</span> <span class="red">-517</span>
+<span class="dim"> ·····································································</span>
+<span class="sel">  0  <span class="yel">?</span>  <span class="grn">⠤</span>  <span class="dim">▸</span> black-atom-industries-core  2m ago   <span class="blu">4 files</span> <span class="grn">+18</span> <span class="red">-16</span></span>
+  1        <span class="dim">▸</span> imfusion-websdk-web-ui      13m ago
+  2  <span class="grn">⠤</span>     <span class="dim">▸</span> nikbrunner-dots             40m ago  <span class="blu">29 files</span> <span class="grn">+169</span> <span class="red">-131</span>
+  3        <span class="dim">▸</span> nikbrunner-imf-notes        14h ago  <span class="blu">10 files</span> <span class="grn">+72</span> <span class="red">-18</span>
+  4        <span class="dim">▸</span> black-atom-industries-liv…  17h ago
+  5        <span class="dim">▸</span> imfusion-web-portal         22h ago  <span class="blu">1 file</span> <span class="grn">+9</span> <span class="red">-8</span>
+  6        <span class="dim">▸</span> black-atom-industries-ite…  1d ago
+  7        <span class="dim">▸</span> imfusion-cp-imfusion-port…  2d ago
+  8        <span class="dim">▸</span> nikbrunner-notes            3d ago   <span class="blu">6 files</span> <span class="grn">+9</span> <span class="red">-8</span>
+</pre><pre class="panel"><span class="dim">AGENTS</span>
+
+<span class="yel">●</span> claude   <span class="yel">waiting · 2m</span>
+  <span class="dim">last</span> <span class="blu">AskUserQuestion</span>
+
+<span class="grn">●</span> pi       <span class="grn">working · 12s</span>
+  <span class="dim">tool</span> <span class="blu">Bash</span>
+
+<span class="dim">cwd ~/repos/b-a-i/core</span>
+
+
+
+
+</pre></div>
+<pre><span class="dim"> ······················································································</span>
+ <span class="grn">10 sessions · 3 agents</span>
+ <span class="dim">⏎ switch  C-b marks  C-p projects  C-d clone  C-n new  C-g lazygit  C-r remote</span>  <span class="red">C-x kill</span>  <span class="dim">? help</span></pre></div>
+
+<div class="section">
+  <h3>Spec notes</h3>
+  <p style="font-size:13px; color:#555;">
+    • Panel: 30-col right region, rule separator, joined via lipgloss — one entry per active agent
+    (kind, state + elapsed, current/last tool), shared cwd line. Hidden below min viewport (~100×28),
+    falling back to today's UI.<br>
+    • Bottom bar: single dim hint line replaces the two button rows; <code>?</code> opens a full keymap
+    overlay; destructive <code>C-x kill</code> keeps warning color. Session count line gains "· N agents".<br>
+    • Multi-instance same-kind agents: per-instance status files via JSON <code>session_id</code>
+    (<code>&lt;session&gt;.&lt;id&gt;.status</code>) — panel shows additional rows ("claude ×2").
+  </p>
+</div>
+
+    </div>
+  </div>
+</body>
+</html>

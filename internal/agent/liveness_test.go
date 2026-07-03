@@ -48,6 +48,23 @@ func TestLiveness(t *testing.T) {
 			t.Errorf("Alive(%s, %q) = %v, want %v", tt.kind.Name, tt.session, got, tt.want)
 		}
 	}
+
+	// Per-pane attribution: the agent maps to the exact pane it runs in
+	paneTests := []struct {
+		panePID int
+		want    string
+	}{
+		{100, "claude"}, // direct child binary
+		{101, ""},       // vim pane in same session — no agent
+		{110, ""},       // shell only
+		{120, "claude"}, // interpreter + script
+		{130, "pi"},     // nested under pane shell
+	}
+	for _, tt := range paneTests {
+		if got := live.PaneAgent(tt.panePID); got != tt.want {
+			t.Errorf("PaneAgent(%d) = %q, want %q", tt.panePID, got, tt.want)
+		}
+	}
 }
 
 func TestCommandMatches(t *testing.T) {

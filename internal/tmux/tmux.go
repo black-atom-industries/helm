@@ -29,6 +29,7 @@ type Window struct {
 // Pane represents a tmux pane
 type Pane struct {
 	Index   int
+	PID     int    // Pane shell process PID (for agent attribution)
 	Command string // Current command running in the pane
 	Active  bool   // Active pane in the window
 }
@@ -241,7 +242,8 @@ func SelectWindow(sessionName string, windowIndex int) error {
 // ListPanes returns all panes for a given session and window
 func ListPanes(sessionName string, windowIndex int) ([]Pane, error) {
 	target := fmt.Sprintf("%s:%d", sessionName, windowIndex)
-	out, err := exec.Command("tmux", "list-panes", "-t", target, "-F", "#{pane_index}:#{pane_current_command}:#{pane_active}").Output()
+	// Command is the last field — it may contain the separator itself
+	out, err := exec.Command("tmux", "list-panes", "-t", target, "-F", "#{pane_index}:#{pane_pid}:#{pane_active}:#{pane_current_command}").Output()
 	if err != nil {
 		return nil, err
 	}
@@ -253,8 +255,8 @@ func ListPanes(sessionName string, windowIndex int) ([]Pane, error) {
 
 	var panes []Pane
 	for _, line := range lines {
-		parts := strings.SplitN(line, ":", 3)
-		if len(parts) != 3 {
+		parts := strings.SplitN(line, ":", 4)
+		if len(parts) != 4 {
 			continue
 		}
 
@@ -262,16 +264,48 @@ func ListPanes(sessionName string, windowIndex int) ([]Pane, error) {
 		if err != nil {
 			continue
 		}
-
-		active := parts[2] == "1"
+		pid, _ := strconv.Atoi(parts[1])
 
 		panes = append(panes, Pane{
 			Index:   index,
-			Command: parts[1],
-			Active:  active,
+			PID:     pid,
+			Command: parts[3],
+			Active:  parts[2] == "1",
 		})
 	}
 
+	return panes, nil
+}
+
+// ListSessionPanes returns all panes of a session grouped by window index —
+// one tmux call, so expanded sessions can attribute agents to collapsed
+// windows without per-window pane fetches.
+func ListSessionPanes(sessionName string) (map[int][]Pane, error) {
+	out, err := exec.Command("tmux", "list-panes", "-s", "-t", sessionName, "-F", "#{window_index}:#{pane_index}:#{pane_pid}:#{pane_active}:#{pane_current_command}").Output()
+	if err != nil {
+		return nil, err
+	}
+
+	panes := make(map[int][]Pane)
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		parts := strings.SplitN(line, ":", 5)
+		if len(parts) != 5 {
+			continue
+		}
+		windowIndex, err1 := strconv.Atoi(parts[0])
+		paneIndex, err2 := strconv.Atoi(parts[1])
+		if err1 != nil || err2 != nil {
+			continue
+		}
+		pid, _ := strconv.Atoi(parts[2])
+
+		panes[windowIndex] = append(panes[windowIndex], Pane{
+			Index:   paneIndex,
+			PID:     pid,
+			Command: parts[4],
+			Active:  parts[3] == "1",
+		})
+	}
 	return panes, nil
 }
 

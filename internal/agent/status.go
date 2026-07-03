@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -77,14 +78,61 @@ func (s Status) IsStale() bool {
 	return time.Since(s.Timestamp) > StaleThreshold
 }
 
-func statusFile(kind Kind, sessionName, cacheDir string) string {
-	return filepath.Join(cacheDir, sessionName+kind.FileExt)
+// GetStatuses reads all status instances for a session: the legacy
+// <session><ext> file plus per-instance <session>.<id><ext> files written by
+// newer hooks, so multiple agents of the same kind in one tmux session each
+// keep their own status. Stale instances are filtered out. The result is
+// sorted most-active first (working > waiting > new, then most recent).
+func GetStatuses(kind Kind, sessionName, cacheDir string) []Status {
+	var statuses []Status
+
+	legacy := sessionName + kind.FileExt
+	if s := readStatusFile(filepath.Join(cacheDir, legacy)); s.State != "" {
+		statuses = append(statuses, s)
+	}
+
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return statuses
+	}
+	prefix := sessionName + "."
+	for _, entry := range entries {
+		name := entry.Name()
+		if name == legacy || !kind.ownsFile(name) || !strings.HasPrefix(name, prefix) {
+			continue
+		}
+		if s := readStatusFile(filepath.Join(cacheDir, name)); s.State != "" {
+			statuses = append(statuses, s)
+		}
+	}
+
+	slices.SortFunc(statuses, func(a, b Status) int {
+		if pa, pb := statePriority(a.State), statePriority(b.State); pa != pb {
+			return pb - pa
+		}
+		return b.Timestamp.Compare(a.Timestamp)
+	})
+	return statuses
 }
 
-// GetStatus reads the agent status for a session from the given cache directory.
-// Returns empty Status if no status file exists or if status is stale.
-func GetStatus(kind Kind, sessionName, cacheDir string) Status {
-	content, err := os.ReadFile(statusFile(kind, sessionName, cacheDir))
+// statePriority orders states by how "active" they are.
+func statePriority(state string) int {
+	switch state {
+	case "working":
+		return 3
+	case "waiting":
+		return 2
+	case "new":
+		return 1
+	default:
+		return 0
+	}
+}
+
+// readStatusFile reads and parses one status file.
+// Returns empty Status if missing, malformed, or stale.
+func readStatusFile(path string) Status {
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return Status{}
 	}
@@ -144,10 +192,23 @@ func parseLegacyStatus(raw string) Status {
 	}
 }
 
-// RemoveStatus deletes a session's status file, e.g. after a liveness
-// check found no running agent process behind a "working" status.
-func RemoveStatus(kind Kind, sessionName, cacheDir string) {
-	_ = os.Remove(statusFile(kind, sessionName, cacheDir))
+// RemoveStatuses deletes all of a session's status files for a kind —
+// legacy and per-instance — e.g. after a liveness check found no running
+// agent process behind them.
+func RemoveStatuses(kind Kind, sessionName, cacheDir string) {
+	_ = os.Remove(filepath.Join(cacheDir, sessionName+kind.FileExt))
+
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil {
+		return
+	}
+	prefix := sessionName + "."
+	for _, entry := range entries {
+		name := entry.Name()
+		if kind.ownsFile(name) && strings.HasPrefix(name, prefix) {
+			_ = os.Remove(filepath.Join(cacheDir, name))
+		}
+	}
 }
 
 // CleanupStale removes status files for sessions that no longer exist
@@ -167,9 +228,14 @@ func CleanupStale(kind Kind, cacheDir string, activeSessions []string) {
 			continue
 		}
 
-		sessionName := strings.TrimSuffix(entry.Name(), kind.FileExt)
-		if !activeSet[sessionName] {
-			_ = os.Remove(filepath.Join(cacheDir, entry.Name()))
+		base := strings.TrimSuffix(entry.Name(), kind.FileExt)
+		if activeSet[base] {
+			continue // legacy <session> file
 		}
+		// Per-instance <session>.<id> file
+		if i := strings.LastIndex(base, "."); i > 0 && activeSet[base[:i]] {
+			continue
+		}
+		_ = os.Remove(filepath.Join(cacheDir, entry.Name()))
 	}
 }

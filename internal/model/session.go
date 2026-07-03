@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/black-atom-industries/helm/internal/config"
 	"github.com/black-atom-industries/helm/internal/git"
@@ -525,6 +526,13 @@ func (m *Model) expandCurrent() {
 				m.setError("Error loading windows: %v", err)
 				return
 			}
+			// Populate panes for all windows in one call so agent idents
+			// show on collapsed windows too
+			if panesByWindow, err := tmux.ListSessionPanes(session.Name); err == nil {
+				for i := range windows {
+					windows[i].Panes = panesByWindow[windows[i].Index]
+				}
+			}
 			session.Windows = windows
 		}
 		session.Expanded = true
@@ -867,11 +875,12 @@ func (m Model) viewSessionList() string {
 			if m.gitStatusShowLoading && m.gitStatusPending[session.Name] {
 				opts.GitStatusLoading = true
 			}
-			if status, ok := m.claudeStatuses[session.Name]; ok {
-				opts.ClaudeStatus = &status
+			// Statuses are sorted most-active first — [0] drives the glyph
+			if statuses := m.claudeStatuses[session.Name]; len(statuses) > 0 {
+				opts.ClaudeStatus = &statuses[0]
 			}
-			if status, ok := m.piStatuses[session.Name]; ok {
-				opts.PiStatus = &status
+			if statuses := m.piStatuses[session.Name]; len(statuses) > 0 {
+				opts.PiStatus = &statuses[0]
 			}
 
 			listBuilder.WriteString(ui.RenderSessionRow(session.Name, session.LastActivity, layout, opts, m.rowWidth()))
@@ -881,12 +890,14 @@ func (m Model) viewSessionList() string {
 
 		case ItemTypeWindow:
 			if window := m.windowAt(item); window != nil {
-				listBuilder.WriteString(ui.RenderWindowRow(window.Index, window.Name, ui.WindowRowOpts{Selected: selected, Expanded: window.Expanded}, m.rowWidth()))
+				opts := ui.WindowRowOpts{Selected: selected, Expanded: window.Expanded, AgentKinds: m.windowAgents(window)}
+				listBuilder.WriteString(ui.RenderWindowRow(window.Index, window.Name, opts, m.rowWidth()))
 			}
 
 		case ItemTypePane:
 			if pane := m.paneAt(item); pane != nil {
-				listBuilder.WriteString(ui.RenderPaneRow(pane.Index, pane.Command, pane.Active, ui.PaneRowOpts{Selected: selected}, m.rowWidth()))
+				opts := ui.PaneRowOpts{Selected: selected, AgentKind: m.paneAgents[pane.PID]}
+				listBuilder.WriteString(ui.RenderPaneRow(pane.Index, pane.Command, pane.Active, opts, m.rowWidth()))
 			}
 		}
 		listBuilder.WriteString("\n")
@@ -912,6 +923,18 @@ func (m Model) viewSessionList() string {
 	header := b.String()
 	listContent := listBuilder.String()
 
+	// Join the AGENTS panel to the right of the list. Rows are hard-truncated
+	// to the list width first — lipgloss Width would wrap overlong rows,
+	// breaking line counting and alignment.
+	if m.agentPanelVisible() {
+		entries, cwd := m.agentPanelEntries()
+		panelHeight := strings.Count(listContent, "\n")
+		panel := ui.RenderAgentPanel(entries, cwd, m.agentPanelRenderWidth(), panelHeight)
+		truncated := ui.TruncateLines(strings.TrimRight(listContent, "\n"), listWidth)
+		listBlock := lipgloss.NewStyle().Width(listWidth).Render(truncated)
+		listContent = lipgloss.JoinHorizontal(lipgloss.Top, listBlock, panel) + "\n"
+	}
+
 	// Mode-specific sidebar actions and notification
 	var actions []ui.Action
 	var notification string
@@ -929,9 +952,7 @@ func (m Model) viewSessionList() string {
 			notification = m.statusLine()
 		}
 	}
-	hints := ui.UniversalHints
-
-	return m.renderWithSidebar(header, listContent, actions, notification, hints, m.messageIsError)
+	return m.renderWithSidebar(header, listContent, actions, notification, m.messageIsError)
 }
 
 // viewCreatePath renders the path input view for creating sessions at arbitrary paths
@@ -970,7 +991,7 @@ func (m Model) viewCreatePath() string {
 	if notification == "" {
 		notification = fmt.Sprintf("Create session: %s", m.pendingSessionName)
 	}
-	return m.renderWithSidebar(header.String(), b.String(), ui.CreateActions, notification, ui.UniversalHints, m.messageIsError)
+	return m.renderWithSidebar(header.String(), b.String(), ui.CreateActions, notification, m.messageIsError)
 }
 
 // sessionMaxVisibleItems returns the actual number of session items that can be shown
@@ -982,7 +1003,7 @@ func (m *Model) sessionMaxVisibleItems() int {
 		// Footer: 3 (border + notification + hints)
 		// Action bar: 3 (2 rows + 1 gap)
 		// Total base: 9
-		overhead := 6 + ui.ActionBarHeight
+		overhead := 6
 		if m.sessionsLoaded && len(m.items) > 0 {
 			overhead += ui.TableHeaderHeight + ui.TableDottedLineHeight // +2 = 8
 		}

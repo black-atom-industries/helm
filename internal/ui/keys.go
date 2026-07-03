@@ -18,6 +18,7 @@ type KeyMap struct {
 	Bookmarks     key.Binding
 	AddBookmark   key.Binding
 	Quit          key.Binding
+	Help          key.Binding
 	Cancel        key.Binding
 	Confirm       key.Binding
 	Jump0         key.Binding
@@ -91,6 +92,10 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("ctrl+c"),
 		key.WithHelp("C-c", "Quit"),
 	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "Help"),
+	),
 	Cancel: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "Cancel"),
@@ -109,170 +114,4 @@ var DefaultKeyMap = KeyMap{
 	Jump7: key.NewBinding(key.WithKeys("7")),
 	Jump8: key.NewBinding(key.WithKeys("8")),
 	Jump9: key.NewBinding(key.WithKeys("9")),
-}
-
-// helpItem formats a single help item (key + description)
-func helpItem(key, desc string) string {
-	return HelpKeyStyle.Render(key) + " " + HelpDescStyle.Render(desc)
-}
-
-// helpSep returns the separator between help items
-func helpSep() string {
-	return HelpSepStyle.Render(" · ")
-}
-
-// HelpNormal returns the help text for normal mode (two lines)
-func HelpNormal() string {
-	line1 := helpItem("Type", "filter") + helpSep() +
-		helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
-		helpItem("C-h/l | ←→", "Expand") + helpSep() +
-		helpItem("C-x", "Kill")
-	line2 := helpItem("C-n", "New") + helpSep() +
-		helpItem("C-p", "Projects") + helpSep() +
-		helpItem("C-b", "Bookmarks") + helpSep() +
-		helpItem("C-a", "Bookmark") + helpSep() +
-		helpItem("C-r", "Remote") + helpSep() +
-		helpItem("C-d", "Download") + helpSep() +
-		helpItem("C-g", "Lazygit")
-	return line1 + "\n" + line2
-}
-
-// HelpFiltering returns the help text when filter is active in normal mode
-func HelpFiltering() string {
-	line1 := helpItem("Esc", "Clear") + helpSep() +
-		helpItem("Enter", "Select") + helpSep() +
-		helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
-		helpItem("C-x", "Kill")
-	line2 := helpItem("C-p", "Projects") + helpSep() +
-		helpItem("C-b", "Bookmarks") + helpSep() +
-		helpItem("C-d", "Download") + helpSep() +
-		helpItem("C-r", "Remote") + helpSep() +
-		helpItem("C-g", "Lazygit")
-	return line1 + "\n" + line2
-}
-
-// HelpFilteringNoResults returns the help text when filter has no matches in normal mode
-func HelpFilteringNoResults() string {
-	line1 := helpItem("Esc", "Clear") + helpSep() +
-		helpItem("Enter", "Create") + helpSep() +
-		helpItem("C-j/k | ↑↓", "Nav")
-	line2 := helpItem("C-p", "Projects") + helpSep() +
-		helpItem("C-b", "Bookmarks") + helpSep() +
-		helpItem("C-d", "Download")
-	return line1 + "\n" + line2
-}
-
-// HelpFilteringPickDirectory returns the help text when filter is active in pick directory mode
-func HelpFilteringPickDirectory() string {
-	return helpItem("Esc", "Clear") + helpSep() +
-		helpItem("Enter", "Select") + helpSep() +
-		helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
-		helpItem("C-a", "Bookmark") + helpSep() +
-		helpItem("C-x", "Remove")
-}
-
-// HelpFilteringCloneRepo returns the help text when filter is active in clone mode
-func HelpFilteringCloneRepo() string {
-	return helpItem("Esc", "Clear") + helpSep() +
-		helpItem("Enter", "Clone") + helpSep() +
-		helpItem("C-j/k | ↑↓", "Nav")
-}
-
-// HelpFilteringBookmarks returns the help text when filter is active in bookmarks mode
-func HelpFilteringBookmarks() string {
-	return helpItem("Esc", "Clear") + helpSep() +
-		helpItem("Enter", "Open") + helpSep() +
-		helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
-		helpItem("C-p/n", "Move") + helpSep() +
-		helpItem("C-x", "Remove")
-}
-
-// HelpConfirmKill returns the help text for kill confirmation mode
-func HelpConfirmKill() string {
-	return helpItem("C-x", "Confirm") + helpSep() +
-		helpItem("Esc", "Cancel")
-}
-
-// HelpCreate returns the help text for create mode
-func HelpCreate() string {
-	return helpItem("Enter", "Create") + helpSep() +
-		helpItem("Esc", "Cancel")
-}
-
-// HelpPickDirectory returns the help text for directory picker mode
-func HelpPickDirectory() string {
-	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
-		helpItem("Enter", "Select") + helpSep() +
-		helpItem("C-a", "Bookmark") + helpSep() +
-		helpItem("C-x", "Remove") + helpSep() +
-		helpItem("Esc", "Back")
-}
-
-// HelpPickDirectoryCreate returns the help text when creating a session from filter
-func HelpPickDirectoryCreate() string {
-	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
-		helpItem("Enter", "Create here") + helpSep() +
-		helpItem("Esc", "Cancel")
-}
-
-// HelpCreatePath returns the help text for path input mode
-func HelpCreatePath() string {
-	return helpItem("Tab", "Complete") + helpSep() +
-		helpItem("Enter", "Create") + helpSep() +
-		helpItem("Esc", "Cancel")
-}
-
-// HelpAddBookmark returns the help text when adding a bookmark from project picker
-func HelpAddBookmark() string {
-	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
-		helpItem("C-a", "Add bookmark") + helpSep() +
-		helpItem("Esc", "Back")
-}
-
-// HelpConfirmRemoveFolder returns the help text for folder removal confirmation
-func HelpConfirmRemoveFolder() string {
-	return helpItem("C-x", "Confirm") + helpSep() +
-		helpItem("Esc", "Cancel")
-}
-
-// HelpCloneChoice returns the help text for clone choice menu
-func HelpCloneChoice() string {
-	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
-		helpItem("Enter", "Select") + helpSep() +
-		helpItem("Esc", "Back")
-}
-
-// HelpCloneURL returns the help text for clone URL input mode
-func HelpCloneURL() string {
-	return helpItem("Enter", "Clone") + helpSep() +
-		helpItem("Esc", "Back")
-}
-
-// HelpCloneRepo returns the help text for clone repo mode
-func HelpCloneRepo() string {
-	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
-		helpItem("Enter", "Clone") + helpSep() +
-		helpItem("Esc", "Back/Cancel")
-}
-
-// HelpCloneRepoLoading returns the help text while loading repos
-func HelpCloneRepoLoading() string {
-	return helpItem("Esc", "Cancel")
-}
-
-// HelpCloneSuccess returns the help text after successful clone
-func HelpCloneSuccess() string {
-	return helpItem("Enter", "Switch to session") + helpSep() +
-		helpItem("Esc", "Back to sessions")
-}
-
-// HelpBookmarks returns the help text for bookmarks mode
-func HelpBookmarks() string {
-	return helpItem("C-j/k | ↑↓", "Nav") + helpSep() +
-		helpItem("C-h/l | ←→", "Expand") + helpSep() +
-		helpItem("Enter", "Open") + helpSep() +
-		helpItem("C-p/n", "Move") + helpSep() +
-		helpItem("C-a", "Add") + helpSep() +
-		helpItem("C-x", "Remove") + helpSep() +
-		helpItem("Esc", "Back")
 }

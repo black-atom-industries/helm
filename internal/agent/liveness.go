@@ -8,13 +8,28 @@ import (
 	"strings"
 )
 
-// Liveness reports which sessions have a live agent process,
-// per agent kind name: kind.Name → session name → true.
-type Liveness map[string]map[string]bool
+// Liveness reports where live agent processes run: per session for the
+// status checks, and per pane shell PID for attributing an agent identity
+// to individual panes in the UI.
+type Liveness struct {
+	sessions map[string]map[string]bool // kind name → session name → alive
+	panes    map[int]string             // pane shell PID → kind name
+}
 
 // Alive returns true if the given kind has a live process in the session.
 func (l Liveness) Alive(kind Kind, sessionName string) bool {
-	return l[kind.Name][sessionName]
+	return l.sessions[kind.Name][sessionName]
+}
+
+// PaneAgent returns the agent kind name running beneath the given pane
+// shell PID, or "" if none.
+func (l Liveness) PaneAgent(panePID int) string {
+	return l.panes[panePID]
+}
+
+// PaneAgents returns the full pane PID → agent kind mapping.
+func (l Liveness) PaneAgents() map[int]string {
+	return l.panes
 }
 
 // process is one row of the process table.
@@ -31,7 +46,7 @@ type process struct {
 func CheckLiveness(panePIDs map[string][]int) (Liveness, error) {
 	procs, err := processSnapshot()
 	if err != nil {
-		return nil, err
+		return Liveness{}, err
 	}
 	return liveness(panePIDs, procs), nil
 }
@@ -59,8 +74,9 @@ func processSnapshot() ([]process, error) {
 	return procs, nil
 }
 
-// liveness walks the process tree beneath each session's pane PIDs and
-// matches descendants against each kind's binary names.
+// liveness walks the process tree beneath each pane's shell PID and matches
+// descendants against each kind's binary names. Each pane is walked
+// separately so an agent can be attributed to the exact pane it runs in.
 func liveness(panePIDs map[string][]int, procs []process) Liveness {
 	children := make(map[int][]int, len(procs))
 	commands := make(map[int]string, len(procs))
@@ -69,27 +85,35 @@ func liveness(panePIDs map[string][]int, procs []process) Liveness {
 		commands[p.pid] = p.command
 	}
 
-	result := make(Liveness, len(Kinds))
+	result := Liveness{
+		sessions: make(map[string]map[string]bool, len(Kinds)),
+		panes:    make(map[int]string),
+	}
 	for _, kind := range Kinds {
-		result[kind.Name] = make(map[string]bool)
+		result.sessions[kind.Name] = make(map[string]bool)
 	}
 
 	for session, pids := range panePIDs {
-		// BFS over each pane's descendants, including the pane shell itself
-		queue := append([]int(nil), pids...)
-		seen := make(map[int]bool, len(queue))
-		for len(queue) > 0 {
-			pid := queue[0]
-			queue = queue[1:]
-			if seen[pid] {
-				continue
-			}
-			seen[pid] = true
-			queue = append(queue, children[pid]...)
+		for _, panePID := range pids {
+			// BFS over this pane's descendants, including the shell itself
+			queue := []int{panePID}
+			seen := make(map[int]bool, 8)
+			for len(queue) > 0 {
+				pid := queue[0]
+				queue = queue[1:]
+				if seen[pid] {
+					continue
+				}
+				seen[pid] = true
+				queue = append(queue, children[pid]...)
 
-			for _, kind := range Kinds {
-				if commandMatches(commands[pid], kind.BinaryNames) {
-					result[kind.Name][session] = true
+				for _, kind := range Kinds {
+					if commandMatches(commands[pid], kind.BinaryNames) {
+						result.sessions[kind.Name][session] = true
+						if _, taken := result.panes[panePID]; !taken {
+							result.panes[panePID] = kind.Name
+						}
+					}
 				}
 			}
 		}

@@ -3,15 +3,13 @@ package ui
 import (
 	"fmt"
 	"strings"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
-// Action defines a sidebar action button
+// Action defines a mode action shown in the footer hint bar
 type Action struct {
-	Label   string // 3-char ALL CAPS label (e.g., "NEW", "KIL")
+	Label   string // Action label (e.g., "NEW", "KILL")
 	Keybind string // Keybind hint (e.g., "C-n", "C-x")
-	Warning bool   // Use warning/danger style instead of accent
+	Warning bool   // Use warning/danger style instead of subtle
 }
 
 // Mode-specific action sets
@@ -60,54 +58,30 @@ var ConfirmKillActions = []Action{
 	{Label: "CANCEL", Keybind: "Esc"},
 }
 
-// UniversalHints is the footer hint line shown in all modes
+// UniversalHints lists the navigation keys; shown in the ? help overlay.
 const UniversalHints = "C-j/k ↕ Nav · C-h/l ↔ Expand · Type filter · Esc Back"
 
-// RenderButton renders a single action button as "LABEL [keybind]" in one line.
-func RenderButton(action Action) string {
-	text := fmt.Sprintf(" %s [%s] ", action.Label, action.Keybind)
-	style := ButtonStyle
-	if action.Warning {
-		style = ButtonWarningStyle
-	}
-	return style.Render(text)
-}
-
-// renderButtonRow renders all buttons side-by-side with 1-space gaps,
-// padded to exact width. Returns exactly 1 line.
-func renderButtonRow(actions []Action, width int) string {
-	if len(actions) == 0 {
-		return strings.Repeat(" ", width)
-	}
-
-	var parts []string
+// RenderHintBar renders the mode's actions as a single lazygit-style hint
+// line: "⏎ switch  C-b bookmarks … C-x kill  ? help". Each pair carries its
+// own style (subtle; warning color for destructive actions), so the footer
+// must not recolor the line. withHelp appends the "? help" hint — false in
+// text-input modes where "?" is a literal character.
+func RenderHintBar(actions []Action, withHelp bool) string {
+	parts := make([]string, 0, len(actions)+1)
 	for _, a := range actions {
-		parts = append(parts, RenderButton(a))
+		key := a.Keybind
+		if key == "Enter" {
+			key = "⏎"
+		}
+		pair := fmt.Sprintf("%s %s", key, strings.ToLower(a.Label))
+		if a.Warning {
+			parts = append(parts, HintWarningStyle.Render(pair))
+		} else {
+			parts = append(parts, HintStyle.Render(pair))
+		}
 	}
-	row := strings.Join(parts, " ")
-
-	visWidth := lipgloss.Width(row)
-	if visWidth < width {
-		row += strings.Repeat(" ", width-visWidth)
-	} else if visWidth > width {
-		row = lipgloss.NewStyle().MaxWidth(width).Render(row)
+	if withHelp {
+		parts = append(parts, HintStyle.Render("? help"))
 	}
-
-	return row
-}
-
-// RenderButtonBar renders the full action bar as one or two rows of compact buttons,
-// with a blank line between rows. Row 1 gets up to 5 actions, row 2 gets the rest.
-// Returns 1-3 lines depending on whether a second row is needed.
-func RenderButtonBar(actions []Action, width int) string {
-	split := 5
-	if len(actions) < split {
-		split = len(actions)
-	}
-	row1 := renderButtonRow(actions[:split], width)
-	if split < len(actions) {
-		row2 := renderButtonRow(actions[split:], width)
-		return row1 + "\n\n" + row2
-	}
-	return row1
+	return strings.Join(parts, "  ")
 }

@@ -6,9 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -35,6 +37,7 @@ const (
 	ModeCloneURL // Text input for arbitrary repo URL
 	ModeBookmarks
 	ModeCreatePath // Path input for creating session at arbitrary path
+	ModeHelp       // Full-keymap overlay (?)
 )
 
 // String returns the display name for the mode (used in title bar)
@@ -56,6 +59,8 @@ func (m Mode) String() string {
 		return "KILL"
 	case ModeConfirmRemoveFolder:
 		return "REMOVE"
+	case ModeHelp:
+		return "HELP"
 	default:
 		return "SESSIONS"
 	}
@@ -83,8 +88,9 @@ type Item struct {
 type Model struct {
 	sessions          []tmux.Session
 	selfSession       *tmux.Session // The current/self session (pinned at top)
-	claudeStatuses    map[string]agent.Status
-	piStatuses        map[string]agent.Status
+	claudeStatuses    map[string][]agent.Status
+	piStatuses        map[string][]agent.Status
+	paneAgents        map[int]string // pane shell PID → agent kind name
 	gitStatuses       map[string]git.Status
 	currentSession    string
 	cursor            int
@@ -103,6 +109,7 @@ type Model struct {
 	// Directory picker state (uses ScrollList for cursor/scroll/filter)
 	projectList        *ui.ScrollList[string]
 	projectsLoading    bool   // True while the async project directory scan runs
+	helpReturnMode     Mode   // Mode to return to when closing the help overlay
 	returnToBookmarks  bool   // True if we should return to bookmarks mode after project picker
 	pendingSessionName string // Session name pending directory selection (for create-from-filter flow)
 
@@ -305,16 +312,19 @@ func (m Model) preserveExpansion(sessions []tmux.Session, selfSession *tmux.Sess
 	if err != nil {
 		return
 	}
+	// Re-fetch panes for all windows in one call (agent idents need them)
+	if panesByWindow, err := tmux.ListSessionPanes(target.Name); err == nil {
+		for i := range windows {
+			windows[i].Panes = panesByWindow[windows[i].Index]
+		}
+	}
+	// Carry over which window was expanded
 	for _, oldWindow := range old.Windows {
 		if !oldWindow.Expanded {
 			continue
 		}
 		for i := range windows {
-			if windows[i].Index != oldWindow.Index {
-				continue
-			}
-			if panes, err := tmux.ListPanes(target.Name, windows[i].Index); err == nil {
-				windows[i].Panes = panes
+			if windows[i].Index == oldWindow.Index {
 				windows[i].Expanded = true
 			}
 		}
@@ -425,6 +435,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case agentStatusesMsg:
 		m.claudeStatuses = msg.claude
 		m.piStatuses = msg.pi
+		if msg.paneAgents != nil {
+			m.paneAgents = msg.paneAgents
+		}
 		return m, nil
 
 	case projectsLoadedMsg:
@@ -503,7 +516,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// "?" opens the help overlay from any non-input mode when no filter is
+	// active — otherwise the character belongs to the filter or text input.
+	if key.Matches(msg, ui.DefaultKeyMap.Help) && m.helpAvailable() && m.activeFilter() == "" {
+		m.helpReturnMode = m.mode
+		m.mode = ModeHelp
+		return m, nil
+	}
+
 	switch m.mode {
+	case ModeHelp:
+		return m.handleHelpMode(msg)
 	case ModeNormal:
 		return m.handleNormalMode(msg)
 	case ModeConfirmKill:
@@ -621,8 +644,9 @@ func (m *Model) loadAgentStatuses() {
 
 // agentStatusesMsg carries freshly polled agent statuses
 type agentStatusesMsg struct {
-	claude map[string]agent.Status
-	pi     map[string]agent.Status
+	claude     map[string][]agent.Status
+	pi         map[string][]agent.Status
+	paneAgents map[int]string // pane shell PID → agent kind name
 }
 
 // pollAgentStatusesCmd is the periodic status refresh, run off the UI
@@ -646,6 +670,7 @@ func (m Model) pollAgentStatusesCmd() tea.Cmd {
 
 		claudeStatuses := m.readAgentStatuses(agent.Claude, m.config.ClaudeStatusEnabled)
 		piStatuses := m.readAgentStatuses(agent.Pi, m.config.PiStatusEnabled)
+		var paneAgents map[int]string
 
 		// Only spawn tmux/ps when something claims to be running
 		if len(claudeStatuses)+len(piStatuses) > 0 {
@@ -653,33 +678,34 @@ func (m Model) pollAgentStatusesCmd() tea.Cmd {
 				if live, err := agent.CheckLiveness(panePIDs); err == nil {
 					dropDeadStatuses(agent.Claude, claudeStatuses, live, m.config.CacheDir)
 					dropDeadStatuses(agent.Pi, piStatuses, live, m.config.CacheDir)
+					paneAgents = live.PaneAgents()
 				}
 			}
 		}
 
-		return agentStatusesMsg{claude: claudeStatuses, pi: piStatuses}
+		return agentStatusesMsg{claude: claudeStatuses, pi: piStatuses, paneAgents: paneAgents}
 	}
 }
 
 // dropDeadStatuses removes statuses (and their files) for sessions where no
 // matching agent process is running.
-func dropDeadStatuses(kind agent.Kind, statuses map[string]agent.Status, live agent.Liveness, cacheDir string) {
+func dropDeadStatuses(kind agent.Kind, statuses map[string][]agent.Status, live agent.Liveness, cacheDir string) {
 	for name := range statuses {
 		if !live.Alive(kind, name) {
 			delete(statuses, name)
-			agent.RemoveStatus(kind, name, cacheDir)
+			agent.RemoveStatuses(kind, name, cacheDir)
 		}
 	}
 }
 
-func (m *Model) readAgentStatuses(kind agent.Kind, enabled bool) map[string]agent.Status {
-	statuses := make(map[string]agent.Status)
+func (m *Model) readAgentStatuses(kind agent.Kind, enabled bool) map[string][]agent.Status {
+	statuses := make(map[string][]agent.Status)
 	if !enabled {
 		return statuses
 	}
 	for _, s := range m.allSessions() {
-		if status := agent.GetStatus(kind, s.Name, m.config.CacheDir); status.State != "" {
-			statuses[s.Name] = status
+		if instances := agent.GetStatuses(kind, s.Name, m.config.CacheDir); len(instances) > 0 {
+			statuses[s.Name] = instances
 		}
 	}
 	return statuses
@@ -748,16 +774,18 @@ func (m *Model) fetchGitStatusesCmd() tea.Cmd {
 }
 
 func (m *Model) calculateColumnWidths() {
-	// Don't reset - preserve cached width to prevent layout shift
+	// Fit the name column to the current sessions. The cached width (set by
+	// loadSessionCache) only seeds the first paint; keeping old maxima alive
+	// would permanently reserve columns for long-dead session names.
+	width := 0
 	if m.selfSession != nil {
-		if len(m.selfSession.Name) > m.maxNameWidth {
-			m.maxNameWidth = len(m.selfSession.Name)
-		}
+		width = len(m.selfSession.Name)
 	}
 	for _, s := range m.sessions {
-		if len(s.Name) > m.maxNameWidth {
-			m.maxNameWidth = len(s.Name)
-		}
+		width = max(width, len(s.Name))
+	}
+	if width > 0 {
+		m.maxNameWidth = width
 	}
 }
 
@@ -875,15 +903,84 @@ func (m *Model) borderWidth() int {
 	return m.contentWidth()
 }
 
-// sessionListWidth returns the width available for the session list.
-// Now equivalent to contentWidth — actions moved to bottom bar.
+// agentPanelVisible reports whether the AGENTS panel is shown: only in the
+// session-list views, with agent statuses enabled, and a viewport large
+// enough — below the thresholds the UI falls back to list-only.
+func (m *Model) agentPanelVisible() bool {
+	switch m.mode {
+	case ModeNormal, ModeCreate, ModeConfirmKill:
+	default:
+		return false
+	}
+	return (m.config.ClaudeStatusEnabled || m.config.PiStatusEnabled) &&
+		m.width >= ui.MinAgentPanelWidth && m.height >= ui.MinAgentPanelHeight
+}
+
+// windowAgents returns the distinct agent kinds running in the window's
+// panes, in pane order — a window can host claude and pi side by side.
+// Empty if none (or if panes aren't loaded yet).
+func (m *Model) windowAgents(window *tmux.Window) []string {
+	var kinds []string
+	for _, pane := range window.Panes {
+		if kind := m.paneAgents[pane.PID]; kind != "" && !slices.Contains(kinds, kind) {
+			kinds = append(kinds, kind)
+		}
+	}
+	return kinds
+}
+
+// agentPanelEntries collects the live agent instances of the selected
+// session for the panel, plus a cwd to display.
+func (m *Model) agentPanelEntries() ([]ui.AgentEntry, string) {
+	if !m.isCursorValid() {
+		return nil, ""
+	}
+	session := m.getSession(m.items[m.cursor])
+	if session == nil {
+		return nil, ""
+	}
+
+	var entries []ui.AgentEntry
+	cwd := ""
+	for _, s := range m.claudeStatuses[session.Name] {
+		entries = append(entries, ui.AgentEntry{Kind: agent.Claude.Name, Status: s})
+	}
+	for _, s := range m.piStatuses[session.Name] {
+		entries = append(entries, ui.AgentEntry{Kind: agent.Pi.Name, Status: s})
+	}
+	for _, e := range entries {
+		if e.Status.Cwd != "" {
+			cwd = e.Status.Cwd
+			break
+		}
+	}
+	return entries, cwd
+}
+
+// sessionListWidth returns the width available for the session list. With
+// the AGENTS panel visible, the content area splits list/panel at
+// AgentPanelRatio (percentage-based, not column-based).
 func (m *Model) sessionListWidth() int {
-	return m.contentWidth()
+	available := m.contentWidth()
+	if !m.agentPanelVisible() {
+		return available
+	}
+	panel := available * ui.AgentPanelRatio / 100
+	if panel < ui.AgentPanelWidth+3 {
+		panel = ui.AgentPanelWidth + 3
+	}
+	return available - panel
+}
+
+// agentPanelRenderWidth returns the panel's content width: everything the
+// list doesn't get, minus the rule separator.
+func (m *Model) agentPanelRenderWidth() int {
+	return m.contentWidth() - m.sessionListWidth() - 3
 }
 
 // rowWidth returns the width available for row content (accounts for scrollbar column).
 func (m *Model) rowWidth() int {
-	return m.contentWidth() - ui.ScrollbarColumnWidth
+	return m.sessionListWidth() - ui.ScrollbarColumnWidth
 }
 
 // statusLine returns a compact status string for the footer
@@ -892,47 +989,54 @@ func (m *Model) statusLine() string {
 	if m.selfSession != nil {
 		total++
 	}
+	if agents := m.agentCount(); agents > 0 {
+		return fmt.Sprintf("%d sessions · %d agents", total, agents)
+	}
 	return fmt.Sprintf("%d sessions", total)
 }
 
-// renderWithSidebar composes list content with a bottom action bar and simplified footer.
+// agentCount returns the number of live agent instances across all sessions.
+func (m *Model) agentCount() int {
+	count := 0
+	for _, statuses := range m.claudeStatuses {
+		count += len(statuses)
+	}
+	for _, statuses := range m.piStatuses {
+		count += len(statuses)
+	}
+	return count
+}
+
+// renderWithSidebar composes list content with a simplified footer whose
+// hint line is the mode's compact action hint bar.
 // listContent is the session/bookmark/project list string.
-// actions is the mode-specific action set for the bottom bar.
+// actions is the mode-specific action set for the hint bar.
 // notification is the message to show in the footer.
-// hints is a single-line keybind hint string.
 // isError indicates notification is an error.
-func (m *Model) renderWithSidebar(header, listContent string, actions []ui.Action, notification, hints string, isError bool) string {
+func (m *Model) renderWithSidebar(header, listContent string, actions []ui.Action, notification string, isError bool) string {
 	var b strings.Builder
 
 	// Header (full width)
 	b.WriteString(header)
 
-	// List content (full width — no sidebar)
-	b.WriteString(listContent)
+	// List content — truncate overlong lines so they never wrap; a wrapped
+	// line would break the footer-position line counting below
+	b.WriteString(ui.TruncateLines(strings.TrimRight(listContent, "\n"), m.contentWidth()))
+	b.WriteString("\n")
 
 	// Count content lines so far (header + list)
 	content := b.String()
 	contentLineCount := strings.Count(content, "\n")
 
-	// Pad to push footer to bottom: target = contentHeight - dotted line - action bar - footer lines
-	targetContentLines := m.contentHeight() - ui.ActionBarHeight - 5
+	// Pad to push the 3-line footer to the bottom
+	targetContentLines := m.contentHeight() - 4
 	if targetContentLines > contentLineCount {
 		padding := targetContentLines - contentLineCount
-		for i := 0; i < padding; i++ {
-			b.WriteString("\n")
-		}
+		b.WriteString(strings.Repeat("\n", padding))
 	}
 
-	// Dotted separator above action bar
-	b.WriteString(ui.RenderDottedBorder(m.contentWidth()))
-	b.WriteString("\n")
-
-	// Bottom action bar (2 rows of buttons)
-	b.WriteString(ui.RenderButtonBar(actions, m.contentWidth()))
-	b.WriteString("\n")
-
-	// Footer at the very bottom
-	b.WriteString(ui.RenderSimpleFooter(notification, hints, isError, m.width))
+	// Footer at the very bottom (border + notification + hint bar)
+	b.WriteString(ui.RenderSimpleFooter(notification, ui.RenderHintBar(actions, m.helpAvailable()), isError, m.width))
 
 	return ui.AppStyle.Height(m.contentHeight()).Render(b.String())
 }
@@ -974,6 +1078,9 @@ func (m *Model) setMessage(format string, args ...any) {
 
 // View implements tea.Model
 func (m Model) View() string {
+	if m.mode == ModeHelp {
+		return m.viewHelp()
+	}
 	if m.mode == ModePickDirectory || m.mode == ModeConfirmRemoveFolder {
 		return m.viewPickDirectory()
 	}
