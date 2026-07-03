@@ -20,9 +20,11 @@ func init() {
 		FgAdd:      "#90b99f",
 		FgDelete:   "#f591b2",
 
-		PaletteYellow: "#eab899",
-		PaletteGreen:  "#90b99f",
-		PaletteRed:    "#f591b2",
-		PaletteBlue:   "#a1b0cf",
+		PaletteYellow:      "#eab899",
+		PaletteGreen:       "#90b99f",
+		PaletteRed:         "#f591b2",
+		PaletteBlue:        "#a1b0cf",
+		PaletteMagenta:     "#aca1cf",
+		PaletteDarkMagenta: "#9789c3",
 	})
 }

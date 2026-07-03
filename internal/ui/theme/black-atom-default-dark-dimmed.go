@@ -7,10 +7,10 @@ func init() {
 		Appearance: "dark",
 
 		BgSelection: "#3e4349",
-		BgContrast:  "#d0dad6",
+		BgContrast:  "#d2d8df",
 		BgNegative:  "#633943",
 
-		FgDefault:  "#e4eeea",
+		FgDefault:  "#e5ecf3",
 		FgSubtle:   "#7b8187",
 		FgAccent:   "#4ec983",
 		FgDisabled: "#6a6f76",
@@ -20,9 +20,11 @@ func init() {
 		FgAdd:      "#4cb86a",
 		FgDelete:   "#e97292",
 
-		PaletteYellow: "#7b8187",
-		PaletteGreen:  "#8d9399",
-		PaletteRed:    "#8d9399",
-		PaletteBlue:   "#6a6f76",
+		PaletteYellow:      "#7b8187",
+		PaletteGreen:       "#8d9399",
+		PaletteRed:         "#8d9399",
+		PaletteBlue:        "#6a6f76",
+		PaletteMagenta:     "#7faaff",
+		PaletteDarkMagenta: "#fb82a1",
 	})
 }

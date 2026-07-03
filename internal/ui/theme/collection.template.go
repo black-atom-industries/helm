@@ -20,9 +20,11 @@ func init() {
 		FgAdd:      "<%= theme.ui.fg.add %>",
 		FgDelete:   "<%= theme.ui.fg.delete %>",
 
-		PaletteYellow: "<%= theme.palette.yellow %>",
-		PaletteGreen:  "<%= theme.palette.green %>",
-		PaletteRed:    "<%= theme.palette.red %>",
-		PaletteBlue:   "<%= theme.palette.blue %>",
+		PaletteYellow:      "<%= theme.palette.yellow %>",
+		PaletteGreen:       "<%= theme.palette.green %>",
+		PaletteRed:         "<%= theme.palette.red %>",
+		PaletteBlue:        "<%= theme.palette.blue %>",
+		PaletteMagenta:     "<%= theme.palette.magenta %>",
+		PaletteDarkMagenta: "<%= theme.palette.darkMagenta %>",
 	})
 }

@@ -258,9 +258,9 @@ func themeFg(t theme.Theme) FgColors {
 
 		TitleBar: lipgloss.Color(t.FgContrast),
 
-		TableHeader: lipgloss.Color(t.FgDefault),
-		SessionName: lipgloss.Color(t.FgDefault),
-		WindowName:  lipgloss.Color(t.FgDefault),
+		TableHeader: lipgloss.Color(t.FgAccent),
+		SessionName: lipgloss.Color(t.PaletteMagenta),
+		WindowName:  lipgloss.Color(t.PaletteDarkMagenta),
 
 		ClaudeHeader:  hc.ClaudeOrange,
 		ClaudeWorking: lipgloss.Color(t.PaletteYellow),

@@ -34,11 +34,13 @@ type Theme struct {
 	FgAdd      string // Git additions
 	FgDelete   string // Git deletions
 
-	// ANSI palette (agent status icons)
-	PaletteYellow string
-	PaletteGreen  string
-	PaletteRed    string
-	PaletteBlue   string
+	// ANSI palette (agent status icons + accent ramp)
+	PaletteYellow      string
+	PaletteGreen       string
+	PaletteRed         string
+	PaletteBlue        string
+	PaletteMagenta     string // Secondary accent (a30 where accent-driven)
+	PaletteDarkMagenta string // Secondary accent (a40 where accent-driven)
 }
 
 var registry = map[string]Theme{}
