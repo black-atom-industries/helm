@@ -1,0 +1,47 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@black-atom/core@*": "0.4.0",
+    "jsr:@eta-dev/eta@3.5.0": "3.5.0",
+    "jsr:@std/fmt@1.0.5": "1.0.5",
+    "jsr:@std/internal@^1.0.14": "1.0.14",
+    "jsr:@std/path@^1.0.8": "1.1.6",
+    "npm:culori@4": "4.0.2",
+    "npm:zod@^3.24.2": "3.25.76"
+  },
+  "jsr": {
+    "@black-atom/core@0.4.0": {
+      "integrity": "b412f4b6e8e710e71f6d1995911cd6ab2e3e4019b9ede926d7a7918e85eb958e",
+      "dependencies": [
+        "jsr:@eta-dev/eta",
+        "jsr:@std/fmt",
+        "jsr:@std/path",
+        "npm:culori",
+        "npm:zod"
+      ]
+    },
+    "@eta-dev/eta@3.5.0": {
+      "integrity": "6b70827efc14c7cbf08498ac7a922ecab003641caf3852a6cb5b1b12ee58fb37"
+    },
+    "@std/fmt@1.0.5": {
+      "integrity": "0cfab43364bc36650d83c425cd6d99910fc20c4576631149f0f987eddede1a4d"
+    },
+    "@std/internal@1.0.14": {
+      "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
+    },
+    "@std/path@1.1.6": {
+      "integrity": "c68485c2a4dfbb5ae3cc74fae4e8c4e5d874cf8a8ed12927917235c758b46cbe",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    }
+  },
+  "npm": {
+    "culori@4.0.2": {
+      "integrity": "sha512-1+BhOB8ahCn4O0cep0Sh2l9KCOfOdY+BXJnKMHFFzDEouSr/el18QwXEMRlOj9UY5nCeA8UN3a/82rUWRBeyBw=="
+    },
+    "zod@3.25.76": {
+      "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="
+    }
+  }
+}
