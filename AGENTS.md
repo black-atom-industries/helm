@@ -39,7 +39,9 @@ internal/
     theme/                # Black Atom theme registry + generated themes (make themes)
   config/config.go        # YAML config (~/.config/black-atom/helm/config.yml)
   tmux/tmux.go            # tmux command wrappers (list, switch, kill)
-  claude/status.go        # Claude Code status file parsing
+  agent/
+    status.go             # Agent (Claude Code, Pi) status file parsing
+    liveness.go           # Process-tree liveness check behind status files
   git/
     status.go             # Git status per session (dirty, ahead/behind)
     repo.go               # Repo sync state (clean/dirty/ahead/behind/diverged)
@@ -135,12 +137,14 @@ Then read `/tmp/helm_test.png` to visually verify the UI looks correct.
 
 ## Claude Status Integration
 
-The hook (`hooks/helm-hook.sh`) writes status files to `~/.cache/helm/<session>.status`. The TUI reads these to show animated status indicators per session:
+The hook (`hooks/helm-hook.sh`) writes JSON status files to `~/.cache/helm/<session>.status` (`{"state","ts","tool","session_id","transcript","cwd"}`; the legacy `state:timestamp` format still parses). The TUI polls these every second (`internal/agent`) and shows animated status indicators per session:
 
 - `⠤⠆⠒⠰` (spinner) - Claude actively processing
 - `?` - Claude waiting (0–5 min)
 - `!` - Still waiting (5–15 min)
 - `Z` - Idle (> 15 min)
+
+Because hooks don't fire on crash or SIGKILL, each poll also verifies via a process-tree check (`internal/agent/liveness.go`) that an agent process actually runs beneath the session's panes — stale status files are removed. Pi status works identically via `.pi-status` files.
 
 > **Known limitation:** Claude Code's `Stop` hook has no `stop_reason` field to differentiate "idle/done" from "waiting for input." See upstream [anthropics/claude-code#13024](https://github.com/anthropics/claude-code/issues/13024).
 

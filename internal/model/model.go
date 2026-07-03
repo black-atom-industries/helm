@@ -12,12 +12,11 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/black-atom-industries/helm/internal/claude"
+	"github.com/black-atom-industries/helm/internal/agent"
 	"github.com/black-atom-industries/helm/internal/config"
 	"github.com/black-atom-industries/helm/internal/git"
 	"github.com/black-atom-industries/helm/internal/lib/filter"
 	"github.com/black-atom-industries/helm/internal/lib/fuzzy"
-	"github.com/black-atom-industries/helm/internal/pi"
 	"github.com/black-atom-industries/helm/internal/tmux"
 	"github.com/black-atom-industries/helm/internal/ui"
 )
@@ -84,8 +83,8 @@ type Item struct {
 type Model struct {
 	sessions          []tmux.Session
 	selfSession       *tmux.Session // The current/self session (pinned at top)
-	claudeStatuses    map[string]claude.Status
-	piStatuses        map[string]pi.Status
+	claudeStatuses    map[string]agent.Status
+	piStatuses        map[string]agent.Status
 	gitStatuses       map[string]git.Status
 	currentSession    string
 	cursor            int
@@ -103,6 +102,7 @@ type Model struct {
 
 	// Directory picker state (uses ScrollList for cursor/scroll/filter)
 	projectList        *ui.ScrollList[string]
+	projectsLoading    bool   // True while the async project directory scan runs
 	returnToBookmarks  bool   // True if we should return to bookmarks mode after project picker
 	pendingSessionName string // Session name pending directory selection (for create-from-filter flow)
 
@@ -141,8 +141,9 @@ type Model struct {
 	sessionsLoaded bool // True after sessions have been loaded at least once
 
 	// Git status loading state
-	gitStatusPending     map[string]bool // Sessions still being fetched (by name)
-	gitStatusShowLoading bool            // True after 500ms delay if still loading
+	gitStatusPending     map[string]bool      // Sessions still being fetched (by name)
+	gitStatusShowLoading bool                 // True after 500ms delay if still loading
+	gitStatusFetched     map[string]time.Time // Last fetch per session, for the TTL cache
 }
 
 // New creates a new Model
@@ -209,7 +210,7 @@ func New(currentSession string, cfg config.Config, initialView string) Model {
 	// Populate data for non-default initial views
 	switch m.mode {
 	case ModePickDirectory:
-		m.projectList.SetItems(m.scanProjectDirectories())
+		m.projectsLoading = true // scan dispatched async in Init
 	case ModeBookmarks:
 		m.bookmarkList.SetItems(cfg.Bookmarks)
 	}
@@ -232,7 +233,11 @@ func New(currentSession string, cfg config.Config, initialView string) Model {
 
 // Init implements tea.Model
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.loadSessions, animationTick())
+	cmds := []tea.Cmd{m.loadSessions, animationTick(), statusPollTick()}
+	if m.projectsLoading {
+		cmds = append(cmds, m.scanProjectsCmd())
+	}
+	return tea.Batch(cmds...)
 }
 
 // loadSessions fetches sessions from tmux
@@ -254,7 +259,68 @@ func (m Model) loadSessions() tea.Msg {
 		}
 	}
 
+	m.preserveExpansion(sessions, selfSession)
+
 	return sessionsMsg{sessions: sessions, selfSession: selfSession}
+}
+
+// expandedSession returns the currently expanded session, if any.
+func (m *Model) expandedSession() *tmux.Session {
+	if m.selfSession != nil && m.selfSession.Expanded {
+		return m.selfSession
+	}
+	for i := range m.sessions {
+		if m.sessions[i].Expanded {
+			return &m.sessions[i]
+		}
+	}
+	return nil
+}
+
+// preserveExpansion carries the expanded session (and its expanded window)
+// across a session reload. Windows and panes are re-fetched so the expansion
+// reflects current tmux state instead of the pre-reload snapshot.
+func (m Model) preserveExpansion(sessions []tmux.Session, selfSession *tmux.Session) {
+	old := m.expandedSession()
+	if old == nil {
+		return
+	}
+
+	var target *tmux.Session
+	if selfSession != nil && selfSession.Name == old.Name {
+		target = selfSession
+	} else {
+		for i := range sessions {
+			if sessions[i].Name == old.Name {
+				target = &sessions[i]
+				break
+			}
+		}
+	}
+	if target == nil {
+		return // expanded session no longer exists
+	}
+
+	windows, err := tmux.ListWindows(target.Name)
+	if err != nil {
+		return
+	}
+	for _, oldWindow := range old.Windows {
+		if !oldWindow.Expanded {
+			continue
+		}
+		for i := range windows {
+			if windows[i].Index != oldWindow.Index {
+				continue
+			}
+			if panes, err := tmux.ListPanes(target.Name, windows[i].Index); err == nil {
+				windows[i].Panes = panes
+				windows[i].Expanded = true
+			}
+		}
+	}
+	target.Windows = windows
+	target.Expanded = true
 }
 
 type sessionsMsg struct {
@@ -269,6 +335,8 @@ type errMsg struct {
 type clearMessageMsg struct{}
 
 type animationTickMsg struct{}
+
+type statusPollMsg struct{}
 
 // gitStatusSingleMsg is sent when a single session's git status is ready
 type gitStatusSingleMsg struct {
@@ -294,6 +362,14 @@ func animationTick() tea.Cmd {
 	})
 }
 
+// statusPollTick returns a command that re-reads agent status files.
+// Separate from animationTick so the 300ms animation never hits disk.
+func statusPollTick() tea.Cmd {
+	return tea.Tick(time.Second, func(time.Time) tea.Msg {
+		return statusPollMsg{}
+	})
+}
+
 // Update implements tea.Model
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -303,8 +379,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.selfSession = msg.selfSession
 		m.sessionsLoaded = true
 		m.saveSessionCache() // Cache for instant startup next time
-		m.loadClaudeStatuses()
-		m.loadPiStatuses()
+		m.loadAgentStatuses()
 		// Initialize git statuses map (will be populated async)
 		if m.gitStatuses == nil {
 			m.gitStatuses = make(map[string]git.Status)
@@ -343,6 +418,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case animationTickMsg:
 		m.animationFrame = (m.animationFrame + 1) % 3
 		return m, animationTick()
+
+	case statusPollMsg:
+		return m, tea.Batch(m.pollAgentStatusesCmd(), statusPollTick())
+
+	case agentStatusesMsg:
+		m.claudeStatuses = msg.claude
+		m.piStatuses = msg.pi
+		return m, nil
+
+	case projectsLoadedMsg:
+		m.projectsLoading = false
+		m.projectList.SetItems(msg.projects)
+		return m, nil
 
 	case cloneReposLoadedMsg:
 		m.cloneLoading = false
@@ -462,12 +550,35 @@ func (m *Model) allSessions() []tmux.Session {
 	return all
 }
 
-// getSession returns the session for a given item (handles self session)
+// getSession returns the session for a given item (handles self session).
+// Returns nil if the item's index no longer matches the session list.
 func (m *Model) getSession(item Item) *tmux.Session {
 	if item.IsSelf {
 		return m.selfSession
 	}
+	if item.SessionIndex < 0 || item.SessionIndex >= len(m.sessions) {
+		return nil
+	}
 	return &m.sessions[item.SessionIndex]
+}
+
+// windowAt returns the window for an item's indices, or nil if the indices
+// no longer match the session's lazily loaded windows.
+func (m *Model) windowAt(item Item) *tmux.Window {
+	session := m.getSession(item)
+	if session == nil || item.WindowIndex < 0 || item.WindowIndex >= len(session.Windows) {
+		return nil
+	}
+	return &session.Windows[item.WindowIndex]
+}
+
+// paneAt returns the pane for an item's indices, or nil if out of range.
+func (m *Model) paneAt(item Item) *tmux.Pane {
+	window := m.windowAt(item)
+	if window == nil || item.PaneIndex < 0 || item.PaneIndex >= len(window.Panes) {
+		return nil
+	}
+	return &window.Panes[item.PaneIndex]
 }
 
 // findSessionByName finds a session by its name, returns nil if not found
@@ -487,6 +598,7 @@ func (m *Model) applyLayout(sessionName, workingDir string) {
 
 	scriptPath := fmt.Sprintf("%s/%s.sh", m.config.LayoutDir, m.config.Layout)
 	if _, err := os.Stat(scriptPath); err != nil {
+		m.setError("Layout script not found: %s", scriptPath)
 		return
 	}
 
@@ -496,71 +608,128 @@ func (m *Model) applyLayout(sessionName, workingDir string) {
 		"TMUX_SESSION="+sessionName,
 		"TMUX_WORKING_DIR="+workingDir,
 	)
-	_ = cmd.Run()
-}
-
-func (m *Model) loadClaudeStatuses() {
-	m.claudeStatuses = make(map[string]claude.Status)
-	if !m.config.ClaudeStatusEnabled {
-		return
-	}
-	if m.selfSession != nil {
-		status := claude.GetStatus(m.selfSession.Name, m.config.CacheDir)
-		if status.State != "" {
-			m.claudeStatuses[m.selfSession.Name] = status
-		}
-	}
-	for _, s := range m.sessions {
-		status := claude.GetStatus(s.Name, m.config.CacheDir)
-		if status.State != "" {
-			m.claudeStatuses[s.Name] = status
-		}
+	if err := cmd.Run(); err != nil {
+		m.setError("Layout %q failed: %v", m.config.Layout, err)
 	}
 }
 
-func (m *Model) loadPiStatuses() {
-	m.piStatuses = make(map[string]pi.Status)
-	if !m.config.PiStatusEnabled {
-		return
+// loadAgentStatuses refreshes the cached agent statuses for all sessions.
+func (m *Model) loadAgentStatuses() {
+	m.claudeStatuses = m.readAgentStatuses(agent.Claude, m.config.ClaudeStatusEnabled)
+	m.piStatuses = m.readAgentStatuses(agent.Pi, m.config.PiStatusEnabled)
+}
+
+// agentStatusesMsg carries freshly polled agent statuses
+type agentStatusesMsg struct {
+	claude map[string]agent.Status
+	pi     map[string]agent.Status
+}
+
+// pollAgentStatusesCmd is the periodic status refresh, run off the UI
+// thread: re-reads status files, prunes files of sessions that no longer
+// exist, and drops statuses whose agent process is gone — hooks don't fire
+// on crash or SIGKILL, so a status file alone proves nothing.
+func (m Model) pollAgentStatusesCmd() tea.Cmd {
+	if !m.config.ClaudeStatusEnabled && !m.config.PiStatusEnabled {
+		return nil
 	}
-	if m.selfSession != nil {
-		status := pi.GetStatus(m.selfSession.Name, m.config.CacheDir)
-		if status.State != "" {
-			m.piStatuses[m.selfSession.Name] = status
+	return func() tea.Msg {
+		if m.sessionsLoaded {
+			names := make([]string, 0, len(m.sessions)+1)
+			for _, s := range m.allSessions() {
+				names = append(names, s.Name)
+			}
+			for _, kind := range agent.Kinds {
+				agent.CleanupStale(kind, m.config.CacheDir, names)
+			}
 		}
+
+		claudeStatuses := m.readAgentStatuses(agent.Claude, m.config.ClaudeStatusEnabled)
+		piStatuses := m.readAgentStatuses(agent.Pi, m.config.PiStatusEnabled)
+
+		// Only spawn tmux/ps when something claims to be running
+		if len(claudeStatuses)+len(piStatuses) > 0 {
+			if panePIDs, err := tmux.PanePIDs(); err == nil {
+				if live, err := agent.CheckLiveness(panePIDs); err == nil {
+					dropDeadStatuses(agent.Claude, claudeStatuses, live, m.config.CacheDir)
+					dropDeadStatuses(agent.Pi, piStatuses, live, m.config.CacheDir)
+				}
+			}
+		}
+
+		return agentStatusesMsg{claude: claudeStatuses, pi: piStatuses}
 	}
-	for _, s := range m.sessions {
-		status := pi.GetStatus(s.Name, m.config.CacheDir)
-		if status.State != "" {
-			m.piStatuses[s.Name] = status
+}
+
+// dropDeadStatuses removes statuses (and their files) for sessions where no
+// matching agent process is running.
+func dropDeadStatuses(kind agent.Kind, statuses map[string]agent.Status, live agent.Liveness, cacheDir string) {
+	for name := range statuses {
+		if !live.Alive(kind, name) {
+			delete(statuses, name)
+			agent.RemoveStatus(kind, name, cacheDir)
 		}
 	}
 }
+
+func (m *Model) readAgentStatuses(kind agent.Kind, enabled bool) map[string]agent.Status {
+	statuses := make(map[string]agent.Status)
+	if !enabled {
+		return statuses
+	}
+	for _, s := range m.allSessions() {
+		if status := agent.GetStatus(kind, s.Name, m.config.CacheDir); status.State != "" {
+			statuses[s.Name] = status
+		}
+	}
+	return statuses
+}
+
+// gitStatusTTL is how long a fetched git status stays fresh. Session
+// reloads within this window reuse the cached result instead of spawning
+// another round of git subprocesses.
+const gitStatusTTL = 10 * time.Second
 
 // fetchGitStatusesCmd returns commands that fetch git statuses in parallel
 // Each session's status is fetched independently and updates the UI as soon as ready
 func (m *Model) fetchGitStatusesCmd() tea.Cmd {
-	allSessions := m.allSessions()
-	if !m.config.GitStatusEnabled || len(allSessions) == 0 {
+	if !m.config.GitStatusEnabled {
+		return nil
+	}
+
+	// Only fetch sessions whose cached status has expired
+	if m.gitStatusFetched == nil {
+		m.gitStatusFetched = make(map[string]time.Time)
+	}
+	now := time.Now()
+	var stale []tmux.Session
+	for _, s := range m.allSessions() {
+		if fetchedAt, ok := m.gitStatusFetched[s.Name]; ok && now.Sub(fetchedAt) < gitStatusTTL {
+			continue
+		}
+		stale = append(stale, s)
+	}
+	if len(stale) == 0 {
 		return nil
 	}
 
 	// Track which sessions we're waiting for
 	m.gitStatusPending = make(map[string]bool)
 	m.gitStatusShowLoading = false
-	for _, s := range allSessions {
+	for _, s := range stale {
 		m.gitStatusPending[s.Name] = true
+		m.gitStatusFetched[s.Name] = now
 	}
 
 	// Create a command for each session - they run in parallel via tea.Batch
-	cmds := make([]tea.Cmd, 0, len(allSessions)+1)
+	cmds := make([]tea.Cmd, 0, len(stale)+1)
 
 	// Add delayed loading indicator (500ms)
 	cmds = append(cmds, tea.Tick(500*time.Millisecond, func(time.Time) tea.Msg {
 		return gitStatusLoadingMsg{}
 	}))
 
-	for _, s := range allSessions {
+	for _, s := range stale {
 		sessionName := s.Name // capture for closure
 		cmds = append(cmds, func() tea.Msg {
 			path, err := git.GetSessionPath(sessionName)
@@ -589,76 +758,6 @@ func (m *Model) calculateColumnWidths() {
 		if len(s.Name) > m.maxNameWidth {
 			m.maxNameWidth = len(s.Name)
 		}
-	}
-}
-
-// stateText returns the state line text based on current mode and context.
-// Now only used by the STATUS sidebar section — no longer in footer.
-// Kept for potential future use.
-//
-//nolint:unused
-func (m *Model) stateText() string {
-	switch m.mode {
-	case ModeNormal:
-		total := len(m.sessions)
-		if m.selfSession != nil {
-			total++
-		}
-		visible := len(m.items)
-		if m.Filter() != "" {
-			return fmt.Sprintf("Showing %d/%d sessions", visible, total)
-		}
-		return fmt.Sprintf("%d sessions", total)
-	case ModeBookmarks:
-		total := len(m.config.Bookmarks)
-		if total == 0 {
-			return "No bookmarks"
-		}
-		return fmt.Sprintf("%d bookmarks", total)
-	case ModePickDirectory:
-		if m.pendingSessionName != "" {
-			return fmt.Sprintf("Select location for: %s", m.pendingSessionName)
-		}
-		total := len(m.projectList.Items())
-		visible := m.projectList.Len()
-		if m.projectList.Filter() != "" {
-			return fmt.Sprintf("Showing %d/%d projects", visible, total)
-		}
-		return fmt.Sprintf("%d projects", total)
-	case ModeCloneChoice:
-		return "Clone repository"
-	case ModeCloneURL:
-		if m.cloneSuccess {
-			return "Clone successful"
-		}
-		if m.cloneCloning {
-			return fmt.Sprintf("Cloning %s...", m.cloneCloningRepo)
-		}
-		return "Enter repo URL"
-	case ModeCloneRepo:
-		if m.cloneSuccess {
-			return "Clone successful"
-		}
-		if m.cloneLoading {
-			return "Loading repositories..."
-		}
-		if m.cloneCloning {
-			return fmt.Sprintf("Cloning %s...", m.cloneCloningRepo)
-		}
-		total := len(m.cloneList.Items())
-		visible := m.cloneList.Len()
-		if m.cloneList.Filter() != "" {
-			return fmt.Sprintf("Showing %d/%d repositories", visible, total)
-		}
-		return fmt.Sprintf("%d repositories", total)
-	case ModeCreate:
-		return "Enter session name"
-	case ModeConfirmKill:
-		return fmt.Sprintf("Kill session: %s?", m.killTarget)
-	case ModeConfirmRemoveFolder:
-		return fmt.Sprintf("Remove folder: %s?", filepath.Base(m.removeTarget))
-	default:
-		return ""
 	}
 }
 

@@ -275,6 +275,29 @@ func ListPanes(sessionName string, windowIndex int) ([]Pane, error) {
 	return panes, nil
 }
 
+// PanePIDs returns each pane's shell process PID across all sessions,
+// grouped by session name. One tmux call for everything.
+func PanePIDs() (map[string][]int, error) {
+	out, err := exec.Command("tmux", "list-panes", "-a", "-F", "#{session_name}\t#{pane_pid}").Output()
+	if err != nil {
+		return nil, err
+	}
+
+	pids := make(map[string][]int)
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		pid, err := strconv.Atoi(parts[1])
+		if err != nil {
+			continue
+		}
+		pids[parts[0]] = append(pids[parts[0]], pid)
+	}
+	return pids, nil
+}
+
 // KillPane kills a tmux pane
 func KillPane(sessionName string, windowIndex, paneIndex int) error {
 	target := fmt.Sprintf("%s:%d.%d", sessionName, windowIndex, paneIndex)

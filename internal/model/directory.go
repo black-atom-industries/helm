@@ -137,9 +137,9 @@ func (m *Model) removeFolder() (tea.Model, tea.Cmd) {
 	m.removeTarget = ""
 
 	// Rescan directories and re-apply current filter
-	m.projectList.SetItems(m.scanProjectDirectories())
+	m.projectsLoading = true
 
-	return m, clearMessageAfter(5 * time.Second)
+	return m, tea.Batch(m.scanProjectsCmd(), clearMessageAfter(5*time.Second))
 }
 
 // viewPickDirectory renders the directory picker view
@@ -192,9 +192,12 @@ func (m Model) viewPickDirectory() string {
 
 	// Empty state
 	if totalItems == 0 {
-		if filter != "" {
+		switch {
+		case m.projectsLoading:
+			b.WriteString("  Scanning projects...\n")
+		case filter != "":
 			b.WriteString("  No directories matching filter\n")
-		} else {
+		default:
 			b.WriteString("  No directories found\n")
 		}
 	}
@@ -213,6 +216,19 @@ func (m *Model) projectMaxVisibleItems() int {
 		}
 	}
 	return ui.DefaultVisibleItems
+}
+
+// projectsLoadedMsg carries the async project directory scan result
+type projectsLoadedMsg struct {
+	projects []string
+}
+
+// scanProjectsCmd runs the project directory scan off the UI thread — the
+// recursive .git walk can take a while on large project trees.
+func (m Model) scanProjectsCmd() tea.Cmd {
+	return func() tea.Msg {
+		return projectsLoadedMsg{projects: m.scanProjectDirectories()}
+	}
 }
 
 // scanProjectDirectories scans all configured project directories recursively

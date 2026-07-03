@@ -7,9 +7,8 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/black-atom-industries/helm/internal/claude"
+	"github.com/black-atom-industries/helm/internal/agent"
 	"github.com/black-atom-industries/helm/internal/git"
-	"github.com/black-atom-industries/helm/internal/pi"
 )
 
 // RowLayout holds calculated column widths for consistent alignment across rows
@@ -28,15 +27,15 @@ type RowOpts struct {
 	Selected bool
 
 	// Optional - set to enable
-	ShowExpandIcon   bool           // Show ▸/▾ expand indicator
-	Expanded         bool           // Expansion state
-	LastActivity     *time.Time     // Show time ago if set
-	GitStatus        *git.Status    // Show git status if set
-	GitStatusLoading bool           // Show loading indicator for git status
-	ClaudeStatus     *claude.Status // Show claude status if set
-	PiStatus         *pi.Status     // Show pi status if set
-	AnimFrame        int            // Animation frame for status icons
-	IsSelf           bool           // True for the pinned current/self session
+	ShowExpandIcon   bool          // Show ▸/▾ expand indicator
+	Expanded         bool          // Expansion state
+	LastActivity     *time.Time    // Show time ago if set
+	GitStatus        *git.Status   // Show git status if set
+	GitStatusLoading bool          // Show loading indicator for git status
+	ClaudeStatus     *agent.Status // Show claude status if set
+	PiStatus         *agent.Status // Show pi status if set
+	AnimFrame        int           // Animation frame for status icons
+	IsSelf           bool          // True for the pinned current/self session
 }
 
 // WindowRowOpts contains per-row options for rendering a window
@@ -165,8 +164,8 @@ func RenderGitStatusColumn(status *git.Status, maxWidth int, selected bool, load
 
 // RenderClaudeIcon renders a single-character Claude status icon
 // Returns a space for no status to preserve column alignment
-func RenderClaudeIcon(status *claude.Status, animFrame int, selected bool) string {
-	if status == nil || status.State == "" {
+func RenderClaudeIcon(status *agent.Status, animFrame int, selected bool) string {
+	if status == nil || status.State == "" || status.IsStale() {
 		return SpacerStyle(" ", selected) // Reserved space for alignment
 	}
 	waitDuration := time.Since(status.Timestamp)
@@ -180,8 +179,8 @@ func RenderClaudeIcon(status *claude.Status, animFrame int, selected bool) strin
 
 // RenderPiIcon renders a single-character Pi status icon
 // Returns a space for no status to preserve column alignment
-func RenderPiIcon(status *pi.Status, animFrame int, selected bool) string {
-	if status == nil || status.State == "" {
+func RenderPiIcon(status *agent.Status, animFrame int, selected bool) string {
+	if status == nil || status.State == "" || status.IsStale() {
 		return SpacerStyle(" ", selected) // Reserved space for alignment
 	}
 	waitDuration := time.Since(status.Timestamp)

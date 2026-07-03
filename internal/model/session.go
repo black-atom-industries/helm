@@ -94,14 +94,14 @@ func (m *Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.mode = ModePickDirectory
 		m.returnToBookmarks = false // Coming from normal mode, not bookmarks
 		m.projectList.Reset()
-		m.projectList.SetItems(m.scanProjectDirectories())
+		m.projectsLoading = true
 		// Carry over the active filter
 		if m.Filter() != "" {
 			m.projectList.SetFilter(m.Filter())
 			m.SetFilter("")
 		}
 		// Request window size to get proper height for layout
-		return m, tea.WindowSize()
+		return m, tea.Batch(m.scanProjectsCmd(), tea.WindowSize())
 
 	case key.Matches(msg, keys.OpenRemote):
 		return m.openRemote()
@@ -707,6 +707,10 @@ func (m *Model) killCurrent() (tea.Model, tea.Cmd) {
 
 	item := m.items[m.cursor]
 	session := m.getSession(item)
+	if session == nil {
+		m.mode = ModeNormal
+		return m, m.loadSessions
+	}
 	var err error
 
 	// Killing the self session: switch to the last-used other session first
@@ -729,17 +733,19 @@ func (m *Model) killCurrent() (tea.Model, tea.Cmd) {
 			m.message = fmt.Sprintf("Killed \"%s\"", session.Name)
 		}
 	case ItemTypeWindow:
-		window := session.Windows[item.WindowIndex]
-		err = tmux.KillWindow(session.Name, window.Index)
-		if err == nil {
-			m.message = fmt.Sprintf("Killed window %d", window.Index)
+		if window := m.windowAt(item); window != nil {
+			err = tmux.KillWindow(session.Name, window.Index)
+			if err == nil {
+				m.message = fmt.Sprintf("Killed window %d", window.Index)
+			}
 		}
 	case ItemTypePane:
-		window := session.Windows[item.WindowIndex]
-		pane := window.Panes[item.PaneIndex]
-		err = tmux.KillPane(session.Name, window.Index, pane.Index)
-		if err == nil {
-			m.message = fmt.Sprintf("Killed pane %d", pane.Index)
+		if pane := m.paneAt(item); pane != nil {
+			window := m.windowAt(item)
+			err = tmux.KillPane(session.Name, window.Index, pane.Index)
+			if err == nil {
+				m.message = fmt.Sprintf("Killed pane %d", pane.Index)
+			}
 		}
 	}
 
@@ -837,6 +843,9 @@ func (m Model) viewSessionList() string {
 		switch item.Type {
 		case ItemTypeSession:
 			session := m.getSession(item)
+			if session == nil {
+				break
+			}
 
 			// Build options for this row
 			lastActivity := session.LastActivity
@@ -871,15 +880,14 @@ func (m Model) viewSessionList() string {
 			}
 
 		case ItemTypeWindow:
-			session := m.getSession(item)
-			window := session.Windows[item.WindowIndex]
-			listBuilder.WriteString(ui.RenderWindowRow(window.Index, window.Name, ui.WindowRowOpts{Selected: selected, Expanded: window.Expanded}, m.rowWidth()))
+			if window := m.windowAt(item); window != nil {
+				listBuilder.WriteString(ui.RenderWindowRow(window.Index, window.Name, ui.WindowRowOpts{Selected: selected, Expanded: window.Expanded}, m.rowWidth()))
+			}
 
 		case ItemTypePane:
-			session := m.getSession(item)
-			window := session.Windows[item.WindowIndex]
-			pane := window.Panes[item.PaneIndex]
-			listBuilder.WriteString(ui.RenderPaneRow(pane.Index, pane.Command, pane.Active, ui.PaneRowOpts{Selected: selected}, m.rowWidth()))
+			if pane := m.paneAt(item); pane != nil {
+				listBuilder.WriteString(ui.RenderPaneRow(pane.Index, pane.Command, pane.Active, ui.PaneRowOpts{Selected: selected}, m.rowWidth()))
+			}
 		}
 		listBuilder.WriteString("\n")
 

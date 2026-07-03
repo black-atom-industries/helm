@@ -70,8 +70,8 @@ func (m *Model) handleBookmarksMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.mode = ModePickDirectory
 		m.returnToBookmarks = true
 		m.projectList.Reset()
-		m.projectList.SetItems(m.scanProjectDirectories())
-		return m, tea.WindowSize()
+		m.projectsLoading = true
+		return m, tea.Batch(m.scanProjectsCmd(), tea.WindowSize())
 
 	case key.Matches(msg, keys.Quit):
 		return m, tea.Quit
