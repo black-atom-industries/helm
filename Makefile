@@ -1,4 +1,4 @@
-.PHONY: build install clean test coverage dev themes
+.PHONY: build install install-hooks clean test coverage dev themes
 
 BINARY_NAME=helm
 INSTALL_DIR=$(HOME)/.local/bin
@@ -6,11 +6,15 @@ INSTALL_DIR=$(HOME)/.local/bin
 build:
 	go build -o $(BINARY_NAME) ./cmd/helm/
 
-install: build
+install: build install-hooks
 	mkdir -p $(INSTALL_DIR)
 	ln -sf $(CURDIR)/$(BINARY_NAME) $(INSTALL_DIR)/$(BINARY_NAME)
 	ln -sf $(CURDIR)/hooks/helm-hook.sh $(INSTALL_DIR)/helm-hook
 	@echo "Installed $(BINARY_NAME) and helm-hook to $(INSTALL_DIR) (symlinks)"
+
+install-hooks:
+	git config core.hooksPath .githooks
+	@echo "Git hooks installed (.githooks)"
 
 clean:
 	rm -f $(BINARY_NAME)

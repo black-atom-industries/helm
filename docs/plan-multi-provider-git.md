@@ -23,15 +23,15 @@ The SSH regex matches `git@` at position 6 (inside the `ssh://` protocol URL), t
 
 ## Critical Files
 
-| File | Change |
-|------|--------|
-| `internal/giturl/url.go` | **NEW** — `GitURL` struct + `ParseGitURL` with anchored regexes |
-| `internal/giturl/url_test.go` | **NEW** — tests for all URL formats |
-| `internal/giturl/github.go` | Remove old `ParseGitURL`, update `ResolveOwnerRepo` to use new struct |
-| `internal/config/user_config.go` | Add `GitProviders` map, update `ListClonedRepos` to use recursive walk |
-| `internal/model/directory.go` | Update `scanProjectDirectories` to use recursive walk with `.git` detection |
-| `cmd/helm/repos.go` | Update `runReposAdd` and `runReposRebuild` to use new resolution |
-| `internal/model/clone.go` | Update `cloneSelectedRepo` to pass providers config |
+| File                             | Change                                                                      |
+| -------------------------------- | --------------------------------------------------------------------------- |
+| `internal/giturl/url.go`         | **NEW** — `GitURL` struct + `ParseGitURL` with anchored regexes             |
+| `internal/giturl/url_test.go`    | **NEW** — tests for all URL formats                                         |
+| `internal/giturl/github.go`      | Remove old `ParseGitURL`, update `ResolveOwnerRepo` to use new struct       |
+| `internal/config/user_config.go` | Add `GitProviders` map, update `ListClonedRepos` to use recursive walk      |
+| `internal/model/directory.go`    | Update `scanProjectDirectories` to use recursive walk with `.git` detection |
+| `cmd/helm/repos.go`              | Update `runReposAdd` and `runReposRebuild` to use new resolution            |
+| `internal/model/clone.go`        | Update `cloneSelectedRepo` to pass providers config                         |
 
 ## Phase 1: GitURL struct + URL parsing (TDD)
 
@@ -83,8 +83,8 @@ Add to `Config`:
 # Optional — maps git hosts to directory aliases for clone destination paths.
 # Empty string = use path as-is (GitHub style). Omitted hosts use host/ as prefix.
 git_providers:
-  github.com: ""            # owner/repo (no host prefix)
-  codeberg.org: ""          # owner/repo
+  github.com: "" # owner/repo (no host prefix)
+  codeberg.org: "" # owner/repo
   git.corp.example.com: corp # → corp/~alice/my-project (personal) or corp/team/repo (org)
 ```
 
@@ -95,10 +95,10 @@ GitProviders map[string]string `yaml:"git_providers,omitempty"`
 
 **Important:** The `~` prefix in paths like `~alice/my-project` is semantically meaningful — it distinguishes **personal repos** (`~user/repo`) from **team/org repos** (`team/repo`). The `~` must be preserved in the directory structure, not stripped.
 
-| URL pattern | Path | Resolved directory |
-|---|---|---|
+| URL pattern                                                 | Path                | Resolved directory       |
+| ----------------------------------------------------------- | ------------------- | ------------------------ |
 | `ssh://git@git.corp.example.com:7999/~alice/my-project.git` | `~alice/my-project` | `corp/~alice/my-project` |
-| `ssh://git@git.corp.example.com:7999/websdk/web-ui.git` | `websdk/web-ui` | `corp/websdk/web-ui` |
+| `ssh://git@git.corp.example.com:7999/websdk/web-ui.git`     | `websdk/web-ui`     | `corp/websdk/web-ui`     |
 
 ### Commits
 
@@ -181,6 +181,7 @@ TestResolveRepoDir:
 ### Problem
 
 Both `ListClonedRepos` and `scanProjectDirectories` use fixed-depth scanning:
+
 - `ListClonedRepos` scans at depth 2 — repos at depth 3 (like `imfusion/brunner/agents`) aren't found
 - `scanProjectDirectories` uses `walkAtDepth` with `ProjectDepth` (default 2) — same issue
 - Increasing depth would scan INTO repo internals (`.agents`, `.claude`, `node_modules`, etc.)
@@ -304,6 +305,7 @@ if parsed, err := giturl.ParseGitURL(entry.URL); err == nil {
 ### `internal/model/clone.go` — `cloneSelectedRepo`
 
 The TUI clone flow has two entry points:
+
 1. "My repos" (gh CLI) — stays GitHub-only, passes `owner/repo` as selected
 2. "Enter URL" — calls `ResolveOwnerRepo` with providers config
 
@@ -347,6 +349,7 @@ git_providers:
 ```
 
 Personal repo:
+
 ```bash
 $ helm repos add ssh://git@git.corp.example.com:7999/~alice/my-project.git
 → Cloning corp/~alice/my-project...
@@ -354,6 +357,7 @@ $ helm repos add ssh://git@git.corp.example.com:7999/~alice/my-project.git
 ```
 
 Team repo:
+
 ```bash
 $ helm repos add ssh://git@git.corp.example.com:7999/websdk/web-ui.git
 → Cloning corp/websdk/web-ui...
@@ -383,7 +387,7 @@ Switch to the new session? [y/n]
 The project picker now dynamically discovers repos at any depth by detecting `.git` directories:
 
 ```
-[Projects] filter: 
+[Projects] filter:
   ▸ brunner/agents
     helm
     web-sdk

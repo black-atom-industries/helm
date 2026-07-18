@@ -12,7 +12,8 @@ Part of the [Black Atom Industries](https://github.com/black-atom-industries) co
 
 ```bash
 make build          # Build binary to ./helm
-make install        # Build and install to ~/.local/bin/helm
+make install        # Build and install to ~/.local/bin/helm (also installs git hooks)
+make install-hooks  # Point git core.hooksPath at .githooks (pre-commit: fmt, lint, test)
 make test           # Run tests
 make fmt            # Format code
 make lint           # Run golangci-lint
