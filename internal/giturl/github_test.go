@@ -277,6 +277,24 @@ func TestResolveRepoDir_leading_slash_stripped(t *testing.T) {
 	}
 }
 
+func TestResolveRepoDir_github_default_no_config(t *testing.T) {
+	u, _ := ParseGitURL("git@github.com:owner/repo.git")
+	if got := ResolveRepoDir(u, nil); got != "owner/repo" {
+		t.Errorf("nil providers: got %q, want %q", got, "owner/repo")
+	}
+	if got := ResolveRepoDir(u, map[string]string{"other.host": "x"}); got != "owner/repo" {
+		t.Errorf("providers without github.com: got %q, want %q", got, "owner/repo")
+	}
+}
+
+func TestResolveRepoDir_config_overrides_github_default(t *testing.T) {
+	u, _ := ParseGitURL("git@github.com:owner/repo.git")
+	got := ResolveRepoDir(u, map[string]string{"github.com": "gh"})
+	if got != "gh/owner/repo" {
+		t.Errorf("got %q, want %q", got, "gh/owner/repo")
+	}
+}
+
 func TestResolveRepoDir_nil_providers(t *testing.T) {
 	u := GitURL{Host: "gitlab.com", Path: "group/project"}
 	got := ResolveRepoDir(u, nil)

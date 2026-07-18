@@ -84,20 +84,27 @@ func cleanPath(path string) string {
 	return path
 }
 
+// defaultProviders maps hosts to aliases when the user's git_providers
+// config has no entry for them. github.com maps to "" (bare owner/repo)
+// so GitHub clones land in the historical layout without any config.
+var defaultProviders = map[string]string{
+	"github.com": "",
+}
+
 // ResolveRepoDir returns the directory name for a parsed git URL.
 // The providers map is from config.GitProviders (host → alias).
 //
 // Rules:
-//  1. Look up GitURL.Host in providers map
+//  1. Look up GitURL.Host in providers map, falling back to defaultProviders
 //  2. If found with alias: "alias/{cleaned_path}"
 //  3. If found with empty string: "{cleaned_path}"
 //  4. If not found: "{host}/{cleaned_path}"
 func ResolveRepoDir(gitURL GitURL, providers map[string]string) string {
 	cleaned := cleanPath(gitURL.Path)
-	if providers == nil {
-		return gitURL.Host + "/" + cleaned
-	}
 	alias, ok := providers[gitURL.Host]
+	if !ok {
+		alias, ok = defaultProviders[gitURL.Host]
+	}
 	if !ok {
 		return gitURL.Host + "/" + cleaned
 	}

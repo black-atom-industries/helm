@@ -177,7 +177,7 @@
     },
     "git_providers": {
       "type": "object",
-      "description": "Maps git hosts to directory aliases for clone destination paths. Empty string = use path as-is (GitHub style). Omitted hosts use host/ as prefix. The ~ prefix in paths (e.g. ~alice/project) is preserved to distinguish personal repos from team repos.",
+      "description": "Maps git hosts to directory aliases for clone destination paths. Empty string = use path as-is. Omitted hosts use host/ as prefix, except github.com which defaults to no prefix (owner/repo). A leading ~ in paths (e.g. ~alice/project) is stripped for the local directory name.",
       "additionalProperties": {
         "type": "string"
       },
